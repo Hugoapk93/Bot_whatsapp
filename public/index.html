@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CRM - Monitor</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+
+    <style>
+        /* --- VARIABLES & RESET --- */
+        :root { 
+            --primary: #da291c; /* Rojo Elektra */
+            --primary-dark: #b91d11;
+            --dark: #1e293b; 
+            --light: #f8fafc; 
+            --white: #ffffff;
+            --success: #10b981; 
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Poppins', sans-serif; margin: 0; display: flex; height: 100dvh; width: 100vw; background: var(--light); color: var(--dark); overflow: hidden; }
+
+        /* --- SIDEBAR --- */
+        .sidebar { width: 260px; background: var(--white); border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; z-index: 100; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .brand { padding: 20px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; font-weight: 600; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(218, 41, 28, 0.3); }
+        .menu { padding: 15px; flex: 1; overflow-y: auto; }
+        .menu-item { padding: 14px; margin-bottom: 8px; cursor: pointer; border-radius: var(--radius); font-weight: 500; display: flex; align-items: center; gap: 12px; color: #64748b; position: relative; transition: 0.2s; }
+        .menu-item:hover { background: #fee2e2; color: var(--primary); }
+        .menu-item.active { background: #fef2f2; color: var(--primary); font-weight: 600; border-left: 4px solid var(--primary); }
+        
+        .badge-count { background: var(--primary); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; position: absolute; right: 10px; display: none; animation: pulse 2s infinite; box-shadow: 0 2px 5px rgba(218,41,28,0.4); }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+        /* --- LAYOUT --- */
+        .content { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; overflow: hidden; background: #f1f5f9; }
+        .view { display: none; flex: 1; padding: 20px; overflow-y: auto; flex-direction: column; height: 100%; animation: fadeIn 0.3s ease; }
+        .view.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .mobile-header { display: none; background: var(--primary); padding: 0 15px; height: 60px; align-items: center; color: white; font-weight: bold; justify-content: space-between; flex-shrink: 0; box-shadow: var(--shadow); }
+
+        /* --- COMPONENTS --- */
+        .card { background: white; padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid #f1f5f9; transition: box-shadow 0.3s; }
+        
+        /* ALARMA VISUAL */
+        @keyframes border-pulse { 0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); } }
+        .alert-mode { animation: border-pulse 1.5s infinite; border: 2px solid var(--primary) !important; }
+
+        /* TABLA RESPONSIVA */
+        .act-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9rem; }
+        .act-table th { text-align: left; padding: 15px; background: #f8fafc; color: #64748b; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+        .act-table td { padding: 15px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        
+        .status-badge { padding: 6px 14px; border-radius: 30px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+        .status-badge.open { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .status-badge.closed { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+        .admin-btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; color: white; margin-right: 5px; margin-bottom: 5px; transition: transform 0.1s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .admin-btn:active { transform: scale(0.95); }
+
+        /* --- ESTILOS CALENDARIO --- */
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .calendar-header h3 { margin: 0; text-transform: capitalize; color: var(--primary); }
+        .calendar-nav-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b; padding: 5px 10px; }
+        .calendar-nav-btn:hover { color: var(--primary); background: #fee2e2; border-radius: 50%; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .weekday { font-weight: 600; color: #94a3b8; font-size: 0.85rem; padding-bottom: 10px; }
+        
+        .day { 
+            height: 80px; /* Altura de cada día */
+            border: 1px solid #e2e8f0; 
+            border-radius: 8px; 
+            padding: 5px; 
+            font-size: 0.9rem; 
+            font-weight: 500; 
+            background: #fff;
+            position: relative;
+        }
+        .day.empty { background: transparent; border: none; }
+        .day.today { border: 2px solid var(--primary); background: #fef2f2; color: var(--primary); font-weight: bold; }
+        .day:hover:not(.empty) { background: #f8fafc; border-color: #cbd5e1; }
+
+        .day-indicator {
+            background: var(--primary);
+            color: white;
+            font-size: 0.65rem;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Modal de Detalles */
+        .appt-list { list-style: none; padding: 0; margin: 0; }
+        .appt-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .appt-item:last-child { border-bottom: none; }
+        .appt-time { font-weight: bold; color: var(--primary); margin-right: 10px; }
+        .appt-name { font-weight: 600; font-size: 0.9rem; }
+        .btn-delete { color: #ef4444; background: #fee2e2; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+        .btn-delete:hover { background: #fecaca; }
+
+        /* FLOW EDITOR */
+        #cy { 
+            width: 100%; 
+            height: 100%; 
+            background: #ffffff; 
+            /* Agregamos esto para garantizar que ocupe todo el espacio de su padre: */
+            position: absolute; 
+            top: 0; 
+            left: 0;
+        }
+        #view-flow { 
+            padding: 0 !important; 
+            overflow: hidden; 
+            position: relative; 
+            height: 100%; /* Aseguramos la altura */
+            flex: 1;
+        }
+
+        .flow-controls { position: absolute; bottom: 30px; left: 30px; display: flex; gap: 10px; z-index: 10; }
+        .ctrl-btn { width: 40px; height: 40px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #e2e8f0; color: #64748b; }
+        .fab { position: fixed; bottom: 30px; right: 30px; background: var(--primary); color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(218, 41, 28, 0.4); z-index: 150; font-size: 28px; transition: transform 0.2s; }
+
+        /* CHAT & MODALS */
+        .chat-container-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #e5ddd5; border-radius: var(--radius); border: 1px solid #d1d7db; }
+        .chat-header { padding: 15px; background: #008069; color: white; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .chat-msgs { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: soft-light; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 8px; background: white; font-size: 0.95rem; align-self: flex-start; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .msg.user { background: #d9fdd3; align-self: flex-end; }
+        
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 200; display: none; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal.active { display: flex; animation: fadeModal 0.2s ease-out; }
+        @keyframes fadeModal { from { opacity: 0; } to { opacity: 1; } }
+        .sheet { background: white; width: 100%; max-width: 500px; max-height: 90vh; border-radius: 16px; padding: 25px; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+
+        /* TOASTS */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { background: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); display: flex; align-items: center; gap: 10px; font-size: 0.9rem; border-left: 4px solid var(--success); opacity: 0; transform: translateX(50px); animation: slideIn 0.3s forwards; pointer-events: auto; min-width: 250px; }
+        .toast.error { border-left-color: var(--primary); }
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+
+        /* INPUTS */
+        input, select, textarea { width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 12px; font-size: 0.95rem; background: #f8fafc; }
+
+        /* MOBILE OPTIMIZATIONS */
+        @media(max-width: 768px) { 
+            .mobile-header { display: flex; }
+            .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 2px 0 10px rgba(0,0,0,0.1); } 
+            .sidebar.active { transform: translateX(0); } 
+            .sheet { height: 95%; max-height: 95%; border-radius: 12px 12px 0 0; position: absolute; bottom: 0; max-width: 100%; }
+            .modal { align-items: flex-end; }
+            /* Mobile Cards for Table */
+            .act-table, .act-table thead, .act-table tbody, .act-table th, .act-table td, .act-table tr { display: block; }
+            .act-table thead tr { position: absolute; top: -9999px; left: -9999px; }
+            .act-table tr { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; background: white; padding: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+            .act-table td { border: none; padding: 5px 0; position: relative; }
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+    <div id="toast-container"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="brand">
+            <span><i class="fas fa-bolt"></i> CRM</span>
+            <button onclick="toggleMenu()" class="d-md-none" style="background:none; border:none; color:white;">✕</button>
+        </div>
+        <div class="menu">
+            <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-sitemap"></i> Flujo</div>
+            
+            <div class="menu-item" onclick="nav('activity', this)">
+                <i class="fas fa-list-check"></i> Monitor
+                <span id="notifyBadge" class="badge-count">0</span>
+            </div>
+
+            <div class="menu-item" onclick="nav('agenda', this)"><i class="fas fa-calendar-alt"></i> Agenda</div>
+            <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
+            <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-clock"></i> Horario</div>
+            <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-robot"></i> Simulador</div>
+        </div>
+    </div>
+
+    <div class="modal" id="dayModal">
+        <div class="sheet" style="height: 85vh; max-height: 85vh; display:flex; flex-direction:column;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:10px; margin-bottom:10px;">
+                <div>
+                    <h3 id="modalDateTitle" style="margin:0; color:var(--primary);">Detalles del Día</h3>
+                    <small id="modalDateSubtitle" style="color:#64748b;"></small>
+                </div>
+                <button onclick="closeDayModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#94a3b8;">&times;</button>
+            </div>
+
+            <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:15px;">
+                <div id="modalApptList"></div>
+
+                <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:12px; background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="fas fa-plus"></i> Agregar Evento / Nota
+                </button>
+
+                <div id="eventForm" style="display:none; background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
+                    <h4 style="margin:0 0 10px 0; color:#334155;">📝 Editar Evento</h4>
+                    <input type="hidden" id="evtOldTime"> 
+                    
+                    <label style="font-size:0.8rem; font-weight:bold;">Horario</label>
+                    <input type="time" id="evtTime" style="background:white;">
+
+                    <label style="font-size:0.8rem; font-weight:bold;">Título / Nombre</label>
+                    <input type="text" id="evtName" placeholder="Ej: Juan Pérez o 'Comida'" style="background:white;">
+
+                    <label style="font-size:0.8rem; font-weight:bold;">Teléfono (Opcional)</label>
+                    <input type="text" id="evtPhone" placeholder="Solo números" style="background:white;">
+
+                    <label style="font-size:0.8rem; font-weight:bold;">Nota / Descripción</label>
+                    <textarea id="evtNote" rows="2" placeholder="Detalles extra..." style="background:white; margin-bottom:10px;"></textarea>
+
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="saveEvent()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer;">Guardar</button>
+                        <button onclick="hideEventForm()" style="padding:10px; background:#e2e8f0; color:#475569; border:none; border-radius:6px; cursor:pointer;">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="contactModal">
+        <div class="sheet" style="height: auto;">
+            <h3 style="margin-top:0; color:var(--primary);">Agregar Contacto</h3>
+    
+            <label>Nombre</label>
+            <input type="text" id="newContName" placeholder="Ej: Cliente Nuevo">
+    
+            <label>Teléfono (Solo números)</label>
+            <input type="tel" id="newContPhone" placeholder="Ej: 5218991234567">
+    
+            <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin:15px 0; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:600; color:#475569;">¿Bot Activado?</span>
+                <label class="switch" style="position:relative; display:inline-block; width:40px; height:24px;">
+                    <input type="checkbox" id="newContEnable" checked style="opacity:0; width:0; height:0;">
+                    <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
+                    <span class="slider-ball" style="position:absolute; content:''; height:16px; width:16px; left:4px; bottom:4px; background-color:white; transition:.4s; border-radius:50%;"></span>
+                </label>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="saveNewContact()" style="flex:1; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold;">Guardar</button>
+                <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:12px; background:#e2e8f0; color:#475569; border:none; border-radius:8px;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="mobile-header">
+            <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.5rem;">☰</button>
+            <span id="pageTitle">FLUJO</span>
+            <div style="width:30px"></div>
+        </div>
+
+        <div id="view-flow" class="view active">
+            <div id="cy"></div>
+            <div class="flow-controls">
+                <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()+0.2)"><i class="fas fa-plus"></i></div>
+                <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)"><i class="fas fa-minus"></i></div>
+                <div class="ctrl-btn" onclick="cy.fit()"><i class="fas fa-compress-arrows-alt"></i></div>
+            </div>
+            <div class="fab" onclick="newStep()">+</div>
+        </div>
+
+        <div id="view-activity" class="view">
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #f1f5f9; padding-bottom:15px;">
+                    <h3 style="margin:0;">Monitor en Vivo</h3>
+                    <span id="crmStatusBadge" class="status-badge closed"><i class="fas fa-circle" style="font-size:0.6rem"></i> CERRADO</span>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="act-table">
+                        <thead><tr><th>Cliente</th><th>Datos</th><th>Acciones</th></tr></thead>
+                        <tbody id="activityBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <button onclick="loadActivity(); showToast('Actualizando...')" style="width:100%; padding:15px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-weight:bold; cursor:pointer;">
+                <i class="fas fa-sync-alt"></i> Forzar Actualización
+            </button>
+        </div>
+
+        <div id="view-agenda" class="view">
+            <div class="card" style="height: 100%; display: flex; flex-direction: column;">
+                <div class="calendar-header">
+                    <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <h3 id="monthDisplay"></h3>
+                    <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                </div>
+
+                <div class="calendar-grid">
+                    <div class="weekday">Dom</div>
+                    <div class="weekday">Lun</div>
+                    <div class="weekday">Mar</div>
+                    <div class="weekday">Mié</div>
+                    <div class="weekday">Jue</div>
+                    <div class="weekday">Vie</div>
+                    <div class="weekday">Sáb</div>
+                </div>
+                
+                <div id="calendarDays" class="calendar-grid" style="flex: 1; margin-top: 10px;">
+                    </div>
+            </div>
+        </div>
+
+        <div id="view-contacts" class="view">
+             <div class="card">
+                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                     <h3 style="margin:0;">Base de Datos</h3>
+                     <button onclick="openContactModal()" style="background:var(--success); color:white; border:none; width:35px; height:35px; border-radius:50%; font-size:1.2rem; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">+</button>
+                 </div>
+                 <input type="text" placeholder="🔍 Buscar por número..." oninput="delayedFilter(this.value)">
+                 <div id="contactsList" style="max-height: 60vh; overflow-y: auto;"></div>
+             </div>
+        </div>
+
+        <div id="view-sim" class="view" style="padding:10px;">
+            <div class="chat-container-wrapper">
+                <div class="chat-header">
+                    <span>Bot Test</span>
+                    <i class="fas fa-redo" onclick="restartSim()" style="cursor:pointer;" title="Reiniciar"></i>
+                </div>
+                <div class="chat-msgs" id="simMsgs"></div>
+                <div style="padding: 10px; background: #f0f2f5; display: flex; gap: 10px; align-items: center; border-top: 1px solid #ddd;">
+                    <input type="text" id="simInput" placeholder="Escribe..." style="margin:0; flex:1; border-radius:20px; border:none; padding:12px 20px;" onkeypress="if(event.key==='Enter') sendSim()">
+                    <button onclick="sendSim()" style="background:var(--primary); color:white; border:none; border-radius:50%; width:45px; height:45px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="view-settings" class="view">
+            <div class="card" style="max-width: 600px; margin: 0 auto;">
+                <h3><i class="fas fa-store"></i> Horario</h3>
+                <div style="padding:15px; background:#fef2f2; border-radius:8px; margin-bottom:20px; border:1px solid #fecaca;">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; color:var(--primary);">
+                        <input type="checkbox" id="schedActive" style="width:20px; height:20px; accent-color:var(--primary);"> Activar Restricción
+                    </label>
+                </div>
+                <div style="display:flex; gap:15px; margin-bottom:15px;">
+                    <div style="flex:1"><label style="font-size:0.85rem;">Apertura</label><input type="time" id="schedStart"></div>
+                    <div style="flex:1"><label style="font-size:0.85rem;">Cierre</label><input type="time" id="schedEnd"></div>
+                </div>
+                <label>Mensaje "Cerrado"</label>
+                <textarea id="schedMsg" placeholder="Lo sentimos..." rows="4"></textarea>
+                <button onclick="saveSettings()" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; margin-top:15px; cursor:pointer;">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="editorModal">
+        <div class="sheet">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:15px; margin-bottom:15px;">
+                <h3 style="margin:0; color:var(--primary);">Editar Paso</h3>
+                <button onclick="closeEditor()" style="background:none; border:none; font-size:1.2rem; color:#94a3b8; cursor:pointer;">✕</button>
+            </div>
+            <div style="flex:1; overflow-y:auto; padding-right:5px;">
+                <input type="hidden" id="stId">
+                <label style="font-weight:600; font-size:0.85rem; color:#64748b;">Tipo</label>
+                <select id="stType" onchange="renderFields()">
+                    <option value="menu">MENÚ</option>
+                    <option value="filtro">FILTRO (Admin)</option>
+                    <option value="input">PREGUNTA</option>
+                    <option value="message">MENSAJE</option>
+                    <option value="cita">CITA (Agendar)</option>
+                </select>
+            
+                <div id="wrapper-msg" style="margin-top:10px;">
+                    <label style="font-weight:600; font-size:0.85rem; color:#64748b; display:block;">Mensaje Bot</label>
+                    <textarea id="stMsg" rows="3"></textarea>
+                </div>
+            
+                <div id="wrapper-media" style="background: #f8fafc; padding: 10px; border-radius: 8px; margin: 10px 0; border: 1px dashed #cbd5e1;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label style="margin:0; font-size:0.8rem; font-weight:600; color:#64748b;">Galería de Imágenes</label>
+                        <span id="imgCount" style="font-size:0.75rem; color:#64748b; background:#e2e8f0; padding:2px 6px; border-radius:4px;">0 fotos</span>
+                    </div>
+                    
+                    <div id="galleryContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; min-height:0;"></div>
+
+                    <label class="upload-btn" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; background:white; border:1px solid #e2e8f0; border-radius:6px; font-size:0.85rem; cursor:pointer; color:#475569; transition:0.2s;">
+                        <i class="fas fa-images" style="color:var(--primary);"></i> 
+                        <span id="uploadText">Agregar Imágenes</span>
+                        <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
+                    </label>
+                </div>
+                <div id="dynFields"></div>
+            </div>
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button onclick="saveStep()" style="flex:1; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Guardar</button>
+                <button onclick="delStep()" style="width:50px; background:#fee2f2; color:var(--primary); border:none; border-radius:8px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBALES ---
+        let flow={}, users=[];
+        let simPhone = '5218991234567'; // Número para pruebas
+        let simState={ step:'BIENVENIDA', history:{} };
+        let cy = null;
+        let currentRefDate = new Date(); // Fecha referencia para calendario
+        
+        // Variables para Alertas y Monitor
+        let wakeLock = null;
+        let isMonitorActive = true;
+        let lastFilterCount = 0;
+        const emojis = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+
+        const delayedFilter = debounce(filterContacts, 300);
+
+        // --- INICIO ---
+        window.onload = () => {
+            loadAll();
+            // Polling cada 8 segundos para actualizar monitor
+            setInterval(loadActivity, 8000); 
+        };
+
+        // --- FUNCIÓN DEBOUCE ---
+        function debounce(func, delay) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        }
+
+        // --- NAVEGACIÓN ---
+        function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
+        
+        function nav(v, btn) {
+            // 1. Gestión de clases 'active'
+            document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
+            
+            document.getElementById('view-' + v).classList.add('active');
+            if (btn) btn.classList.add('active');
+
+            // 2. Títulos
+            const titles = {
+                flow: 'FLUJO', 
+                activity: 'MONITOR', 
+                agenda: 'CALENDARIO', 
+                contacts: 'CONTACTOS', 
+                settings: 'AJUSTES', 
+                sim: 'SIMULADOR'
+            };
+            document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
+
+            // 3. Cerrar Menú Lateral (Mobile)
+            document.getElementById('sidebar').classList.remove('active');
+
+            // 4. Hack de Audio (Desbloqueo)
+            const audio = document.getElementById('alertSound');
+            if(audio) {
+                audio.play().then(() => audio.pause()).catch(e => console.log("Audio waiting..."));
+            }
+
+            // 5. Cargar lógica específica
+            if (v === 'flow') setTimeout(renderFlow, 100);
+            if (v === 'activity') loadActivity();
+            if (v === 'agenda') renderCalendar();
+            if (v === 'sim') scrollToBottomSim(); 
+            if (v === 'contacts') renderContacts();
+        }
+
+        // Recuperar Wake Lock
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') { wakeLock = await navigator.wakeLock.request('screen'); }
+        });
+
+        // --- ALARMAS Y NOTIFICACIONES ---
+        function triggerAlarm(count) {
+            if (!isMonitorActive) return;
+            
+            // Sonido
+            try {
+                const audio = document.getElementById('alertSound');
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("Audio bloqueado"));
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 500]);
+            } catch(e) {}
+            
+            // Notificación
+            try {
+                if ("Notification" in window && Notification.permission === "granted") {
+                    new Notification(`¡ATENCIÓN! ${count} Clientes`, { 
+                        body: "Revisar CRM", 
+                        icon: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Elektra_logo.svg/1200px-Elektra_logo.svg.png", 
+                        vibrate: [200, 100, 200] 
+                    });
+                }
+            } catch (e) { console.log("Notificación nativa omitida"); }
+
+            // Visual
+            const card = document.querySelector('#view-activity .card');
+            if(card) { 
+                card.classList.add('alert-mode'); 
+                setTimeout(() => card.classList.remove('alert-mode'), 5000); 
+            }
+        }
+
+        function showToast(msg, type='success') {
+            const c = document.getElementById('toast-container');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            const icon = type==='success' ? '<i class="fas fa-check-circle" style="color:var(--success)"></i>' : '<i class="fas fa-exclamation-circle" style="color:var(--primary)"></i>';
+            t.innerHTML = `${icon} <span>${msg}</span>`;
+            c.appendChild(t);
+            setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
+        }
+
+        // --- DATA LOADING & MONITOR ---
+        async function loadAll() {
+            try {
+                flow = await (await fetch('/api/flow')).json();
+                renderFlow();
+                const set = await (await fetch('/api/settings')).json();
+                if(set.schedule) {
+                    document.getElementById('schedActive').checked = set.schedule.active;
+                    document.getElementById('schedStart').value = set.schedule.start;
+                    document.getElementById('schedEnd').value = set.schedule.end;
+                    document.getElementById('schedMsg').value = set.schedule.offline_message;
+                }
+            } catch(e) {}
+        }
+
+        // --- MONITOR FINAL (ORDENADO POR TIEMPO + FECHA VISIBLE) ---
+        async function loadActivity() {
+            try {
+                flow = await (await fetch('/api/flow')).json();
+                users = await (await fetch('/api/users')).json();
+                updateBusinessStatusUI();
+                
+                const tb = document.getElementById('activityBody'); 
+                tb.innerHTML = ''; 
+
+                // 1. FILTRAR Y ORDENAR
+                let allToShow = users.filter(u => u.phone !== 'TEST_SIMULADOR');
+                
+                // Ordenar: El más reciente (b) va antes que el antiguo (a)
+                allToShow.sort((a, b) => {
+                    const timeA = new Date(a.last_active || 0).getTime();
+                    const timeB = new Date(b.last_active || 0).getTime();
+                    return timeB - timeA; 
+                });
+
+                // Lógica de Alarma
+                const realPending = users.filter(u => { 
+                    const s = flow[u.current_step]; 
+                    return (s && s.type === 'filtro' && u.phone !== 'TEST_SIMULADOR'); 
+                });
+                
+                const badge = document.getElementById('notifyBadge');
+                if (realPending.length > lastFilterCount) { triggerAlarm(realPending.length); }
+                lastFilterCount = realPending.length;
+
+                if (realPending.length > 0) { 
+                    badge.style.display = 'inline-block'; badge.innerText = realPending.length; 
+                } else { badge.style.display = 'none'; }
+
+                // Render Tabla
+                if (allToShow.length === 0) {
+                    tb.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8; padding:30px;">Esperando clientes...</td></tr>';
+                } else {
+                    const today = new Date().toLocaleDateString();
+
+                    allToShow.forEach(u => {
+                        const currentStepObj = flow[u.current_step] || { type: 'unknown' };
+                        let actionsHtml = `<div style="margin-bottom:5px;"><span style="color:#64748b; font-size:0.75rem; background:#f1f5f9; padding:4px 8px; border-radius:4px;"><b>${u.current_step || '???'}</b></span></div>`;
+                        
+                        if (currentStepObj.type === 'filtro' && currentStepObj.options) {
+                            currentStepObj.options.forEach(opt => {
+                                const color = opt.label.toLowerCase().includes('rechaz') ? '#ef4444' : '#10b981';
+                                actionsHtml += `<button class="admin-btn" style="background:${color}" onclick="crmAction('${u.phone}', '${opt.next_step}')">${opt.label}</button>`;
+                            });
+                        }
+
+                        // --- FORMATEO DE FECHA/HORA ---
+                        let timeBadge = '';
+                        if (u.last_active) {
+                            const d = new Date(u.last_active);
+                            const isToday = d.toLocaleDateString() === today;
+                            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const dateStr = d.toLocaleDateString();
+                            
+                            // Si es hoy, sale azul. Si es viejo, sale gris.
+                            const badgeColor = isToday ? '#e0f2fe' : '#f1f5f9';
+                            const textColor = isToday ? '#0369a1' : '#64748b';
+                            const textVal = isToday ? `Hoy ${timeStr}` : `${dateStr} ${timeStr}`;
+                            
+                            timeBadge = `<div style="font-size:0.75rem; background:${badgeColor}; color:${textColor}; padding:2px 8px; border-radius:10px; display:inline-block; font-weight:600; margin-bottom:4px;">🕒 ${textVal}</div>`;
+                        } else {
+                            timeBadge = `<div style="font-size:0.75rem; color:#cbd5e1;">Sin actividad</div>`;
+                        }
+
+                        let dataHtml = '';
+                        if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.8rem; margin-bottom:2px;"><span style="color:#94a3b8">${k}:</span> <b>${v}</b></div>`);
+                        
+                        const statusBadge = u.blocked ? '<span style="color:red; font-weight:bold; font-size:0.7rem">BLOQUEADO</span>' : '<span style="color:green; font-size:0.7rem">Activo</span>';
+                        const targetID = u.jid || u.phone;
+                        
+                        const phoneColumnHtml = `
+                            ${timeBadge} <br>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div style="font-weight:600; font-size:1rem;">${u.phone}</div>
+                                <button onclick="copyToClip('${targetID}')" title="Copiar ID" style="background:none; border:none; cursor:pointer; color:#64748b; font-size:0.9rem; padding:2px;">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                            ${statusBadge}
+                        `;
+
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${phoneColumnHtml}</td><td>${dataHtml || '<span style="color:#cbd5e1">Sin datos</span>'}</td><td>${actionsHtml}</td>`;
+                        tb.appendChild(row);
+                    });
+                }
+            } catch(e) { console.error("Error monitor:", e); }
+        }
+
+        // --- FUNCIÓN AUXILIAR PARA COPIAR (NECESARIA) ---
+        function copyToClip(text) {
+            if (!text) return showToast("No hay ID para copiar", "error");
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("ID copiado al portapapeles");
+            }).catch(err => {
+                console.error(err);
+                showToast("Error al copiar", "error");
+            });
+        }
+
+        // --- GESTIÓN CONTACTOS MANUALES ---
+        function openContactModal() {
+            document.getElementById('newContName').value = '';
+            document.getElementById('newContPhone').value = '';
+            document.getElementById('newContEnable').checked = true;
+            document.getElementById('contactModal').classList.add('active');
+        }
+
+        async function saveNewContact() {
+            const name = document.getElementById('newContName').value;
+            const phone = document.getElementById('newContPhone').value;
+            const enable = document.getElementById('newContEnable').checked;
+
+            if(!name || !phone) return showToast("Faltan datos", "error");
+
+            try {
+                const res = await fetch('/api/contacts/add', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, phone, enable })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    showToast("Contacto agregado");
+                    document.getElementById('contactModal').classList.remove('active');
+                    renderContacts(); // Recargar lista
+                } else {
+                    showToast(data.message || "Error", "error");
+                }
+            } catch(e) { showToast("Error de conexión", "error"); }
+        }
+
+        function updateBusinessStatusUI() { const badge = document.getElementById('crmStatusBadge'); if(isSimClosed()) { badge.className = 'status-badge closed'; badge.innerHTML = '<i class="fas fa-circle" style="font-size:0.6rem"></i> CERRADO'; } else { badge.className = 'status-badge open'; badge.innerHTML = '<i class="fas fa-circle" style="font-size:0.6rem"></i> ABIERTO'; } }
+        async function crmAction(phone, nextStep) { if(!confirm(`¿Mover cliente a ${nextStep}?`)) return; await fetch('/api/crm/execute', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); if(phone === simPhone) { simState.step = nextStep; processSim(); } showToast('Acción ejecutada'); loadActivity(); }
+
+        function renderFlow() {
+            // 1. CAPTURAR POSICIÓN EXACTA ANTES DE BORRAR
+            let savedZoom = null;
+            let savedPan = null;
+            
+            if (cy && typeof cy.zoom === 'function') {
+                try {
+                    savedZoom = cy.zoom();
+                    savedPan = cy.pan();
+                } catch(e) {}
+                cy.destroy();
+            }
+
+            let elements = [];
+            
+            if (!flow || Object.keys(flow).length === 0) return;
+
+            Object.keys(flow).forEach(k => {
+                const s = flow[k];
+                if (!s) return;
+
+                let color = '#94a3b8'; 
+                if(s.type === 'menu') color = '#3b82f6'; 
+                else if(s.type === 'filtro') color = '#8b5cf6'; 
+                else if(s.type === 'input') color = '#f59e0b'; 
+                else if(s.type === 'message') color = '#10b981'; 
+                else if(s.type === 'cita') color = '#ec4899';
+                
+                elements.push({ data: { id: k, label: k, color: color } });
+                
+                if(s.options && Array.isArray(s.options) && s.options.length > 0) { 
+                    s.options.forEach(o => { 
+                        if(o.next_step && flow[o.next_step]) {
+                            elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } }); 
+                        }
+                    }); 
+                } else if(s.next_step && flow[s.next_step]) {
+                    elements.push({ data: { source: k, target: s.next_step } }); 
+                }
+            });
+            
+            // 2. CONFIGURACIÓN DINÁMICA DEL LAYOUT
+            // Si tenemos una posición guardada, desactivamos el 'fit' y la animación
+            // para que el usuario no sienta que el diagrama se "reinicia".
+            const layoutConfig = { 
+                name: 'dagre', 
+                rankDir: 'LR', 
+                nodeSep: 60, 
+                rankSep: 150, 
+                ranker: 'network-simplex', 
+                align: 'UL',
+                
+                // CLAVE: Solo animar y ajustar si NO hay zoom guardado (primera carga)
+                animate: !savedZoom, 
+                animationDuration: 800,
+                fit: !savedZoom 
+            };
+
+            try {
+                cy = cytoscape({ 
+                    container: document.getElementById('cy'), 
+                    elements: elements, 
+                    
+                    autoungrabify: true,      
+                    autounselectify: false,
+                    boxSelectionEnabled: false,
+                    wheelSensitivity: 0.2,
+
+                    style: [ 
+                        { selector: 'node', style: { 'background-color': 'data(color)', 'label': 'data(label)', 'color': '#ffffff', 'shape': 'round-rectangle', 'width': 'label', 'height': '40px', 'padding': '10px 20px', 'font-family': 'Poppins, sans-serif', 'font-size': '12px', 'font-weight': '600', 'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 'text-wrap': 'wrap', 'text-max-width': '120px', 'border-width': 0, 'shadow-blur': 10, 'shadow-color': '#000000', 'shadow-opacity': 0.1 } }, 
+                        { selector: 'edge', style: { 'width': 3, 'line-color': '#cbd5e1', 'curve-style': 'bezier', 'target-arrow-shape': 'none', 'opacity': 0.8, 'label': 'data(label)', 'font-size': '9px', 'color': '#94a3b8', 'text-background-color': '#ffffff', 'text-background-opacity': 0.8, 'text-rotation': 'autorotate' } },
+                        
+                        { selector: 'node:selected', style: { 'border-width': 4, 'border-color': '#333', 'shadow-blur': 20, 'shadow-opacity': 0.3 } },
+                        { selector: '.highlighted', style: { 'opacity': 1, 'border-width': 2, 'border-color': '#333' } },
+                        { selector: 'edge.highlighted', style: { 'line-color': '#333', 'width': 4, 'z-index': 99 } },
+                        { selector: '.faded', style: { 'opacity': 0.1, 'label': '' } }
+                    ], 
+                    
+                    layout: layoutConfig
+                });
+                
+                // 3. RESTAURAR POSICIÓN EXACTA
+                if (savedZoom && savedPan) {
+                    cy.viewport({ zoom: savedZoom, pan: savedPan });
+                }
+
+                // EVENTOS
+                cy.on('tap', 'node', function(evt){ 
+                    const node = evt.target;
+                    cy.elements().removeClass('highlighted faded');
+                    const neighborhood = node.predecessors().union(node.successors()).union(node);
+                    cy.elements().not(neighborhood).addClass('faded');
+                    neighborhood.addClass('highlighted');
+                });
+
+                cy.on('dbltap', 'node', function(evt){
+                    edit(evt.target.id());
+                });
+
+                cy.on('tap', function(evt){
+                    if(evt.target === cy){
+                        cy.elements().removeClass('highlighted faded');
+                    }
+                });
+
+            } catch(e) { console.error(e); }
+        }
+
+        // --- EDITOR LOGIC ---
+        
+        let currentMediaList = []; // Variable temporal para la galería
+
+        // 1. ABRIR EDITOR
+        function edit(id) {
+            const d = flow[id]; 
+            document.getElementById('stId').value = id; 
+            document.getElementById('stType').value = d.type; 
+            document.getElementById('stMsg').value = d.message || ''; 
+            
+            // Detectar si es array (nuevo) o string (viejo)
+            if (Array.isArray(d.media)) {
+                currentMediaList = [...d.media];
+            } else if (d.media && typeof d.media === 'string' && d.media.trim() !== '') {
+                currentMediaList = [d.media];
+            } else {
+                currentMediaList = [];
+            }
+
+            renderGallery(); // Mostrar fotos
+            renderFields();  // Mostrar campos
+            document.getElementById('editorModal').classList.add('active');
+        }
+
+        // 2. RENDERIZAR GALERÍA
+        function renderGallery() {
+            const con = document.getElementById('galleryContainer');
+            const countLabel = document.getElementById('imgCount');
+            con.innerHTML = '';
+
+            currentMediaList.forEach((url, index) => {
+                const div = document.createElement('div');
+                div.style.cssText = "position:relative; width:70px; height:70px; border-radius:8px; overflow:hidden; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.05); background:white;";
+                
+                div.innerHTML = `
+                    <img src="${url}" style="width:100%; height:100%; object-fit:cover;">
+                    <button onclick="removeImage(${index})" style="position:absolute; top:2px; right:2px; background:rgba(220, 38, 38, 0.9); color:white; border:none; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:10px; box-shadow:0 1px 2px rgba(0,0,0,0.2);">✕</button>
+                `;
+                con.appendChild(div);
+            });
+
+            countLabel.innerText = `${currentMediaList.length} fotos`;
+        }
+
+        async function uploadImages(input) {
+            if (input.files && input.files.length > 0) {
+                const formData = new FormData();
+                const label = document.getElementById('uploadText');
+                const originalText = label.innerText;
+                
+                label.innerText = 'Subiendo...';
+
+                for (let i = 0; i < input.files.length; i++) {
+                    // --- AQUÍ ESTÁ LA CLAVE ---
+                    // Debe decir 'images' (plural) igual que en index.js
+                    formData.append('images', input.files[i]); 
+                }
+
+                try {
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                    
+                    // Verificamos si hubo error antes de convertir a JSON
+                    if (!res.ok) throw new Error("Error en servidor");
+                    
+                    const data = await res.json();
+                    
+                    if (data.urls) {
+                        currentMediaList = [...currentMediaList, ...data.urls];
+                        renderGallery();
+                    }
+                } catch(e) { 
+                    console.error(e);
+                    showToast("Error al subir imagen", "error"); 
+                } finally {
+                    label.innerText = originalText;
+                    input.value = ''; 
+                }
+            }
+        }
+
+        // 4. ELIMINAR FOTO DE LA LISTA
+        function removeImage(index) {
+            currentMediaList.splice(index, 1);
+            renderGallery();
+        }
+
+        // 5. GUARDAR PASO (Actualizado)
+        async function saveStep() { 
+            const id = document.getElementById('stId').value; 
+            const type = document.getElementById('stType').value; 
+            
+            let data = { type };
+
+            // --- NUEVO: GUARDAR KEYWORDS ---
+            const kwInput = document.getElementById('stKeywords').value;
+            // Convertimos el texto "hola, adios" en un array ["hola", "adios"] limpiando espacios
+            data.keywords = kwInput.split(',').map(w => w.trim().toLowerCase()).filter(w => w !== '');
+            
+            if (type !== 'cita') {
+                data.message = document.getElementById('stMsg').value;
+                data.media = currentMediaList; // Guardamos el ARRAY completo
+            }
+
+            // --- Lógica Citas ---
+            if (type === 'cita') {
+                const mode = document.getElementById('citaMode') ? document.getElementById('citaMode').value : 'branch'; 
+                if (mode === 'linear') {
+                    if(document.getElementById('stNxt')) data.next_step = document.getElementById('stNxt').value;
+                    data.options = []; 
+                } else {
+                    data.next_step = '';
+                    data.options = [];
+                    document.querySelectorAll('#optList .row').forEach((r, i) => {
+                        data.options.push({ 
+                            trigger: i.toString(), 
+                            label: r.querySelector('.o-lbl').value, 
+                            internal_label: r.querySelector('.o-lbl').value, 
+                            next_step: r.querySelector('.o-nxt').value 
+                        });
+                    });
+                }
+                if(document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value;
+            }
+
+            // --- Lógica Menú/Filtro ---
+            else if(type==='menu' || type==='filtro') { 
+                data.options = []; 
+                document.querySelectorAll('#optList .row').forEach((r, i) => { 
+                    const emojiTrigger = emojis[i+1] || (i+1).toString(); 
+                    data.options.push({ 
+                        trigger: emojiTrigger, 
+                        label: r.querySelector('.o-lbl').value, 
+                        next_step: r.querySelector('.o-nxt').value 
+                    }); 
+                }); 
+                if(type==='filtro' && document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value; 
+            } 
+
+            // --- Lógica Input/Mensaje ---
+            else { 
+                if(document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value; 
+                if(document.getElementById('stNxt')) data.next_step = document.getElementById('stNxt').value; 
+            }
+
+            await fetch('/api/flow/step', { 
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body:JSON.stringify({stepId:id, stepData:data}) 
+            }); 
+            
+            flow[id] = data; 
+            renderFlow(); 
+            closeEditor(); 
+            showToast('Guardado Correctamente');
+        }
+
+        function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
+        function renderFields() {
+            const type = document.getElementById('stType').value;
+            const con = document.getElementById('dynFields');
+            const id = document.getElementById('stId').value;
+            const d = flow[id] || {};
+
+            const wrapperMsg = document.getElementById('wrapper-msg');
+            const wrapperMedia = document.getElementById('wrapper-media');
+            
+            if (wrapperMsg && wrapperMedia) {
+                if (type === 'cita') {
+                    wrapperMsg.style.display = 'none';
+                    wrapperMedia.style.display = 'none';
+                } else {
+                    wrapperMsg.style.display = 'block';
+                    wrapperMedia.style.display = 'block';
+                }
+            }
+
+            const keywordsVal = (d.keywords || []).join(', ');
+            
+            let html = `
+            <div style="background:#f0fdf4; padding:10px; border:1px solid #bbf7d0; border-radius:8px; margin-bottom:15px;">
+                <label style="font-size:0.8rem; font-weight:bold; color:#166534;">⚡ Palabras Clave (Disparadores)</label>
+                <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, inicio, buenos días (separar con comas)" style="margin-top:5px; margin-bottom:0; border:1px solid #86efac;">
+                <p style="font-size:0.7rem; color:#15803d; margin:3px 0 0 0;">Si el cliente escribe alguna de estas palabras, el bot saltará inmediatamente a este paso.</p>
+            </div>
+            <hr style="border:0; border-top:1px solid #e2e8f0; margin-bottom:15px;">
+            `;
+
+            const selectStyle = `width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; background-color:#ffffff; font-size:0.95rem; color:#334155; outline:none; box-shadow:0 1px 2px rgba(0,0,0,0.05); appearance:none; background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23334155%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat:no-repeat; background-position:right 12px top 50%; background-size:10px auto;`;
+
+            const getOpts = (sel) => { 
+                let s = '<option value="">-- Seleccionar --</option>'; 
+                Object.keys(flow).reverse().forEach(k => {
+                    s += `<option value="${k}" ${k===sel?'selected':''}>${k}</option>`;
+                });
+                return s; 
+            }
+
+            if (type === 'cita') {
+                const mode = d.next_step ? 'linear' : 'branch';
+                html += `
+                <div style="font-size:0.85rem; color:#0c4a6e; background:#f0f9ff; padding:12px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:15px;">
+                    <i class="fas fa-calendar-check"></i> <b>Configuración de Cita</b><br>
+                    Define si este paso solo valida un dato intermedio o si realiza el agendamiento final.
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="font-size:0.8rem; font-weight:bold; color:#475569;">Comportamiento del Paso:</label>
+                    <select id="citaMode" onchange="toggleCitaMode()" style="${selectStyle}">
+                        <option value="linear" ${mode==='linear'?'selected':''}>➡ Validar y Continuar</option>
+                        <option value="branch" ${mode==='branch'?'selected':''}>🔀 Validar Todo y Agendar</option>
+                    </select>
+                </div>
+                <div id="citaLinear" style="display:${mode==='linear'?'block':'none'}; background:#f8fafc; padding:15px; border:1px solid #e2e8f0; border-radius:8px;">
+                    <label style="font-size:0.8rem; font-weight:bold; color:#334155;">Si el dato es válido, ir a:</label>
+                    <select id="stNxt" style="${selectStyle}; margin-top:8px;">${getOpts(d.next_step)}</select>
+                </div>
+                <div id="citaBranch" style="display:${mode==='branch'?'block':'none'}; background:#fff1f2; padding:15px; border:1px solid #fecdd3; border-radius:8px;">
+                    <label style="font-size:0.8rem; font-weight:bold; color:#881337;">Rutas de Decisión:</label>
+                    <div id="optList" style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">`;
+                
+                const opts = d.options || [];
+                const paths = [{ lbl: "✅ ÉXITO", type: "DISPONIBLE" }, { lbl: "❌ FALLO", type: "NO_DISPONIBLE" }];
+                
+                paths.forEach((p, i) => {
+                    const o = opts[i] || { next_step: '' };
+                    html += `<div class="row" style="display:flex; gap:8px; align-items:center;">
+                        <span style="font-size:0.75rem; font-weight:bold; width:100px; color:#be123c;">${p.lbl}</span>
+                        <input type="hidden" class="o-lbl" value="${p.type}">
+                        <select class="o-nxt" style="${selectStyle}; padding:8px;">${getOpts(o.next_step)}</select>
+                    </div>`;
+                });
+                html += `</div></div>`;
+            } 
+            else if(type==='menu' || type==='filtro') {
+                if(type==='filtro') html+=`<div style="background:#eff6ff; padding:10px; border-radius:8px; margin-bottom:10px; border:1px solid #bfdbfe;"><label style="color:#1e40af; font-size:0.8rem;">Variable Status</label><input id="stVar" value="${d.save_var||'status_venta'}" placeholder="ej: status"></div>`;
+                
+                html += `<label style="font-size:0.8rem; font-weight:600; color:#64748b;">Opciones del Menú:</label><div id="optList" style="display:flex; flex-direction:column; gap:10px; margin-top:5px;">`; 
+                (d.options||[]).forEach(o => { 
+                    html += `<div class="row" style="display:flex; gap:8px;">
+                        <input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;">
+                        <select class="o-nxt" style="${selectStyle}; width:40%; padding:8px;">${getOpts(o.next_step)}</select>
+                        <button onclick="this.parentElement.remove()" style="color:#ef4444; border:none; background:#fee2e2; border-radius:6px; width:40px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    </div>`; 
+                }); 
+                html += `</div><button onclick="addOpt()" style="width:100%; border:1px dashed #94a3b8; padding:12px; margin-top:15px; color:#475569; background:#f8fafc; border-radius:8px; cursor:pointer; font-weight:600;"><i class="fas fa-plus"></i> Agregar Opción</button>`;
+            } 
+            else { 
+                html += `<label style="font-size:0.85rem; font-weight:600; color:#64748b;">Siguiente Paso:</label>
+                <select id="stNxt" style="${selectStyle}; margin-bottom:15px;">${getOpts(d.next_step)}</select>`; 
+                
+                if(type==='input') {
+                    html += `<label style="font-size:0.85rem; font-weight:600; color:#64748b;">Guardar respuesta en Variable:</label><input id="stVar" value="${d.save_var||''}" placeholder="ej: nombre, email..." style="margin-top:5px; width:100%; padding:12px; border-radius:8px; border:1px solid #cbd5e1;">
+                    <div style="margin-top:8px; font-size:0.75rem; color:#64748b; display:flex; align-items:center; gap:5px;">
+                        <span>Rápido:</span>
+                        <button onclick="document.getElementById('stVar').value='fecha'" style="cursor:pointer; background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:12px; font-weight:bold; border:none; font-size:0.75rem;">fecha</button>
+                        <button onclick="document.getElementById('stVar').value='hora'" style="cursor:pointer; background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:12px; font-weight:bold; border:none; font-size:0.75rem;">hora</button>
+                    </div>`;
+                }
+            }
+
+            con.innerHTML = html;
+        }
+
+        function toggleCitaMode() {
+            const mode = document.getElementById('citaMode').value;
+            const linearDiv = document.getElementById('citaLinear');
+            const branchDiv = document.getElementById('citaBranch');
+            
+            if(linearDiv && branchDiv) {
+                linearDiv.style.display = mode === 'linear' ? 'block' : 'none';
+                branchDiv.style.display = mode === 'branch' ? 'block' : 'none';
+            }
+        }
+
+        function addOpt() { 
+            const div = document.createElement('div'); 
+            div.className='row'; 
+            // Ajustamos gap y margin para que coincida con el estilo moderno
+            div.style.cssText="display:flex; gap:8px; margin-bottom:8px;"; 
+
+            const selectStyle = `width:40%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; background-color:#ffffff; font-size:0.95rem; color:#334155; outline:none; box-shadow:0 1px 2px rgba(0,0,0,0.05); appearance:none; background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23334155%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat:no-repeat; background-position:right 12px top 50%; background-size:10px auto;`;
+
+            let s = '<option value="">-- Seleccionar --</option>'; 
+            
+            // CORRECCIÓN CLAVE: Agregamos .reverse() aquí también
+            Object.keys(flow).reverse().forEach(k=> s+=`<option value="${k}">${k}</option>`); 
+
+            div.innerHTML = `
+                <input class="o-lbl" placeholder="Texto Botón" style="flex:1; padding:12px; border-radius:8px; border:1px solid #cbd5e1;">
+                <select class="o-nxt" style="${selectStyle}">${s}</select>
+                <button onclick="this.parentElement.remove()" style="color:#ef4444; border:none; background:#fee2e2; border-radius:6px; width:40px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+            `; 
+            
+            document.getElementById('optList').appendChild(div); 
+        }
+
+        function newStep() { const id = prompt("Nombre del paso:"); if(!id)return; const clean = id.toUpperCase().replace(/\s/g,'_'); if(flow[clean]) return showToast("Ya existe", "error"); flow[clean] = { type:'menu', message:'' }; fetch('/api/flow/step', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({stepId:clean, stepData:flow[clean]})}).then(()=> { renderFlow(); setTimeout(()=>edit(clean),300); }); }
+        async function delStep() { const id = document.getElementById('stId').value; if(!confirm('¿Eliminar?')) return; await fetch('/api/flow/step/'+id, {method:'DELETE'}); delete flow[id]; renderFlow(); closeEditor(); showToast('Eliminado'); }
+
+        // --- SIMULADOR & CONTACTOS ---
+        function scrollToBottomSim() { const c = document.getElementById('simMsgs'); if(c) c.scrollTop = c.scrollHeight; }
+        function restartSim() { document.getElementById('simMsgs').innerHTML=''; simState = { step:'BIENVENIDA', history:{} }; fetch('/api/users/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:simPhone, data: {current_step:'BIENVENIDA', history:{}}}) }); processSim(); showToast('Reiniciado'); }
+        function isSimClosed() { if(!document.getElementById('schedActive').checked) return false; const now = new Date(); const mins = (now.getHours()*60) + now.getMinutes(); const startVal = document.getElementById('schedStart').value || "00:00"; const endVal = document.getElementById('schedEnd').value || "23:59"; const start = startVal.split(':').map(Number); const end = endVal.split(':').map(Number); return (mins < ((start[0]*60) + start[1]) || mins >= ((end[0]*60) + end[1])); }
+        
+        function sendSim() {
+            const input = document.getElementById('simInput');
+            const txt = input.value;
+            if(!txt) return; 
+
+            addMsg(txt, true); 
+            input.value=''; 
+            input.focus(); 
+            const s = flow[simState.step]; 
+
+            if(txt.toLowerCase()==='hola') { simState.step='BIENVENIDA'; setTimeout(processSim,500); return; } 
+
+            if(s.type==='menu') { 
+                const m = s.options.find(o => txt.includes(o.label) || txt === o.trigger || o.trigger.includes(txt)); 
+                if(m) { simState.step = m.next_step; setTimeout(processSim,500); } else addMsg("❌ Opción inválida", false); 
+            } else if(s.type==='filtro') {
+                addMsg("⏳ Esperando admin...", false); 
+            } else if(s.type==='input') { 
+                if(s.save_var) simState.history[s.save_var] = txt; 
+                if(s.next_step) { simState.step=s.next_step; setTimeout(processSim,500); } 
+            } 
+        }
+
+        function processSim() { 
+            const s = flow[simState.step]; 
+            if(!s) return addMsg("⚠️ Fin flujo", false); 
+            
+            let m = s.message || ""; 
+            
+            // Lógica Filtro Horario en Simulador
+            if(s.type === 'filtro' && isSimClosed()) {
+                m = document.getElementById('schedMsg').value || "Cerrado"; 
+            }
+
+            // Reemplazo de variables
+            Object.keys(simState.history).forEach(k => { 
+                const val = simState.history[k] || ''; 
+                m = m.replace(new RegExp(`{{${k}}}`, 'gi'), val); 
+                m = m.replace(new RegExp(`{{${k}_primer}}`, 'gi'), val.split(' ')[0]); 
+            }); 
+            
+            // Mostrar opciones de menú
+            if(s.type==='menu' && s.options) {
+                s.options.forEach(o => m+=`<br><b>${o.trigger}</b> ${o.label}`); 
+            }
+
+            let finalHtml = '';
+
+            // --- CORRECCIÓN: SOPORTE VISUAL PARA MÚLTIPLES IMÁGENES ---
+            if (Array.isArray(s.media)) {
+                // Si es un array (galería), mostramos todas
+                s.media.forEach(url => {
+                    finalHtml += `<img src="${url}" style="max-width:100%; border-radius:8px; margin-bottom:5px; display:block; border:1px solid #ccc;">`;
+                });
+            } else if (s.media) {
+                // Si es una sola imagen (formato viejo)
+                finalHtml += `<img src="${s.media}" style="max-width:100%; border-radius:8px; margin-bottom:8px; display:block;">`;
+            }
+            // -----------------------------------------------------------
+
+            finalHtml += m.replace(/\n/g, '<br>');
+            
+            addMsg(finalHtml, false); 
+            syncSimToServer(); 
+            
+            if(s.type === 'filtro') { 
+                if(s.save_var) simState.history[s.save_var] = "Solicitud Recibida"; 
+                syncSimToServer(); 
+            } 
+            
+            if(s.type==='message' && s.next_step) {
+                setTimeout(()=>{simState.step=s.next_step; processSim()}, 1500);
+            }
+        }
+
+        function syncSimToServer() { fetch('/api/users/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone: simPhone, data: { current_step: simState.step, history: simState.history }}) }); }
+        function addMsg(content, isUser) { const d = document.createElement('div'); d.className = 'msg ' + (isUser?'user':''); d.innerHTML = content; const c = document.getElementById('simMsgs'); c.appendChild(d); c.scrollTop = c.scrollHeight; }
+        
+        async function renderContacts() {
+            // 1. Cargamos la lista de contactos sincronizados
+            const contacts = await (await fetch('/api/contacts')).json();
+            const el = document.getElementById('contactsList');
+            el.innerHTML = ''; // Limpiamos el contenedor
+
+            // 🛑 INICIAMOS EL ACUMULADOR DE HTML
+            let accumulatedHtml = ''; 
+
+            // 2. Recorremos los contactos
+            contacts.forEach(c => {
+                // Lógica: Si bot_enabled es true, el switch está activado
+                const isChecked = c.bot_enabled ? 'checked' : '';
+                const stateText = c.bot_enabled ? 'Bot Activo' : 'Bot Apagado';
+                const stateColor = c.bot_enabled ? 'var(--success)' : '#94a3b8'; // Verde o Gris
+        
+                // Si tiene nombre lo usamos, si no, usamos el teléfono
+                const displayName = c.name || c.phone;
+
+                // ACUMULAMOS EL HTML en la variable, SIN TOCAR el DOM
+                accumulatedHtml += `
+                <div class="card toggle-row" style="display:flex; justify-content:space-between; align-items:center; padding:15px; margin-bottom:10px;">
+                    <div>
+                        <b style="font-size:1rem">${displayName}</b><br>
+                        <small style="color:#64748b; font-size:0.8rem;">${c.phone}</small><br>
+                        <small style="color:${stateColor}; font-weight:600; font-size:0.75rem;">${stateText}</small>
+                    </div>
+                    <label class="switch" style="position:relative; display:inline-block; width:40px; height:24px;">
+                        <input type="checkbox" ${isChecked} onchange="toggleUser('${c.phone}', this.checked)" style="opacity:0; width:0; height:0;">
+                        <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
+                        <span class="slider-ball" style="position:absolute; content:''; height:16px; width:16px; left:4px; bottom:4px; background-color:white; transition:.4s; border-radius:50%;"></span>
+                    </label>
+                </div>`;
+            });
+
+            // 🛑 CRÍTICO: ASIGNAMOS TODO EL HTML AL DOM UNA SOLA VEZ
+            if (contacts.length > 0) {
+                el.innerHTML = accumulatedHtml;
+            } else {
+                // 3. Estado vacío
+                el.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Sincronizando contactos...</p>';
+            }
+
+            // 4. Estilos del slider (se mantienen igual)
+            const style = document.createElement('style');
+            style.innerHTML = `input:checked + .slider { background-color: var(--success); } input:checked + .slider + .slider-ball { transform: translateX(16px); }`;
+            if (!document.getElementById('sliderStyles')) { 
+                style.id = 'sliderStyles'; 
+                document.head.appendChild(style); 
+            }
+        }
+
+        async function toggleUser(phone, isEnabled) {
+            // Enviamos 'enable' (true/false) al nuevo endpoint
+            await fetch('/api/contacts/toggle', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ phone: phone, enable: isEnabled }) 
+            });
+    
+            // Recargamos para actualizar textos y colores visualmente
+            renderContacts(); 
+            showToast(isEnabled ? 'Bot activado' : 'Bot desactivado');
+        }
+        function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { const txt = r.innerText.toLowerCase(); r.style.display = txt.includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
+        
+        // --- SETTINGS ---
+        async function saveSettings() { const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value, days: [0,1,2,3,4,5,6] }; await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})}); showToast("Configuración guardada"); loadActivity(); }
+
+        // --- CALENDARIO Y GESTIÓN DE EVENTOS (GOOGLE STYLE) ---
+        
+        let selectedDate = ''; // Para saber en qué día estamos trabajando
+
+        async function renderCalendar() {
+            let appointments = {}; 
+            try { const res = await fetch('/api/agenda'); appointments = await res.json(); } catch(e) {}
+
+            const display = document.getElementById('monthDisplay'); 
+            const grid = document.getElementById('calendarDays'); 
+            grid.innerHTML = '';
+
+            const year = currentRefDate.getFullYear(); 
+            const month = currentRefDate.getMonth(); 
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            
+            if(display) display.innerText = `${monthNames[month]} ${year}`;
+
+            const firstDayIndex = new Date(year, month, 1).getDay(); 
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+
+            // Días vacíos previos
+            for (let i = 0; i < firstDayIndex; i++) { 
+                const empty = document.createElement('div'); empty.className = 'day empty'; grid.appendChild(empty); 
+            }
+
+            // Días del mes
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayDiv = document.createElement('div'); dayDiv.className = 'day'; dayDiv.innerText = i;
+                
+                const dateKey = `${year}-${(month+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
+                const dayAppts = appointments[dateKey] || [];
+
+                if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) dayDiv.classList.add('today');
+
+                // Indicador de eventos
+                if (dayAppts.length > 0) { 
+                    const badge = document.createElement('span'); 
+                    badge.className = 'day-indicator'; 
+                    badge.innerText = dayAppts.length; 
+                    dayDiv.appendChild(badge); 
+                }
+                
+                // Click abre el modal
+                dayDiv.style.cursor = "pointer"; 
+                dayDiv.onclick = () => openDayModal(dateKey, dayAppts);
+                
+                grid.appendChild(dayDiv);
+            }
+        }
+
+        function changeMonth(offset) { currentRefDate.setMonth(currentRefDate.getMonth() + offset); renderCalendar(); }
+
+        // --- FUNCIONES DEL MODAL DE EDICIÓN ---
+
+        function openDayModal(dateStr, appts) {
+            selectedDate = dateStr;
+            document.getElementById('modalDateTitle').innerText = dateStr;
+            document.getElementById('modalDateSubtitle').innerText = "Gestión de Agenda";
+            
+            renderEventList(appts || []);
+            hideEventForm(); // Asegurar que el formulario esté cerrado al abrir
+            
+            document.getElementById('dayModal').classList.add('active');
+        }
+
+        function closeDayModal() {
+            document.getElementById('dayModal').classList.remove('active');
+            renderCalendar(); // Refrescar calendario al cerrar por si hubo cambios
+        }
+
+        function renderEventList(appts) {
+            const list = document.getElementById('modalApptList'); 
+            list.innerHTML = '';
+
+            if(!appts || appts.length === 0) {
+                list.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px; font-style:italic;">No hay eventos. ¡Agrega uno!</div>';
+                return;
+            }
+
+            appts.sort((a,b) => a.time.localeCompare(b.time)); // Asegurar orden
+
+            appts.forEach(c => {
+                const row = document.createElement('div');
+                row.style.cssText = "background:white; border:1px solid #f1f5f9; border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,0.03);";
+                
+                // Icono según si es llamada o nota manual
+                const icon = c.phone ? '<i class="fab fa-whatsapp" style="color:#25D366"></i>' : '<i class="fas fa-sticky-note" style="color:#f59e0b"></i>';
+                const phoneDisplay = c.phone ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;">${icon} ${c.phone}</div>` : '';
+                const noteDisplay = c.note ? `<div style="font-size:0.75rem; color:#475569; background:#fffbeb; padding:4px; border-radius:4px; margin-top:5px; border-left:2px solid #f59e0b;">${c.note}</div>` : '';
+
+                row.innerHTML = `
+                    <div style="flex:1;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-family:monospace; font-weight:bold; color:var(--primary); background:#fee2e2; padding:2px 6px; border-radius:4px;">${c.time}</span>
+                            <span style="font-weight:600;">${c.name}</span>
+                        </div>
+                        ${phoneDisplay}
+                        ${noteDisplay}
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button onclick='prepareEdit(${JSON.stringify(c)})' style="background:#eff6ff; color:#3b82f6; border:none; width:30px; height:30px; border-radius:6px; cursor:pointer;"><i class="fas fa-pencil-alt"></i></button>
+                        <button onclick="deleteAppt('${c.time}')" style="background:#fef2f2; color:#ef4444; border:none; width:30px; height:30px; border-radius:6px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function showEventForm() {
+            // Limpiar campos para "Nuevo"
+            document.getElementById('evtOldTime').value = ""; 
+            document.getElementById('evtTime').value = "";
+            document.getElementById('evtName').value = "";
+            document.getElementById('evtPhone').value = "";
+            document.getElementById('evtNote').value = "";
+            
+            document.getElementById('eventForm').style.display = 'block';
+            document.getElementById('btnAddEvent').style.display = 'none';
+            document.getElementById('modalApptList').style.display = 'none'; // Ocultar lista para enfocar
+        }
+
+        function hideEventForm() {
+            document.getElementById('eventForm').style.display = 'none';
+            document.getElementById('btnAddEvent').style.display = 'flex';
+            document.getElementById('modalApptList').style.display = 'block';
+        }
+
+        function prepareEdit(c) {
+            // Rellenar campos para "Editar"
+            document.getElementById('evtOldTime').value = c.time; // CLAVE: Guardamos la hora vieja
+            document.getElementById('evtTime').value = c.time;
+            document.getElementById('evtName').value = c.name;
+            document.getElementById('evtPhone').value = c.phone || "";
+            document.getElementById('evtNote').value = c.note || "";
+            
+            document.getElementById('eventForm').style.display = 'block';
+            document.getElementById('btnAddEvent').style.display = 'none';
+            document.getElementById('modalApptList').style.display = 'none';
+        }
+
+        async function saveEvent() {
+            const oldTime = document.getElementById('evtOldTime').value;
+            const newTime = document.getElementById('evtTime').value;
+            const name = document.getElementById('evtName').value;
+            const phone = document.getElementById('evtPhone').value;
+            const note = document.getElementById('evtNote').value;
+
+            if(!newTime || !name) return showToast("Falta hora o nombre", "error");
+
+            // Si hay oldTime, es EDICIÓN. Si no, es NUEVO.
+            const endpoint = oldTime ? '/api/agenda/update' : '/api/agenda/book';
+            
+            const payload = {
+                date: selectedDate, // Para 'book'
+                time: newTime,      // Para 'book'
+                
+                oldDate: selectedDate, // Para 'update'
+                oldTime: oldTime,      // Para 'update'
+                newDate: selectedDate, // Para 'update' (Por ahora no movemos de dia, solo hora)
+                newTime: newTime,      // Para 'update'
+
+                name, phone, note
+            };
+
+            try {
+                const res = await fetch(endpoint, { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(payload) 
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    showToast("Guardado correctamente");
+                    hideEventForm();
+                    // Recargar lista localmente sin llamar al server (opcional, aquí llamamos para asegurar sync)
+                    const updatedAgenda = await (await fetch('/api/agenda')).json();
+                    renderEventList(updatedAgenda[selectedDate]);
+                    renderCalendar(); // Actualizar indicadores del mes
+                } else {
+                    showToast(data.message || "Error al guardar", "error");
+                }
+            } catch(e) { console.error(e); showToast("Error de conexión", "error"); }
+        }
+
+        async function deleteAppt(time) {
+            if(!confirm(`¿Eliminar evento de las ${time}?`)) return;
+            try {
+                const res = await fetch('/api/agenda/delete', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ date: selectedDate, time: time }) 
+                });
+                
+                if(res.ok) { 
+                    showToast('Eliminado'); 
+                    // Refrescar lista
+                    const updatedAgenda = await (await fetch('/api/agenda')).json();
+                    renderEventList(updatedAgenda[selectedDate]);
+                    renderCalendar(); 
+                } 
+            } catch(e) { showToast('Error de conexión', 'error'); }
+        }
+    </script>
+</body>
+</html>
