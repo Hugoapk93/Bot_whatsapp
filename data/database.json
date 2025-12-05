@@ -1,0 +1,1386 @@
+{
+  "settings": {
+    "schedule": {
+      "active": true,
+      "start": "09:00",
+      "end": "19:00",
+      "offline_message": "Hola {{nombre}} 😊\nEn este momento estoy fuera de la sucursal,\npero mañana temprano reviso tu solicitud y te confirmo.",
+      "days": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    }
+  },
+  "flow": {
+    "BIENVENIDA": {
+      "type": "menu",
+      "keywords": [
+        "hola",
+        "buenos días",
+        "buenas tardes",
+        "buenas noches",
+        "info",
+        "préstamo",
+        "prestamos"
+      ],
+      "message": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Préstamo en efectivo",
+          "next_step": "EFECTIVO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Préstamo para Moto",
+          "next_step": "MOTO"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Ya tengo crédito",
+          "next_step": "YA_TENGO"
+        }
+      ]
+    },
+    "EFECTIVO": {
+      "type": "input",
+      "message": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+      "media": "",
+      "save_var": "nombre",
+      "next_step": "FECHA_DE_NACIMIENTO"
+    },
+    "FECHA_DE_NACIMIENTO": {
+      "type": "input",
+      "keywords": [],
+      "message": "Muy bien {{nombre_primer}} ahora su:\n\n• Fecha de nacimiento.",
+      "media": [],
+      "save_var": "nacimiento",
+      "next_step": "DIRECCIÓN"
+    },
+    "DIRECCIÓN": {
+      "type": "input",
+      "message": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+      "media": "",
+      "save_var": "dirección",
+      "next_step": "CONFIRMAR"
+    },
+    "CONFIRMAR": {
+      "type": "menu",
+      "message": "{{nombre_primer}} confirma tus datos.\n\nNombre completo:\n*{{nombre}}*\nFecha de nacimiento:\n*{{nacimiento}}*\nY su dirección:\n*{{dirección}}*\n",
+      "media": "",
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, es correcto.",
+          "next_step": "FILTRO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No, es incorrecto.",
+          "next_step": "INCORRECTO"
+        }
+      ]
+    },
+    "FILTRO": {
+      "type": "filtro",
+      "keywords": [],
+      "message": "Muy bien {{nombre_primer}}\nEstamos validando su información.",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Aprobar",
+          "next_step": "APROBAR"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Rechazar",
+          "next_step": "RECHAZAR"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Citar",
+          "next_step": "CITAR"
+        }
+      ],
+      "save_var": "Préstamo"
+    },
+    "INCORRECTO": {
+      "type": "input",
+      "message": "Por favor envíame los siguientes datos para validar tu información:\n• Nombre completo.",
+      "media": "",
+      "save_var": "cliente",
+      "next_step": "FECHA_DE_NACIMIENTO"
+    },
+    "APROBAR": {
+      "type": "menu",
+      "keywords": [],
+      "message": "¡Perfecto, {{nombre_primer}}! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, si sé dónde está.",
+          "next_step": "SI"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No, no sé.",
+          "next_step": "NO"
+        }
+      ]
+    },
+    "RECHAZAR": {
+      "type": "message",
+      "message": "Hola {{nombre_primer}}.\nPor el momento tu solicitud no fue aprobada.\nPara más información, puedes acudir a cualquier sucursal Elektra.",
+      "media": "",
+      "next_step": ""
+    },
+    "CITAR": {
+      "type": "menu",
+      "keywords": [],
+      "message": "¡Perfecto, {{nombre_primer}}! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, si se dónde está.",
+          "next_step": "SI_CITAR"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No, no sé dónde está.",
+          "next_step": "NO_CITA"
+        }
+      ]
+    },
+    "SI": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 ¿Cómo quieres hacer tu solicitud?",
+      "media": [
+        "/uploads/1764697435455-390711519.jpg"
+      ],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "🏦 En sucursal",
+          "next_step": "SUCURSAL"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "📱 En linea desde mi teléfono",
+          "next_step": "EN_LÍNEA"
+        }
+      ]
+    },
+    "NO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "No te preocupes 😊\n\n¿Sabes dónde está el IMSS del Blvd. Hidalgo?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, lo ubico",
+          "next_step": "SI_LO_UBICO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No, tampoco",
+          "next_step": "TAMPOCO"
+        }
+      ]
+    },
+    "TAMPOCO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "No pasa nada 😉\nAquí tienes la ubicación exacta en Google Maps para que llegues sin problema:\n\n📍 https://maps.app.goo.gl/UEwkK9NyUT12iwQB6\n\n👉 ¿Cómo quieres hacer tu solicitud?\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "🏦 En sucursal ",
+          "next_step": "SUCURSAL"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "📱 En linea desde mi teléfono",
+          "next_step": "EN_LÍNEA"
+        }
+      ]
+    },
+    "NO_CITA": {
+      "type": "menu",
+      "keywords": [],
+      "message": "No te preocupes 😊\n¿Sabes dónde está el IMSS del Blvd. Hidalgo?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, lo ubico",
+          "next_step": "SI_LO_UBICO_CITA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No, tampoco",
+          "next_step": "TAMPOCO_CITA"
+        }
+      ]
+    },
+    "TAMPOCO_CITA": {
+      "type": "input",
+      "keywords": [],
+      "message": "No pasa nada 😉\nAquí tienes la ubicación exacta en Google Maps para que llegues sin problema:\n\n📍 https://maps.app.goo.gl/UEwkK9NyUT12iwQB6\n\n👉 ¿para qué día deseas que te agende?\n",
+      "media": [],
+      "save_var": "fecha",
+      "next_step": "FILTRO_DIA"
+    },
+    "SUCURSAL": {
+      "type": "input",
+      "keywords": [],
+      "message": "Perfecto 💪\n\n¿Para qué día deseas que te agende la visita?",
+      "media": [],
+      "save_var": "fecha",
+      "next_step": "FILTRO_DIA"
+    },
+    "HORA": {
+      "type": "input",
+      "message": "Excelente 👍 ¿Qué hora te Agendo?",
+      "media": "",
+      "save_var": "hora",
+      "next_step": "AGENDA_FILTRO"
+    },
+    "EN_LÍNEA": {
+      "type": "menu",
+      "message": "Una vez que hagas la solicitud y se te apruebe el préstamo tendrías que venir a cobrar el dinero a Elektra Motos\n\n¿Está bien?",
+      "media": "",
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, está bien",
+          "next_step": "SI_EN_LÍNEA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Será para otra ocasión",
+          "next_step": ""
+        }
+      ]
+    },
+    "SI_EN_LÍNEA": {
+      "type": "message",
+      "message": "Excelente {{nombre_primer}} 🙌\nSigue estos pasos para tramitar tu crédito desde casa:\n1️⃣ Abre el siguiente enlace:\n🔗 https://www.bazsolicitudunica.com.mx/pages/intro?iP=39&sub=1&met=1&epm=785344&spm=5701&cpm=19&ppm=1\n2️⃣ Ingresa tu nombre completo\n3️⃣ Selecciona “Préstamo en efectivo”\n4️⃣ Indica el monto que necesitas\n5️⃣ Sube tu INE y una selfie\n6️⃣ Ingresa tu dirección real\n7️⃣ El sistema te dirá si fuiste aprobado y generará una visita a tu domicilio\n8️⃣ En caso de aprobación, podrás pasar a Elektra Motos por tu dinero\n⚠️ El enlace tiene vigencia de 24 horas.",
+      "media": "",
+      "next_step": ""
+    },
+    "SI_LO_UBICO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Perfecto 👍\nEstamos muy cerca del IMSS, exactamente enfrente, dentro de la plaza donde está Bodega Aurrerá, a un lado de Burger King.\n\n👉 ¿Cómo quieres hacer tu solicitud?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "🏦 En sucursal",
+          "next_step": "SUCURSAL"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "📱 En línea desde mi teléfono",
+          "next_step": "EN_LÍNEA"
+        }
+      ]
+    },
+    "AGENDA_FILTRO": {
+      "type": "cita",
+      "next_step": "",
+      "options": [
+        {
+          "trigger": "0",
+          "label": "DISPONIBLE",
+          "internal_label": "DISPONIBLE",
+          "next_step": "AGENDA_CONFIRMADA"
+        },
+        {
+          "trigger": "1",
+          "label": "NO_DISPONIBLE",
+          "internal_label": "NO_DISPONIBLE",
+          "next_step": "SIN_AGENDA"
+        }
+      ]
+    },
+    "AGENDA_CONFIRMADA": {
+      "type": "message",
+      "keywords": [],
+      "message": "Listo, {{nombre_primer}}.\n\nTe agendé para el {{fecha}} a las {{hora}}.\nAl llegar, solo pregunta por Hugo Martínez.\n\n🚗 Si vienes en vehículo, menciona en la caseta que vienes a Elektra Motos para que no te cobren estacionamiento.",
+      "media": [],
+      "next_step": ""
+    },
+    "SIN_AGENDA": {
+      "type": "message",
+      "message": "Por favor intenta una hora diferente.",
+      "media": "",
+      "next_step": "HORA"
+    },
+    "FILTRO_DIA": {
+      "type": "cita",
+      "next_step": "HORA",
+      "options": []
+    },
+    "MOTO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige cómo quieres adquirir tu moto:",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Financiada con Elektra Motos",
+          "next_step": "ELEKTRA_MOTOS"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Con tarjeta de crédito (otro banco)",
+          "next_step": "OTRO_BANCO"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "De contado",
+          "next_step": "CONTADO"
+        }
+      ]
+    },
+    "ELEKTRA_MOTOS": {
+      "type": "input",
+      "keywords": [],
+      "message": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+      "media": [],
+      "save_var": "nombre",
+      "next_step": "FECHA_DE_NACIMIENTO_MOTO"
+    },
+    "FECHA_DE_NACIMIENTO_MOTO": {
+      "type": "input",
+      "message": "Muy bien {{nombre_primer}} ahora su:\n\n• Fecha de nacimiento.",
+      "media": "",
+      "save_var": "nacimiento",
+      "next_step": "DIRECCIÓN_MOTO"
+    },
+    "CONFIRMAR_MOTO": {
+      "type": "menu",
+      "message": "{{nombre_primer}} confirma tus datos.\n\nNombre completo:\n*{{nombre}}*\nFecha de nacimiento:\n*{{nacimiento}}*\nY su dirección:\n*{{dirección}}*\n",
+      "media": "",
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, es correcto.",
+          "next_step": "FILTRO_MOTO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No, es incorrecto",
+          "next_step": "INCORRECTO_MOTO"
+        }
+      ]
+    },
+    "DIRECCIÓN_MOTO": {
+      "type": "input",
+      "message": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+      "media": "",
+      "save_var": "dirección",
+      "next_step": "CONFIRMAR_MOTO"
+    },
+    "FILTRO_MOTO": {
+      "type": "filtro",
+      "keywords": [],
+      "message": "Muy bien {{nombre_primer}}\nEstamos validando su información.",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Aprobar",
+          "next_step": "ELIGE_MOTO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Rechazar",
+          "next_step": "RECHAZAR"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Citar",
+          "next_step": "CITAR_MOTO"
+        }
+      ],
+      "save_var": "Moto"
+    },
+    "INCORRECTO_MOTO": {
+      "type": "input",
+      "message": "Por favor envíame los siguientes datos para validar tu información:\n• Nombre completo.",
+      "media": "",
+      "save_var": "nombre",
+      "next_step": "FECHA_DE_NACIMIENTO_MOTO"
+    },
+    "SI_MOTO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 ¿Cómo quieres hacer tu solicitud?",
+      "media": [
+        "/uploads/1764788089967-759273897.jpg"
+      ],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "🏦 En sucursal",
+          "next_step": "SUCURSAL"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "📱 En linea desde mi teléfono",
+          "next_step": "LINEA_MOTO"
+        }
+      ]
+    },
+    "LINEA_MOTO": {
+      "type": "menu",
+      "message": "Una vez que hagas la solicitud y se te apruebe el préstamo tendrías que venir a cobrar el dinero a Elektra Motos\n\n¿Está bien?",
+      "media": "",
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí, está bien",
+          "next_step": "SI_LINEA_MOTO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Será para otra ocasión",
+          "next_step": ""
+        }
+      ]
+    },
+    "SI_LINEA_MOTO": {
+      "type": "message",
+      "message": "Excelente {{nombre_primer}} 🙌\nSigue estos pasos para tramitar tu crédito desde casa:\n1️⃣ Abre el siguiente enlace:\n🔗 https://www.bazsolicitudunica.com.mx/pages/intro?iP=39&sub=1&met=1&epm=785344&spm=5701&cpm=19&ppm=1\n2️⃣ Ingresa tu nombre completo\n3️⃣ Selecciona “Préstamo para moto”\n4️⃣ Indica el valor de la moto interés\n5️⃣ Sube tu INE y una selfie\n6️⃣ Ingresa tu dirección real\n7️⃣ El sistema te dirá si fuiste aprobado y generará una visita a tu domicilio\n8️⃣ En caso de aprobación, podrás pasar a Elektra Motos por tu moto nueva\n⚠️ El enlace tiene vigencia de 24 horas.",
+      "media": "",
+      "next_step": ""
+    },
+    "ELIGE_MOTO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Muy bien, {{nombre_primer}} 😊\n¿Qué tipo de moto te interesa?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Trabajo",
+          "next_step": "TRABAJO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Naked",
+          "next_step": "NAKED"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Tipo Chopper",
+          "next_step": "CHOPPER"
+        },
+        {
+          "trigger": "4️⃣",
+          "label": "Cuatrimoto",
+          "next_step": "CUATRIMOTO"
+        },
+        {
+          "trigger": "5️⃣",
+          "label": "Motoneta",
+          "next_step": "MOTONETA"
+        },
+        {
+          "trigger": "6️⃣",
+          "label": "Semiautomática",
+          "next_step": "SEMIAUTOMÁTICA"
+        },
+        {
+          "trigger": "7️⃣",
+          "label": "Café Racer",
+          "next_step": "CAFÉ_RACER"
+        },
+        {
+          "trigger": "8️⃣",
+          "label": "Doble propósito",
+          "next_step": "DOBLE_PROPÓSITO"
+        }
+      ]
+    },
+    "TRABAJO": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste Motos de Trabajo*",
+      "media": [
+        "/uploads/1764619398325-742382484.png",
+        "/uploads/1764619398347-970357536.png",
+        "/uploads/1764619398358-138458895.png",
+        "/uploads/1764619482724-403691634.png"
+      ],
+      "next_step": "ELIJE_TRABAJO"
+    },
+    "NAKED": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste Motos Naked*",
+      "media": [
+        "/uploads/1764619463279-444239338.png",
+        "/uploads/1764619463292-29684464.png",
+        "/uploads/1764619463303-453004482.png",
+        "/uploads/1764619463323-435587181.png",
+        "/uploads/1764619463335-140990045.png",
+        "/uploads/1764619463350-700348851.png",
+        "/uploads/1764619463360-39712383.png"
+      ],
+      "next_step": "ELIJE_NAKED"
+    },
+    "CHOPPER": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste Motos tipo Chopper*",
+      "media": [
+        "/uploads/1764522516383-946966077.png",
+        "/uploads/1764619506633-616788499.png"
+      ],
+      "next_step": "ELIJE_CHOPPER"
+    },
+    "CUATRIMOTO": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste cuatrimoto*",
+      "media": [
+        "/uploads/1764522554356-914455441.png"
+      ],
+      "next_step": "ELIJE_CUATRI"
+    },
+    "MOTONETA": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste Motoneta*",
+      "media": [
+        "/uploads/1764522573378-473514878.png",
+        "/uploads/1764619538145-423736523.png"
+      ],
+      "next_step": "ELIJE_MOTONETA"
+    },
+    "CAFÉ_RACER": {
+      "type": "message",
+      "keywords": [],
+      "message": "Agotado 🚫",
+      "media": [],
+      "next_step": "ELIJE_CAFÉ_R"
+    },
+    "SEMIAUTOMÁTICA": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste Semiautomática*",
+      "media": [
+        "/uploads/1764522646169-677004222.png",
+        "/uploads/1764619569212-852722427.png"
+      ],
+      "next_step": "ELEGIR_SEMI"
+    },
+    "DOBLE_PROPÓSITO": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste doble propósito*",
+      "media": [
+        "/uploads/1764522797064-910147737.png",
+        "/uploads/1764715520921-844108230.png"
+      ],
+      "next_step": "ELIJE_DOBLE_PRO"
+    },
+    "ELIJE_TRABAJO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elije el modelo que te interesa.",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "FT 150 ROJA",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "FT125 NEGRA",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "FT125TS ROJA",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "4️⃣",
+          "label": "FT250 GTS",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "5️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "ELIJE_NAKED": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "125Z",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "250Z",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "280Z",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "4️⃣",
+          "label": "VORT-X 250",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "5️⃣",
+          "label": "TNTN150I",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "6️⃣",
+          "label": "HUNK250R 4V",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "7️⃣",
+          "label": "HUNK160R 4V",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "8️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "ELIJE_CHOPPER": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "RC200",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "TC300",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "ELIJE_CUATRI": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "ATV190",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "ELIJE_MOTONETA": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "DASH 125",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "WS150 SPORT",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "ELIJE_CAFÉ_R": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Volver al Catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "ELEGIR_SEMI": {
+      "type": "menu",
+      "keywords": [],
+      "message": "*Elegiste semiautomática*",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "AT110",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "AT125",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "ELIJE_DOBLE_PRO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "DM200",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "DM250",
+          "next_step": "MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "ELIGE_MOTO"
+        }
+      ]
+    },
+    "MOTO_CONFIRMADA": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Para esta moto se requiere un enganche aproximado del 10%.\n(El monto exacto depende del crédito aprobado)\nRequisitos:\n🪪 INE vigente\n🏠 Comprobante de domicilio (máx. 3 meses)\n📱 Dos referencias telefónicas\n👉 Ser mayor de 25 años\n\n¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí",
+          "next_step": "SI_MOTO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No",
+          "next_step": "NO"
+        }
+      ]
+    },
+    "SI_CITAR": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 Para tu solicitud tendrías que venir a la sucursal a tramitar.\n\n¿Te interesa?",
+      "media": [
+        "/uploads/1764716991454-40054991.jpg"
+      ],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Si",
+          "next_step": "SUCURSAL"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No",
+          "next_step": "NO_CITAR"
+        }
+      ]
+    },
+    "NO_CITAR": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Entendemos, que tenga lindo día, hasta pronto ☺️",
+      "media": [],
+      "options": []
+    },
+    "SI_LO_UBICO_CITA": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Perfecto 👍\nEstamos muy cerca del IMSS, exactamente enfrente, dentro de la plaza donde está Bodega Aurrerá, a un lado de Burger King.\n\n👉 Para tu solicitud tendrías que venir a la sucursal a tramitar.\n\n¿Te interesa?",
+      "media": [
+        "/uploads/1764717416117-46706659.jpg"
+      ],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí",
+          "next_step": "SUCURSAL"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No",
+          "next_step": "NO_CITAR"
+        }
+      ]
+    },
+    "YA_TENGO": {
+      "type": "input",
+      "keywords": [],
+      "message": "¡Perfecto! Para apoyarte mejor, por favor envíame:\n\n• Nombre completo",
+      "media": [],
+      "save_var": "nombre",
+      "next_step": "YA_TENGO_FECHA"
+    },
+    "YA_TENGO_FECHA": {
+      "type": "input",
+      "keywords": [],
+      "message": "Y ahora:\n\n• Fecha de nacimiento",
+      "media": [],
+      "save_var": "fecha",
+      "next_step": "ATENCIÓN"
+    },
+    "ATENCIÓN": {
+      "type": "message",
+      "keywords": [],
+      "message": "Hola {{nombre}}, ¿cómo se encuentra hoy?\nDígame, ¿en qué puedo ayudarle?",
+      "media": [],
+      "next_step": ""
+    },
+    "CITAR_MOTO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Muy bien, {{nombre_primer}} 😊\n¿Qué tipo de moto te interesa?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Trabajo",
+          "next_step": "CITAR_TRABAJO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Naked",
+          "next_step": "CITAR_NAKED"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Tipo chopper",
+          "next_step": "CITAR_TIPO_CHOPPER"
+        },
+        {
+          "trigger": "4️⃣",
+          "label": "Cuatrimoto",
+          "next_step": "CITAR_CUATRI"
+        },
+        {
+          "trigger": "5️⃣",
+          "label": "Motoneta",
+          "next_step": "CITAR_MOTONETA"
+        },
+        {
+          "trigger": "6️⃣",
+          "label": "Semiautomática",
+          "next_step": "CITAR_SEMI"
+        },
+        {
+          "trigger": "7️⃣",
+          "label": "Café Racer",
+          "next_step": "CITAR_CAFÉ"
+        },
+        {
+          "trigger": "8️⃣",
+          "label": "Doble propósito",
+          "next_step": "CITAR_DOBLE"
+        }
+      ]
+    },
+    "CITAR_TRABAJO": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste moto de trabajo*",
+      "media": [
+        "/uploads/1764785614998-845418252.png",
+        "/uploads/1764785615024-387646433.png",
+        "/uploads/1764785615039-119493442.png",
+        "/uploads/1764786467875-111911902.png"
+      ],
+      "next_step": "C_E_TRABAJO"
+    },
+    "CITAR_NAKED": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste Naked*",
+      "media": [
+        "/uploads/1764785792953-488171697.png",
+        "/uploads/1764785792981-691274383.png",
+        "/uploads/1764785792995-922076717.png",
+        "/uploads/1764785793015-434027815.png",
+        "/uploads/1764785793025-914188434.png",
+        "/uploads/1764785793036-450074072.png",
+        "/uploads/1764785793046-538625248.png"
+      ],
+      "next_step": "C_E_NAKED"
+    },
+    "CITAR_TIPO_CHOPPER": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste tipo chopper*",
+      "media": [
+        "/uploads/1764785820495-260204759.png",
+        "/uploads/1764785820511-226156944.png"
+      ],
+      "next_step": "C_E_TIPO_CHOPPER"
+    },
+    "CITAR_CUATRI": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste cuatrimoto*",
+      "media": [
+        "/uploads/1764786139174-762272563.png"
+      ],
+      "next_step": "C_E_CUATRI"
+    },
+    "CITAR_MOTONETA": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste motoneta*",
+      "media": [
+        "/uploads/1764786171885-704741395.png",
+        "/uploads/1764786171895-929448319.png"
+      ],
+      "next_step": "C_E_MOTONETA"
+    },
+    "CITAR_SEMI": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste Semiautomática*",
+      "media": [
+        "/uploads/1764786210568-200072457.png",
+        "/uploads/1764786210580-224296439.png"
+      ],
+      "next_step": "C_E_SEMI"
+    },
+    "CITAR_CAFÉ": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste café Racer*",
+      "media": [],
+      "next_step": "C_E_CAFÉ_RACER"
+    },
+    "CITAR_DOBLE": {
+      "type": "message",
+      "keywords": [],
+      "message": "*Elegiste doble propósito*",
+      "media": [
+        "/uploads/1764786279440-928275812.png",
+        "/uploads/1764786279465-883263971.png"
+      ],
+      "next_step": "C_E_DOBLE"
+    },
+    "C_E_TRABAJO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "FT150 ROJA",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "FT125 NEGRA",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "FT125TS ROJA",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "4️⃣",
+          "label": "FT250 GTS",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "5️⃣",
+          "label": "Volver al Catálogo",
+          "next_step": "CITAR_MOTO"
+        }
+      ]
+    },
+    "C_E_NAKED": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "125Z",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "250Z",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "280Z",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "4️⃣",
+          "label": "VORT-X 250",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "5️⃣",
+          "label": "TNTN150I",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "6️⃣",
+          "label": "HUNK250R 4V",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "7️⃣",
+          "label": "HUNK160R 4V",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "8️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "CITAR_MOTO"
+        }
+      ]
+    },
+    "C_E_TIPO_CHOPPER": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "RC200",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "TC300",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "CITAR_MOTO"
+        }
+      ]
+    },
+    "C_E_CUATRI": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "ATV190",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "ATV200",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "CITAR_MOTO"
+        }
+      ]
+    },
+    "C_E_MOTONETA": {
+      "type": "menu",
+      "keywords": [],
+      "message": "*Elije tu modelo*",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "DASH 125",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "WS150 SPORT",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "CITAR_MOTO"
+        }
+      ]
+    },
+    "C_E_SEMI": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "AT110",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "AT125",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "CITAR_MOTO"
+        }
+      ]
+    },
+    "C_E_CAFÉ_RACER": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": []
+    },
+    "C_E_DOBLE": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Elige el modelo que te interesa\n",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "DM200",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "DM250",
+          "next_step": "C_MOTO_CONFIRMADA"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Volver al catálogo",
+          "next_step": "CITAR_MOTO"
+        }
+      ]
+    },
+    "C_MOTO_CONFIRMADA": {
+      "type": "menu",
+      "keywords": [],
+      "message": "Para esta moto se requiere un enganche aproximado del 10%.\n(El monto exacto depende del crédito aprobado)\n\nRequisitos:\n🪪 INE vigente\n🏠 Comprobante de domicilio (máx. 3 meses)\n📱 Dos referencias telefónicas\n👉 Ser mayor de 25 años\n\n¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Sí",
+          "next_step": "SI_CITAR"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "No",
+          "next_step": "NO_CITA"
+        }
+      ]
+    },
+    "OTRO_BANCO": {
+      "type": "input",
+      "keywords": [],
+      "message": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+      "media": [],
+      "save_var": "nombre",
+      "next_step": "ELIJE_MOTO_CONTADO"
+    },
+    "CONTADO": {
+      "type": "input",
+      "keywords": [],
+      "message": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+      "media": [],
+      "save_var": "nombre",
+      "next_step": "ELIJE_MOTO_CONTADO"
+    },
+    "ELIJE_MOTO_CONTADO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": [
+        {
+          "trigger": "1️⃣",
+          "label": "Trabajo",
+          "next_step": "CONTADO_TRABAJO"
+        },
+        {
+          "trigger": "2️⃣",
+          "label": "Naked",
+          "next_step": "CONTADO_NAKED"
+        },
+        {
+          "trigger": "3️⃣",
+          "label": "Tipo chopper",
+          "next_step": "CONTADO_TIPO_CHO"
+        },
+        {
+          "trigger": "4️⃣",
+          "label": "Cuatrimoto",
+          "next_step": "CONTADO_CUATRI"
+        },
+        {
+          "trigger": "5️⃣",
+          "label": "Café racer",
+          "next_step": "CONTADO_CAFÉ_RACER"
+        },
+        {
+          "trigger": "6️⃣",
+          "label": "Motoneta",
+          "next_step": "CONTADO_MOTONETA"
+        },
+        {
+          "trigger": "7️⃣",
+          "label": "Semiautomática ",
+          "next_step": "CONTADO_SEMI"
+        },
+        {
+          "trigger": "8️⃣",
+          "label": "Doble propósito ",
+          "next_step": "CONTADO_DOBLE"
+        }
+      ]
+    },
+    "CONTADO_TRABAJO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    },
+    "CONTADO_TIPO_CHO": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    },
+    "CONTADO_SEMI": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    },
+    "CONTADO_CUATRI": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    },
+    "CONTADO_DOBLE": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    },
+    "CONTADO_MOTONETA": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    },
+    "CONTADO_CAFÉ_RACER": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    },
+    "CONTADO_NAKED": {
+      "type": "menu",
+      "keywords": [],
+      "message": "",
+      "media": [],
+      "options": []
+    }
+  },
+  "users": [
+    {
+      "phone": "TEST_SIMULADOR",
+      "current_step": "BIENVENIDA",
+      "history": {}
+    }
+  ],
+  "contacts": [
+    {
+      "phone": "528993198229",
+      "jid": "5218993198229@s.whatsapp.net",
+      "name": "Ana Karen Martínez Ramírez",
+      "bot_enabled": true,
+      "last_synced": "2025-11-30T18:39:26.290Z",
+      "added_at": "2025-11-30T18:39:26.290Z"
+    }
+  ]
+}
