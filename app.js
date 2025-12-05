@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys'); // Asegúrate de importar fetchLatestBaileysVersion
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
 const qrcode = require('qrcode-terminal');
@@ -8,7 +8,7 @@ const fs = require('fs');
 
 // --- IMPORTS: Lógica del flujo y Base de Datos ---
 const { handleMessage, sendStepMessage } = require('./src/flow');
-const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, saveSettings, getAllUsers, updateUser, getUser } = require('./src/database');
+const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, saveSettings, getAllUsers, updateUser, getUser, clearAllSessions } = require('./src/database');
 const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
 
 const app = express();
@@ -51,40 +51,50 @@ let globalSock;
 // --- INICIALIZAR BASES DE DATOS ---
 initializeDB();
 
-// --- LÓGICA DE CONEXIÓN WHATSAPP ---
+// --- LÓGICA DE CONEXIÓN WHATSAPP (MODIFICADO PARA CÓDIGO DE VINCULACIÓN) ---
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     const { version } = await fetchLatestBaileysVersion();
 
+    // 🔴 1. TU NÚMERO AQUÍ (Código de país 52 + 1 + número)
+    const myPhoneNumber = "5218995640404"; 
+
     const sock = makeWASocket({
         version,
         auth: state,
-        printQRInTerminal: false,
+        printQRInTerminal: false, // 🔴 2. APAGAMOS EL QR
         logger: pino({ level: 'silent' }),
         
-        // 🔥 CONFIGURACIÓN ANTI-DORMIR (KEEP-ALIVE) 🔥
-        keepAliveIntervalMs: 10000, // Envía ping cada 10s para que no se duerma
-        retryRequestDelayMs: 2000,   // Reintenta rápido si falla
-        connectTimeoutMs: 60000,     // Espera más tiempo antes de tirar error
-        syncFullHistory: false,      // Carga más rápido, evita lags iniciales
+        // CONFIGURACIÓN ANTI-DORMIR (KEEP-ALIVE)
+        keepAliveIntervalMs: 10000, 
+        retryRequestDelayMs: 2000,   
+        connectTimeoutMs: 60000,     
+        syncFullHistory: false,      
         
         // Simular Navegador Desktop (Ayuda a la estabilidad)
-        browser: ["ElektraBot", "Chrome", "10.0"],
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
     });
     
     globalSock = sock;
 
+    // 🔴 3. BLOQUE PARA PEDIR EL CÓDIGO DE VINCULACIÓN
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            try {
+                const code = await sock.requestPairingCode(myPhoneNumber);
+                console.log("============================================");
+                console.log("🔢 TU CÓDIGO DE VINCULACIÓN ES: " + code);
+                console.log("============================================");
+            } catch (error) {
+                console.log("Error pidiendo código: ", error);
+            }
+        }, 5000); // Esperamos 5 segs para asegurar que inicie
+    }
+
     sock.ev.on('creds.update', saveCreds);
     
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-            console.log('▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄');
-            console.log('█ ESCANEA EL QR EN TERMINAL █');
-            console.log('▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀');
-            qrcode.generate(qr, { small: true });
-        }
+        const { connection, lastDisconnect } = update;
         
         if (connection === 'close') {
             // Manejo de desconexión mejorado
@@ -92,7 +102,6 @@ async function connectToWhatsApp() {
             console.log(`⚠️ Conexión cerrada. Razón: ${lastDisconnect.error}, Reconectando: ${shouldReconnect}`);
             
             if (shouldReconnect) {
-                // Pequeña pausa para no saturar si hay bucle de error
                 setTimeout(connectToWhatsApp, 3000); 
             }
         } else if (connection === 'open') {
@@ -208,13 +217,13 @@ app.post('/api/users/sync', async (req, res) => {
 
 app.get('/api/agenda', (req, res) => res.json(getAgenda()));
 
-// 1. CREAR (Agendar) - Ahora soporta 'note'
+// 1. CREAR (Agendar) - Soporta 'note'
 app.post('/api/agenda/book', (req, res) => {
     const { date, time, phone, name, note } = req.body;
     const db = getAgenda();
     if (!db[date]) db[date] = [];
     
-    // Validación de conflicto (opcional: si quieres permitir sobrecupo manual, quita esto)
+    // Validación de conflicto
     if (db[date].some(c => c.time === time)) {
         return res.json({ success: false, message: 'Horario ocupado' });
     }
@@ -280,16 +289,28 @@ app.post('/api/agenda/update', (req, res) => {
     res.json({ success: true });
 });
 
-app.get('/api/admin/clear-monitor', async (req, res) => {
-    const users = getAllUsers();
-    let count = 0;
-    for (const u of users) {
-        if ((u.history && Object.keys(u.history).length > 0) || u.current_step !== 'BIENVENIDA') {
-            await updateUser(u.phone, { current_step: 'BIENVENIDA', history: {} });
-            count++;
+// --- LIMPIEZA TOTAL DEL MONITOR (Versión Segura) ---
+app.get('/api/admin/clear-monitor', (req, res) => {
+    try {
+        if(typeof clearAllSessions === 'function'){
+            clearAllSessions(); 
+        } else {
+            console.log("Función clearAllSessions no encontrada en database.js");
         }
+        res.send(`
+            <h1 style="color:green; font-family:sans-serif; text-align:center; margin-top:50px;">
+                ✅ Monitor Limpiado Correctamente
+            </h1>
+            <p style="text-align:center; font-family:sans-serif;">
+                La lista de sesiones activas ha sido eliminada. <br>
+                Tus contactos guardados siguen seguros.
+            </p>
+            <script>setTimeout(() => window.location.href = '/', 3000);</script>
+        `);
+    } catch (e) {
+        console.error(e);
+        res.status(500).send("Error al limpiar");
     }
-    res.send(`<h1>Monitor Limpiado (${count} chats)</h1>`);
 });
 
 app.get('/api/settings', (req, res) => res.json(getSettings()));

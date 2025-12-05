@@ -473,10 +473,16 @@
             // 3. Cerrar Menú Lateral (Mobile)
             document.getElementById('sidebar').classList.remove('active');
 
-            // 4. Hack de Audio (Desbloqueo)
+            // 4. Hack de Audio (MODO SILENCIOSO)
             const audio = document.getElementById('alertSound');
             if(audio) {
-                audio.play().then(() => audio.pause()).catch(e => console.log("Audio waiting..."));
+                // Bajamos volumen a 0 para que el desbloqueo sea imperceptible
+                audio.volume = 0; 
+                audio.play().then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = 1; // Restauramos volumen para la alarma real
+                }).catch(e => console.log("Audio waiting..."));
             }
 
             // 5. Cargar lógica específica
