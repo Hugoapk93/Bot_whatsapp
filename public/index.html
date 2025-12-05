@@ -642,15 +642,34 @@
             } catch(e) { console.error("Error monitor:", e); }
         }
 
-        // --- FUNCIÓN AUXILIAR PARA COPIAR (NECESARIA) ---
+        // --- FUNCIÓN DE COPIADO COMPATIBLE CON HTTP (HACK) ---
         function copyToClip(text) {
-            if (!text) return showToast("No hay ID para copiar", "error");
-            navigator.clipboard.writeText(text).then(() => {
-                showToast("ID copiado al portapapeles");
-            }).catch(err => {
-                console.error(err);
-                showToast("Error al copiar", "error");
-            });
+            if (!text) return showToast("Nada que copiar", "error");
+
+            // 1. Creamos un campo de texto invisible temporal
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // 2. Lo hacemos parte de la página pero invisible
+            textArea.style.position = "fixed"; 
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            
+            // 3. Seleccionamos el texto y copiamos
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if(successful) showToast("Copiado: " + text);
+                else showToast("Error al copiar", "error");
+            } catch (err) {
+                console.error('Error copiando', err);
+                showToast("Error de navegador", "error");
+            }
+            
+            // 4. Borramos el campo temporal
+            document.body.removeChild(textArea);
         }
 
         // --- GESTIÓN CONTACTOS MANUALES ---
