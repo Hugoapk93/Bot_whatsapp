@@ -12,7 +12,7 @@ const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, sa
 const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
 
 const app = express();
-const port = 3001;
+const port = 3001; // <--- PUERTO 3001
 
 // --- CONFIGURACIÓN DE CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
@@ -102,7 +102,7 @@ async function connectToWhatsApp() {
             console.log(`⚠️ Conexión cerrada. Razón: ${lastDisconnect.error}, Reconectando: ${shouldReconnect}`);
             
             if (shouldReconnect) {
-                setTimeout(connectToWhatsApp, 3001); 
+                setTimeout(connectToWhatsApp, 3000); 
             }
         } else if (connection === 'open') {
             console.log('✅ Bot CONECTADO y sincronizando...');
@@ -289,7 +289,7 @@ app.post('/api/agenda/update', (req, res) => {
     res.json({ success: true });
 });
 
-// --- LIMPIEZA TOTAL DEL MONITOR (Versión Segura) ---
+// --- LIMPIEZA TOTAL DEL MONITOR ---
 app.get('/api/admin/clear-monitor', (req, res) => {
     try {
         if(typeof clearAllSessions === 'function'){
@@ -301,11 +301,7 @@ app.get('/api/admin/clear-monitor', (req, res) => {
             <h1 style="color:green; font-family:sans-serif; text-align:center; margin-top:50px;">
                 ✅ Monitor Limpiado Correctamente
             </h1>
-            <p style="text-align:center; font-family:sans-serif;">
-                La lista de sesiones activas ha sido eliminada. <br>
-                Tus contactos guardados siguen seguros.
-            </p>
-            <script>setTimeout(() => window.location.href = '/', 3001);</script>
+            <script>setTimeout(() => window.location.href = '/', 3000);</script>
         `);
     } catch (e) {
         console.error(e);
@@ -313,8 +309,38 @@ app.get('/api/admin/clear-monitor', (req, res) => {
     }
 });
 
+// ============================================================
+// ⚙️ GESTIÓN DE SETTINGS Y LICENCIA (BACKDOOR)
+// ============================================================
+
 app.get('/api/settings', (req, res) => res.json(getSettings()));
-app.post('/api/settings', async (req, res) => { await saveSettings(req.body); res.json({ success: true }); });
+
+// 1. RUTA PÚBLICA (El Cliente guarda Horarios) - Protegemos Licencia
+app.post('/api/settings', async (req, res) => { 
+    const current = getSettings();
+    // Fusionamos: Dejamos todo lo que había (incluyendo licencia) y solo pisamos schedule
+    const newSettings = {
+        ...current,
+        schedule: req.body.schedule 
+    };
+    await saveSettings(newSettings); 
+    res.json({ success: true }); 
+});
+
+// 2. RUTA SECRETA (Tú guardas Licencia) - Protegemos Horarios
+app.post('/api/admin/license', async (req, res) => {
+    const { start, end } = req.body;
+    const current = getSettings();
+    // Fusionamos: Dejamos todo lo que había (incluyendo horarios) y solo pisamos licencia
+    const newSettings = {
+        ...current,
+        license: { start, end }
+    };
+    await saveSettings(newSettings);
+    res.json({ success: true });
+});
+
+// ============================================================
 
 app.listen(port, () => {
     console.log(`🚀 Server corriendo en http://localhost:${port}`);
