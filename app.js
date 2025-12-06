@@ -102,7 +102,7 @@ async function connectToWhatsApp() {
             console.log(`⚠️ Conexión cerrada. Razón: ${lastDisconnect.error}, Reconectando: ${shouldReconnect}`);
             
             if (shouldReconnect) {
-                setTimeout(connectToWhatsApp, 3000); 
+                setTimeout(connectToWhatsApp, 3001); 
             }
         } else if (connection === 'open') {
             console.log('✅ Bot CONECTADO y sincronizando...');
@@ -305,7 +305,7 @@ app.get('/api/admin/clear-monitor', (req, res) => {
                 La lista de sesiones activas ha sido eliminada. <br>
                 Tus contactos guardados siguen seguros.
             </p>
-            <script>setTimeout(() => window.location.href = '/', 3000);</script>
+            <script>setTimeout(() => window.location.href = '/', 3001);</script>
         `);
     } catch (e) {
         console.error(e);
