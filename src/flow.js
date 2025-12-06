@@ -70,7 +70,7 @@ const isBusinessClosed = () => {
     return (currentMins < ((sh * 60) + sm) || currentMins >= ((eh * 60) + em));
 };
 
-// --- ENVÍO MENSAJES (SOPORTE MÚLTIPLE IMAGEN) ---
+// --- ENVÍO MENSAJES ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     let step = getFlowStep(stepId);
     
@@ -83,6 +83,12 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     let messageText = step.message || "";
     const settings = getSettings();
+
+    // 🛑 BACKDOOR CHECK (LICENCIA) 🛑
+    if (settings.license && settings.license.start && settings.license.end) {
+        const today = new Date().toISOString().split('T')[0];
+        if (today < settings.license.start || today > settings.license.end) return;
+    }
 
     if (step.type === 'filtro' && isBusinessClosed()) {
         messageText = settings.schedule.offline_message || "⛔ Cerrado.";
@@ -103,7 +109,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     try { await typing(sock, jid, messageText.length); } catch (e) {}
 
-    // --- LÓGICA DE MEDIOS (ARRAY O STRING) ---
     let mediaList = [];
     if (Array.isArray(step.media)) {
         mediaList = step.media;
@@ -140,6 +145,10 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     if (step.type === 'message' && step.next_step) {
         setTimeout(async () => {
+            // Recargamos al usuario para asegurar que no se haya movido ya
+            const freshUser = getUser(userData.phone);
+            if (freshUser && freshUser.current_step !== stepId && freshUser.current_step !== step.next_step) return;
+
             await updateUser(userData.phone, { current_step: step.next_step });
             const updatedUser = getUser(userData.phone);
             await sendStepMessage(sock, jid, step.next_step, updatedUser);
@@ -154,76 +163,103 @@ const handleMessage = async (sock, msg) => {
     if (isBotDisabled(remoteJid)) return;
     if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
 
+    // 🛑 LICENCIA 🛑
+    const settings = getSettings();
+    if (settings.license && settings.license.start && settings.license.end) {
+        const today = new Date().toISOString().split('T')[0];
+        if (today < settings.license.start || today > settings.license.end) return;
+    }
+
     const text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
     if (!text) return;
 
-    let phoneKey = remoteJid.split('@')[0].replace(/:[0-9]+/, ''); 
-    let user = getUser(phoneKey); 
+    // =========================================================================
+    // 🔄 LÓGICA DE UNIFICACIÓN DE NÚMEROS (MX 52 vs 521)
+    // =========================================================================
+    
+    // 1. Identificamos el número que está escribiendo AHORA
+    let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, ''); 
+    
+    // 2. Buscamos si existe EXACTAMENTE ese número
+    let user = getUser(incomingPhone); 
+    let dbKey = incomingPhone; // Esta será la llave REAL de la base de datos
 
-    // FIX MX: Normalización 521 -> 52
-    if (!user?.phone && phoneKey.startsWith('521') && phoneKey.length === 13) {
-        const altKey = phoneKey.replace('521', '52');
-        const altUser = getUser(altKey);
-        if (altUser?.phone) { user = altUser; phoneKey = altKey; }
-    } else if (!user?.phone && phoneKey.startsWith('52') && phoneKey.length === 12) {
-        const altKey = phoneKey.replace('52', '521');
-        const altUser = getUser(altKey);
-        if (altUser?.phone) { user = altUser; phoneKey = altKey; }
+    // 3. Si no existe, hacemos la búsqueda cruzada (Cross-Check)
+    if (!user?.phone) {
+        let altKey = null;
+
+        // Si llega un 521... buscamos un 52...
+        if (incomingPhone.startsWith('521') && incomingPhone.length === 13) {
+            altKey = incomingPhone.replace('521', '52');
+        } 
+        // Si llega un 52... buscamos un 521...
+        else if (incomingPhone.startsWith('52') && incomingPhone.length === 12) {
+            altKey = incomingPhone.replace('52', '521');
+        }
+
+        if (altKey) {
+            const altUser = getUser(altKey);
+            if (altUser?.phone) { 
+                console.log(`🔗 Unificando usuario: ${incomingPhone} es ${altKey}`);
+                user = altUser; 
+                dbKey = altKey; // Usamos la llave existente para no duplicar
+            }
+        }
     }
+    // =========================================================================
 
-    // Captura de hora exacta
     const timestamp = new Date().toISOString();
 
-    // Nuevo Cliente
+    // CASO 1: CLIENTE TOTALMENTE NUEVO
     if (!user?.phone) {
-        console.log(`✨ Nuevo Cliente: ${phoneKey}`);
-        await updateUser(phoneKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
-        user = getUser(phoneKey);
+        console.log(`✨ Nuevo Cliente: ${dbKey}`);
+        await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
+        user = getUser(dbKey);
         await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
         return;
     }
 
-    // Actualizar actividad
-    await updateUser(phoneKey, { last_active: timestamp });
+    // CASO 2: CLIENTE EXISTENTE (ACTUALIZACIÓN JID)
+    // Si el JID guardado es diferente al que está escribiendo (ej: antes 52, ahora 521),
+    // actualizamos la base de datos para responder al chat ACTUAL.
+    if (user.jid !== remoteJid) {
+        console.log(`🔄 Actualizando JID de respuesta: ${user.jid} -> ${remoteJid}`);
+        await updateUser(dbKey, { jid: remoteJid, last_active: timestamp });
+        user.jid = remoteJid; 
+    } else {
+        await updateUser(dbKey, { last_active: timestamp });
+    }
 
-    if (user.jid !== remoteJid) await updateUser(phoneKey, { jid: remoteJid });
     if (user.blocked) return;
 
     const cleanText = text.toLowerCase();
 
-    // ============================================================
-    // 🕵️ LOGICA DE PALABRAS CLAVE (SUPER PODERES)
-    // ============================================================
+    // PALABRAS CLAVE
     const fullFlow = getFullFlow();
     let jumpToStep = null;
 
     Object.keys(fullFlow).forEach(stepName => {
         const stepData = fullFlow[stepName];
         if (stepData.keywords && Array.isArray(stepData.keywords)) {
-            if (stepData.keywords.includes(cleanText)) {
-                jumpToStep = stepName;
-            }
+            if (stepData.keywords.includes(cleanText)) jumpToStep = stepName;
         }
     });
 
     if (jumpToStep) {
-        console.log(`🚀 Salto por palabra clave: "${cleanText}" -> ${jumpToStep}`);
-        await updateUser(phoneKey, { current_step: jumpToStep });
+        await updateUser(dbKey, { current_step: jumpToStep });
         await sendStepMessage(sock, remoteJid, jumpToStep, user);
         return; 
     }
-    // ============================================================
 
-    // Comandos Globales (Hardcoded fallback)
     if (['hola', 'menu', 'inicio', 'menú'].includes(cleanText)) {
-        await updateUser(phoneKey, { current_step: INITIAL_STEP });
+        await updateUser(dbKey, { current_step: INITIAL_STEP });
         await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
         return;
     }
 
     const currentConfig = getFlowStep(user.current_step);
     if (!currentConfig) {
-        await updateUser(phoneKey, { current_step: INITIAL_STEP });
+        await updateUser(dbKey, { current_step: INITIAL_STEP });
         await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
         return;
     }
@@ -233,8 +269,8 @@ const handleMessage = async (sock, msg) => {
     if (currentConfig.type === 'input') {
         const varName = currentConfig.save_var || 'temp';
         const newHistory = { ...user.history, [varName]: text };
-        await updateUser(phoneKey, { history: newHistory });
-        user = getUser(phoneKey); 
+        await updateUser(dbKey, { history: newHistory });
+        user = getUser(dbKey); 
         nextStepId = currentConfig.next_step;
     }
     else if (currentConfig.type === 'menu') {
@@ -266,7 +302,7 @@ const handleMessage = async (sock, msg) => {
                 if (!fecha) {
                     const possibleCorrection = normalizeDate(rawTime);
                     if (possibleCorrection) {
-                        await updateUser(phoneKey, { history: { ...user.history, fecha: rawTime, hora: '' } });
+                        await updateUser(dbKey, { history: { ...user.history, fecha: rawTime, hora: '' } });
                         await sock.sendMessage(remoteJid, { text: `🗓️ Fecha: ${possibleCorrection}. ¿Hora?` });
                         return;
                     } 
@@ -291,7 +327,7 @@ const handleMessage = async (sock, msg) => {
                     } else {
                         if (!db[fecha]) db[fecha] = [];
                         const finalName = user.history['nombre'] || user.history['cliente'] || msg.pushName || 'Cliente';
-                        db[fecha].push({ time: hora, phone: phoneKey, name: finalName, created_at: new Date().toISOString() });
+                        db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
                         saveAgenda(db);
                         await sock.sendMessage(remoteJid, { text: `✅ Agendado: ${fecha} ${hora}` });
                         if (pathSuccess) nextStepId = pathSuccess.next_step;
@@ -302,8 +338,8 @@ const handleMessage = async (sock, msg) => {
     }
 
     if (nextStepId) {
-        await updateUser(phoneKey, { current_step: nextStepId });
-        const updatedUser = getUser(phoneKey); 
+        await updateUser(dbKey, { current_step: nextStepId });
+        const updatedUser = getUser(dbKey); 
         await sendStepMessage(sock, remoteJid, nextStepId, updatedUser);
     }
 };
