@@ -12,7 +12,7 @@ const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, sa
 const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
 
 const app = express();
-const port = 3000;
+const port = 3001;
 
 // --- CONFIGURACIÓN DE CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
