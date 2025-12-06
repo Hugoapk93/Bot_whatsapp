@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - Licencia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background: #1e293b; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #334155; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        h2 { color: #38bdf8; margin-top: 0; }
+        label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #cbd5e1; }
+        input { width: 100%; padding: 10px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: white; }
+        button { width: 100%; padding: 12px; background: #38bdf8; color: #0f172a; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #0ea5e9; }
+        .status { margin-top: 15px; font-size: 0.85rem; text-align: center; color: #86efac; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🔑 Control de Vigencia</h2>
+        <p style="font-size:0.8rem; opacity:0.7">Esta configuración es invisible para el cliente.</p>
+        
+        <label>Fecha de Inicio</label>
+        <input type="date" id="start">
+        
+        <label>Fecha de Corte (Vencimiento)</label>
+        <input type="date" id="end">
+
+        <button onclick="saveLicense()">Guardar Licencia</button>
+        <div id="msg" class="status"></div>
+    </div>
+
+    <script>
+        // Cargar datos actuales al abrir
+        window.onload = async () => {
+            try {
+                const res = await fetch('/api/settings'); // Reutilizamos el endpoint de lectura
+                const data = await res.json();
+                if(data.license) {
+                    document.getElementById('start').value = data.license.start || '';
+                    document.getElementById('end').value = data.license.end || '';
+                }
+            } catch(e) {}
+        }
+
+        async function saveLicense() {
+            const start = document.getElementById('start').value;
+            const end = document.getElementById('end').value;
+            const msg = document.getElementById('msg');
+
+            if(!start || !end) {
+                msg.style.color = '#fda4af';
+                msg.innerText = "Faltan fechas";
+                return;
+            }
+
+            try {
+                // Endpoint ESPECIAL SECRETO
+                const res = await fetch('/api/admin/license', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ start, end })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    msg.style.color = '#86efac';
+                    msg.innerText = "✅ Licencia Actualizada Correctamente";
+                } else {
+                    throw new Error();
+                }
+            } catch(e) {
+                msg.style.color = '#fda4af';
+                msg.innerText = "❌ Error al guardar";
+            }
+        }
+    </script>
+</body>
+</html>
