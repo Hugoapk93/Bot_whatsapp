@@ -122,7 +122,6 @@
             width: 100%; 
             height: 100%; 
             background: #ffffff; 
-            /* Agregamos esto para garantizar que ocupe todo el espacio de su padre: */
             position: absolute; 
             top: 0; 
             left: 0;
@@ -131,7 +130,7 @@
             padding: 0 !important; 
             overflow: hidden; 
             position: relative; 
-            height: 100%; /* Aseguramos la altura */
+            height: 100%;
             flex: 1;
         }
 
@@ -173,6 +172,37 @@
             .act-table tr { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; background: white; padding: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
             .act-table td { border: none; padding: 5px 0; position: relative; }
         }
+
+        /* --- ESTILOS NUEVOS PARA EL WIZARD DE CONEXIÓN --- */
+        #setupWizard {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f8fafc; z-index: 9999; display: flex;
+            justify-content: center; align-items: center; text-align: center;
+        }
+        .step-hidden { display: none !important; }
+        .wizard-card {
+            background: white; padding: 40px; border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 400px;
+        }
+        .code-display {
+            font-size: 2rem; letter-spacing: 5px; font-weight: bold;
+            color: var(--primary); background: #fee2e2; padding: 15px;
+            border-radius: 8px; margin: 20px 0; border: 2px dashed var(--primary);
+        }
+        .w-input {
+            width: 100%; padding: 15px; font-size: 1.2rem; text-align: center;
+            border: 2px solid #cbd5e1; border-radius: 8px; margin-bottom: 20px;
+        }
+        .w-btn {
+            width: 100%; padding: 15px; background: var(--primary); color: white;
+            border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s;
+        }
+        .w-btn:hover { background: var(--primary-dark); }
+        .w-btn-sec {
+            background: transparent; color: #64748b; margin-top: 10px;
+        }
+        #mainApp { width: 100%; height: 100%; display: flex; transition: filter 0.3s; }
+
     </style>
 </head>
 <body>
@@ -180,28 +210,72 @@
     <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
     <div id="toast-container"></div>
 
-    <div class="sidebar" id="sidebar">
-        <div class="brand">
-            <span><i class="fas fa-bolt"></i> CRM</span>
-            <button onclick="toggleMenu()" class="d-md-none" style="background:none; border:none; color:white;">✕</button>
+    <!-- 👇 WIZARD DE CONEXIÓN AUTOMÁTICA 👇 -->
+    <div id="setupWizard" class="step-hidden">
+        
+        <!-- PASO 1: Ingresar Teléfono -->
+        <div id="step1" class="wizard-card">
+            <h2 style="color:var(--dark)">📱 Conectar Negocio</h2>
+            <p style="color:#64748b; font-size:0.9rem;">Ingresa el número de WhatsApp (con código de país, ej: 521...)</p>
+            <input type="number" id="inputPhone" class="w-input" placeholder="5218991234567">
+            <button class="w-btn" onclick="startPairing()">Solicitar Código</button>
         </div>
-        <div class="menu">
-            <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-sitemap"></i> Flujo</div>
-            
-            <div class="menu-item" onclick="nav('activity', this)">
-                <i class="fas fa-list-check"></i> Monitor
-                <span id="notifyBadge" class="badge-count">0</span>
-            </div>
 
-            <div class="menu-item" onclick="nav('agenda', this)"><i class="fas fa-calendar-alt"></i> Agenda</div>
-            <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
-            <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-clock"></i> Horario</div>
-            <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-robot"></i> Simulador</div>
+        <!-- PASO 2: Cargando -->
+        <div id="step2" class="wizard-card step-hidden">
+            <i class="fas fa-circle-notch fa-spin" style="font-size:3rem; color:var(--primary)"></i>
+            <h3 style="margin-top:20px;">Conectando...</h3>
+            <p style="color:#64748b;">Generando código de vinculación</p>
+        </div>
+
+        <!-- PASO 3: Mostrar Código -->
+        <div id="step3" class="wizard-card step-hidden">
+            <h3>🔢 Código de Vinculación</h3>
+            <p style="font-size:0.85rem; color:#64748b;">
+                1. Ve a WhatsApp en tu celular<br>
+                2. Menú > Dispositivos Vinculados > Vincular<br>
+                3. "Vincular con el número de teléfono"<br>
+                4. Escribe este código:
+            </p>
+            
+            <div id="pairingCodeDisplay" class="code-display">----</div>
+            
+            <button class="w-btn" onclick="checkConnection()">✅ Ya lo ingresé</button>
+            <button class="w-btn w-btn-sec" onclick="resetSession()">❌ Cancelar / Reiniciar</button>
         </div>
     </div>
+    <!-- 👆 FIN DEL WIZARD 👆 -->
 
-    <div class="modal" id="dayModal">
-        <div class="sheet" style="height: 85vh; max-height: 85vh; display:flex; flex-direction:column;">
+    <!-- CONTENEDOR PRINCIPAL DEL CRM -->
+    <div id="mainApp">
+
+        <div class="sidebar" id="sidebar">
+            <div class="brand">
+                <span><i class="fas fa-bolt"></i> CRM</span>
+                <button onclick="toggleMenu()" class="d-md-none" style="background:none; border:none; color:white;">✕</button>
+            </div>
+            <div class="menu">
+                <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-sitemap"></i> Flujo</div>
+                
+                <div class="menu-item" onclick="nav('activity', this)">
+                    <i class="fas fa-list-check"></i> Monitor
+                    <span id="notifyBadge" class="badge-count">0</span>
+                </div>
+
+                <div class="menu-item" onclick="nav('agenda', this)"><i class="fas fa-calendar-alt"></i> Agenda</div>
+                <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
+                <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-clock"></i> Horario</div>
+                <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-robot"></i> Simulador</div>
+            </div>
+        </div>
+
+        <!-- ... (AQUÍ VA TODO EL RESTO DE TU HTML: Vistas, Modales, Contenido) ... -->
+        <!-- IMPORTANTE: Pega aquí los divs que ya tenías: dayModal, contactModal, content, editorModal... -->
+        <!-- Solo estoy resumiendo para no hacer el mensaje eterno, pero TÚ MANTÉN TU CONTENIDO ORIGINAL AQUÍ ABAJO -->
+
+        <div class="modal" id="dayModal">
+            <!-- ... Tu modal de día ... -->
+             <div class="sheet" style="height: 85vh; max-height: 85vh; display:flex; flex-direction:column;">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:10px; margin-bottom:10px;">
                 <div>
                     <h3 id="modalDateTitle" style="margin:0; color:var(--primary);">Detalles del Día</h3>
@@ -240,10 +314,11 @@
                 </div>
             </div>
         </div>
-    </div>
+        </div>
 
-    <div class="modal" id="contactModal">
-        <div class="sheet" style="height: auto;">
+        <div class="modal" id="contactModal">
+            <!-- ... Tu modal de contacto ... -->
+             <div class="sheet" style="height: auto;">
             <h3 style="margin-top:0; color:var(--primary);">Agregar Contacto</h3>
     
             <label>Nombre</label>
@@ -266,10 +341,11 @@
                 <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:12px; background:#e2e8f0; color:#475569; border:none; border-radius:8px;">Cancelar</button>
             </div>
         </div>
-    </div>
+        </div>
 
-    <div class="content">
-        <div class="mobile-header">
+        <div class="content">
+            <!-- ... Tu contenido (header, views...) ... -->
+             <div class="mobile-header">
             <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.5rem;">☰</button>
             <span id="pageTitle">FLUJO</span>
             <div style="width:30px"></div>
@@ -368,10 +444,10 @@
                 <button onclick="saveSettings()" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; margin-top:15px; cursor:pointer;">Guardar Cambios</button>
             </div>
         </div>
-    </div>
+        </div>
 
-    <div class="modal" id="editorModal">
-        <div class="sheet">
+        <div class="modal" id="editorModal">
+             <div class="sheet">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:15px; margin-bottom:15px;">
                 <h3 style="margin:0; color:var(--primary);">Editar Paso</h3>
                 <button onclick="closeEditor()" style="background:none; border:none; font-size:1.2rem; color:#94a3b8; cursor:pointer;">✕</button>
@@ -413,9 +489,101 @@
                 <button onclick="delStep()" style="width:50px; background:#fee2f2; color:var(--primary); border:none; border-radius:8px; cursor:pointer;"><i class="fas fa-trash"></i></button>
             </div>
         </div>
+        </div>
     </div>
 
+    <!-- SCRIPT PRINCIPAL -->
     <script>
+        // ==========================================
+        // 🧙‍♂️ LÓGICA DEL WIZARD DE VINCULACIÓN
+        // ==========================================
+        
+        window.onload = async () => {
+            // Verificar si hay sesión ANTES de cargar el CRM
+            await checkAuthStatus();
+            
+            // Iniciar componentes CRM
+            loadAll(); 
+            setInterval(loadActivity, 8000); 
+        };
+
+        async function checkAuthStatus() {
+            try {
+                const res = await fetch('/api/auth/status');
+                const data = await res.json();
+                
+                if (!data.sessionExists && !data.isConnected) {
+                    // Si no hay sesión, MOSTRAR Wizard y ocultar CRM
+                    document.getElementById('setupWizard').classList.remove('step-hidden');
+                    document.getElementById('mainApp').style.filter = "blur(10px)";
+                    document.getElementById('mainApp').style.pointerEvents = "none";
+                    return false;
+                } else {
+                    // Si hay sesión, ocultar wizard
+                    document.getElementById('setupWizard').classList.add('step-hidden');
+                    document.getElementById('mainApp').style.filter = "none";
+                    document.getElementById('mainApp').style.pointerEvents = "auto";
+                    return true;
+                }
+            } catch (e) { console.error("Error auth", e); }
+        }
+
+        async function startPairing() {
+            const phone = document.getElementById('inputPhone').value;
+            if(!phone || phone.length < 10) return alert("Ingresa un número válido");
+
+            document.getElementById('step1').classList.add('step-hidden');
+            document.getElementById('step2').classList.remove('step-hidden');
+
+            try {
+                // 1. Iniciar en backend
+                await fetch('/api/auth/init', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ phone })
+                });
+
+                // 2. Esperar código (Polling)
+                let attempts = 0;
+                const interval = setInterval(async () => {
+                    attempts++;
+                    const res = await fetch('/api/auth/status');
+                    const data = await res.json();
+
+                    if (data.pairingCode && data.pairingCode !== "ERROR") {
+                        clearInterval(interval);
+                        document.getElementById('pairingCodeDisplay').innerText = formatCode(data.pairingCode);
+                        document.getElementById('step2').classList.add('step-hidden');
+                        document.getElementById('step3').classList.remove('step-hidden');
+                    }
+                    if(attempts > 30) { clearInterval(interval); alert("Tiempo agotado"); location.reload(); }
+                }, 2000);
+
+            } catch(e) { alert("Error"); location.reload(); }
+        }
+
+        function formatCode(code) {
+            if(!code) return "----";
+            return code.slice(0,4) + " - " + code.slice(4);
+        }
+
+        async function resetSession() {
+            if(!confirm("¿Cancelar proceso?")) return;
+            await fetch('/api/auth/reset', { method: 'POST' });
+            location.reload();
+        }
+
+        async function checkConnection() {
+            const res = await fetch('/api/auth/status');
+            const data = await res.json();
+            if(data.isConnected || data.sessionExists) {
+                alert("✅ Conectado Correctamente");
+                location.reload();
+            } else {
+                alert("Aún no detecto la conexión en WhatsApp. Inténtalo de nuevo.");
+            }
+        }
+
         // --- GLOBALES ---
         let flow={}, users=[];
         let simPhone = '5218991234567'; // Número para pruebas
