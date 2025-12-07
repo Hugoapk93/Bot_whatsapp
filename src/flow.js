@@ -49,6 +49,8 @@ function normalizeTime(input) {
     if (period) { if (period === 'pm' && h < 12) h += 12; if (period === 'am' && h === 12) h = 0; } 
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
+
+// Validación para CITAS (Reglas de negocio)
 function validateBusinessRules(timeStr, settings) {
     if (!/^\d{1,2}:\d{2}$/.test(timeStr)) return { valid: false, reason: "Error hora." };
     const reqMins = timeToMinutes(timeStr);
@@ -59,14 +61,28 @@ function validateBusinessRules(timeStr, settings) {
     if (m !== 0 && m !== 30) return { valid: false, reason: "Intervalos 30min." };
     return { valid: true };
 }
+
+// 🕒 VALIDACIÓN DE HORARIO DE ATENCIÓN (CON ZONA HORARIA MÉXICO)
 const isBusinessClosed = () => {
     const settings = getSettings();
     if (!settings.schedule || !settings.schedule.active) return false;
-    const now = new Date();
-    const currentMins = (now.getHours() * 60) + now.getMinutes();
-    if (!settings.schedule.days.includes(now.getDay())) return true;
+    
+    // 1. Obtenemos la hora actual del servidor
+    const nowServer = new Date();
+    
+    // 2. LA CONVERTIMOS A HORA MÉXICO/LATAM (Fix del problema)
+    const mxTime = new Date(nowServer.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+
+    const currentMins = (mxTime.getHours() * 60) + mxTime.getMinutes();
+    const currentDay = mxTime.getDay(); // 0 = Domingo, 6 = Sábado
+
+    // Verificar día
+    if (!settings.schedule.days.includes(currentDay)) return true;
+
+    // Verificar hora
     const [sh, sm] = settings.schedule.start.split(':').map(Number);
     const [eh, em] = settings.schedule.end.split(':').map(Number);
+
     return (currentMins < ((sh * 60) + sm) || currentMins >= ((eh * 60) + em));
 };
 
@@ -145,7 +161,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     if (step.type === 'message' && step.next_step) {
         setTimeout(async () => {
-            // Recargamos al usuario para asegurar que no se haya movido ya
             const freshUser = getUser(userData.phone);
             if (freshUser && freshUser.current_step !== stepId && freshUser.current_step !== step.next_step) return;
 
@@ -173,44 +188,27 @@ const handleMessage = async (sock, msg) => {
     const text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
     if (!text) return;
 
-    // =========================================================================
-    // 🔄 LÓGICA DE UNIFICACIÓN DE NÚMEROS (MX 52 vs 521)
-    // =========================================================================
-    
-    // 1. Identificamos el número que está escribiendo AHORA
+    // LÓGICA DE UNIFICACIÓN DE NÚMEROS (MX 52 vs 521)
     let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, ''); 
-    
-    // 2. Buscamos si existe EXACTAMENTE ese número
     let user = getUser(incomingPhone); 
-    let dbKey = incomingPhone; // Esta será la llave REAL de la base de datos
+    let dbKey = incomingPhone;
 
-    // 3. Si no existe, hacemos la búsqueda cruzada (Cross-Check)
     if (!user?.phone) {
         let altKey = null;
-
-        // Si llega un 521... buscamos un 52...
-        if (incomingPhone.startsWith('521') && incomingPhone.length === 13) {
-            altKey = incomingPhone.replace('521', '52');
-        } 
-        // Si llega un 52... buscamos un 521...
-        else if (incomingPhone.startsWith('52') && incomingPhone.length === 12) {
-            altKey = incomingPhone.replace('52', '521');
-        }
+        if (incomingPhone.startsWith('521') && incomingPhone.length === 13) altKey = incomingPhone.replace('521', '52');
+        else if (incomingPhone.startsWith('52') && incomingPhone.length === 12) altKey = incomingPhone.replace('52', '521');
 
         if (altKey) {
             const altUser = getUser(altKey);
             if (altUser?.phone) { 
-                console.log(`🔗 Unificando usuario: ${incomingPhone} es ${altKey}`);
                 user = altUser; 
-                dbKey = altKey; // Usamos la llave existente para no duplicar
+                dbKey = altKey; 
             }
         }
     }
-    // =========================================================================
 
     const timestamp = new Date().toISOString();
 
-    // CASO 1: CLIENTE TOTALMENTE NUEVO
     if (!user?.phone) {
         console.log(`✨ Nuevo Cliente: ${dbKey}`);
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
@@ -219,11 +217,7 @@ const handleMessage = async (sock, msg) => {
         return;
     }
 
-    // CASO 2: CLIENTE EXISTENTE (ACTUALIZACIÓN JID)
-    // Si el JID guardado es diferente al que está escribiendo (ej: antes 52, ahora 521),
-    // actualizamos la base de datos para responder al chat ACTUAL.
     if (user.jid !== remoteJid) {
-        console.log(`🔄 Actualizando JID de respuesta: ${user.jid} -> ${remoteJid}`);
         await updateUser(dbKey, { jid: remoteJid, last_active: timestamp });
         user.jid = remoteJid; 
     } else {
@@ -231,7 +225,6 @@ const handleMessage = async (sock, msg) => {
     }
 
     if (user.blocked) return;
-
     const cleanText = text.toLowerCase();
 
     // PALABRAS CLAVE
@@ -273,14 +266,35 @@ const handleMessage = async (sock, msg) => {
         user = getUser(dbKey); 
         nextStepId = currentConfig.next_step;
     }
+    
+    // MENÚ INTELIGENTE
     else if (currentConfig.type === 'menu') {
         const match = currentConfig.options?.find(opt => {
-            const triggerLimpio = opt.trigger.replace(/[^0-9a-zA-Z]/g, '');
-            return cleanText === opt.trigger.toLowerCase() || cleanText === triggerLimpio.toLowerCase() || cleanText.includes(opt.label.toLowerCase());
+            const t = opt.trigger.toLowerCase(); 
+            const l = opt.label.toLowerCase();   
+            const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, ''); 
+
+            if (cleanText === t) return true;       
+            if (cleanText === tLimpio) return true; 
+            if (cleanText === l) return true;       
+            
+            if (cleanText.length > 3 && l.includes(cleanText)) return true;
+            if (cleanText.length > 3 && cleanText.includes(l)) return true;
+
+            return false;
         });
-        if (match) nextStepId = match.next_step;
-        else await sock.sendMessage(remoteJid, { text: "❌ Opción no válida." });
+
+        if (match) {
+            nextStepId = match.next_step;
+        } else {
+            let helpText = "⚠️ No entendí tu respuesta.\n\nPor favor, escribe una de estas opciones:\n";
+            currentConfig.options.forEach(opt => {
+                helpText += `👉 *${opt.trigger}* o *${opt.label}*\n`;
+            });
+            await sock.sendMessage(remoteJid, { text: helpText });
+        }
     }
+
     else if (currentConfig.type === 'message') {
         nextStepId = currentConfig.next_step;
     }
