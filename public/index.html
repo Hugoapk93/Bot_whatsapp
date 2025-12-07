@@ -34,7 +34,7 @@
         .menu-item:hover { background: #fee2e2; color: var(--primary); }
         .menu-item.active { background: #fef2f2; color: var(--primary); font-weight: 600; border-left: 4px solid var(--primary); }
         
-        .badge-count { background: var(--primary); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; position: absolute; right: 10px; display: none; animation: pulse 2s infinite; box-shadow: 0 2px 5px rgba(218,41,28,0.4); }
+        .badge-count { background: var(--primary); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; position: absolute; right: 10px; display: none; animation: pulse 2s infinite; box-shadow: 0 2px 5px (218,41,28,0.4); }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
         /* --- LAYOUT --- */
@@ -73,7 +73,7 @@
         .weekday { font-weight: 600; color: #94a3b8; font-size: 0.85rem; padding-bottom: 10px; }
         
         .day { 
-            height: 80px; /* Altura de cada día */
+            height: 80px; 
             border: 1px solid #e2e8f0; 
             border-radius: 8px; 
             padding: 5px; 
@@ -173,7 +173,7 @@
             .act-table td { border: none; padding: 5px 0; position: relative; }
         }
 
-        /* --- ESTILOS NUEVOS PARA EL WIZARD DE CONEXIÓN --- */
+        /* --- ESTILOS WIZARD DE CONEXIÓN --- */
         #setupWizard {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #f8fafc; z-index: 9999; display: flex;
@@ -202,7 +202,6 @@
             background: transparent; color: #64748b; margin-top: 10px;
         }
         #mainApp { width: 100%; height: 100%; display: flex; transition: filter 0.3s; }
-
     </style>
 </head>
 <body>
@@ -246,6 +245,7 @@
     </div>
     <!-- 👆 FIN DEL WIZARD 👆 -->
 
+
     <!-- CONTENEDOR PRINCIPAL DEL CRM -->
     <div id="mainApp">
 
@@ -269,228 +269,223 @@
             </div>
         </div>
 
-        <!-- ... (AQUÍ VA TODO EL RESTO DE TU HTML: Vistas, Modales, Contenido) ... -->
-        <!-- IMPORTANTE: Pega aquí los divs que ya tenías: dayModal, contactModal, content, editorModal... -->
-        <!-- Solo estoy resumiendo para no hacer el mensaje eterno, pero TÚ MANTÉN TU CONTENIDO ORIGINAL AQUÍ ABAJO -->
-
         <div class="modal" id="dayModal">
-            <!-- ... Tu modal de día ... -->
-             <div class="sheet" style="height: 85vh; max-height: 85vh; display:flex; flex-direction:column;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:10px; margin-bottom:10px;">
-                <div>
-                    <h3 id="modalDateTitle" style="margin:0; color:var(--primary);">Detalles del Día</h3>
-                    <small id="modalDateSubtitle" style="color:#64748b;"></small>
+            <div class="sheet" style="height: 85vh; max-height: 85vh; display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:10px; margin-bottom:10px;">
+                    <div>
+                        <h3 id="modalDateTitle" style="margin:0; color:var(--primary);">Detalles del Día</h3>
+                        <small id="modalDateSubtitle" style="color:#64748b;"></small>
+                    </div>
+                    <button onclick="closeDayModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#94a3b8;">&times;</button>
                 </div>
-                <button onclick="closeDayModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#94a3b8;">&times;</button>
-            </div>
 
-            <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:15px;">
-                <div id="modalApptList"></div>
+                <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:15px;">
+                    <div id="modalApptList"></div>
 
-                <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:12px; background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
-                    <i class="fas fa-plus"></i> Agregar Evento / Nota
-                </button>
+                    <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:12px; background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <i class="fas fa-plus"></i> Agregar Evento / Nota
+                    </button>
 
-                <div id="eventForm" style="display:none; background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
-                    <h4 style="margin:0 0 10px 0; color:#334155;">📝 Editar Evento</h4>
-                    <input type="hidden" id="evtOldTime"> 
-                    
-                    <label style="font-size:0.8rem; font-weight:bold;">Horario</label>
-                    <input type="time" id="evtTime" style="background:white;">
+                    <div id="eventForm" style="display:none; background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
+                        <h4 style="margin:0 0 10px 0; color:#334155;">📝 Editar Evento</h4>
+                        <input type="hidden" id="evtOldTime"> 
+                        
+                        <label style="font-size:0.8rem; font-weight:bold;">Horario</label>
+                        <input type="time" id="evtTime" style="background:white;">
 
-                    <label style="font-size:0.8rem; font-weight:bold;">Título / Nombre</label>
-                    <input type="text" id="evtName" placeholder="Ej: Juan Pérez o 'Comida'" style="background:white;">
+                        <label style="font-size:0.8rem; font-weight:bold;">Título / Nombre</label>
+                        <input type="text" id="evtName" placeholder="Ej: Juan Pérez o 'Comida'" style="background:white;">
 
-                    <label style="font-size:0.8rem; font-weight:bold;">Teléfono (Opcional)</label>
-                    <input type="text" id="evtPhone" placeholder="Solo números" style="background:white;">
+                        <label style="font-size:0.8rem; font-weight:bold;">Teléfono (Opcional)</label>
+                        <input type="text" id="evtPhone" placeholder="Solo números" style="background:white;">
 
-                    <label style="font-size:0.8rem; font-weight:bold;">Nota / Descripción</label>
-                    <textarea id="evtNote" rows="2" placeholder="Detalles extra..." style="background:white; margin-bottom:10px;"></textarea>
+                        <label style="font-size:0.8rem; font-weight:bold;">Nota / Descripción</label>
+                        <textarea id="evtNote" rows="2" placeholder="Detalles extra..." style="background:white; margin-bottom:10px;"></textarea>
 
-                    <div style="display:flex; gap:10px;">
-                        <button onclick="saveEvent()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer;">Guardar</button>
-                        <button onclick="hideEventForm()" style="padding:10px; background:#e2e8f0; color:#475569; border:none; border-radius:6px; cursor:pointer;">Cancelar</button>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="saveEvent()" style="flex:1; padding:10px; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer;">Guardar</button>
+                            <button onclick="hideEventForm()" style="padding:10px; background:#e2e8f0; color:#475569; border:none; border-radius:6px; cursor:pointer;">Cancelar</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
 
         <div class="modal" id="contactModal">
-            <!-- ... Tu modal de contacto ... -->
-             <div class="sheet" style="height: auto;">
-            <h3 style="margin-top:0; color:var(--primary);">Agregar Contacto</h3>
-    
-            <label>Nombre</label>
-            <input type="text" id="newContName" placeholder="Ej: Cliente Nuevo">
-    
-            <label>Teléfono (Solo números)</label>
-            <input type="tel" id="newContPhone" placeholder="Ej: 5218991234567">
-    
-            <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin:15px 0; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:600; color:#475569;">¿Bot Activado?</span>
-                <label class="switch" style="position:relative; display:inline-block; width:40px; height:24px;">
-                    <input type="checkbox" id="newContEnable" checked style="opacity:0; width:0; height:0;">
-                    <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
-                    <span class="slider-ball" style="position:absolute; content:''; height:16px; width:16px; left:4px; bottom:4px; background-color:white; transition:.4s; border-radius:50%;"></span>
-                </label>
-            </div>
+            <div class="sheet" style="height: auto;">
+                <h3 style="margin-top:0; color:var(--primary);">Agregar Contacto</h3>
+        
+                <label>Nombre</label>
+                <input type="text" id="newContName" placeholder="Ej: Cliente Nuevo">
+        
+                <label>Teléfono (Solo números)</label>
+                <input type="tel" id="newContPhone" placeholder="Ej: 5218991234567">
+        
+                <div style="background:#f1f5f9; padding:15px; border-radius:8px; margin:15px 0; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:600; color:#475569;">¿Bot Activado?</span>
+                    <label class="switch" style="position:relative; display:inline-block; width:40px; height:24px;">
+                        <input type="checkbox" id="newContEnable" checked style="opacity:0; width:0; height:0;">
+                        <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:.4s; border-radius:34px;"></span>
+                        <span class="slider-ball" style="position:absolute; content:''; height:16px; width:16px; left:4px; bottom:4px; background-color:white; transition:.4s; border-radius:50%;"></span>
+                    </label>
+                </div>
 
-            <div style="display:flex; gap:10px;">
-                <button onclick="saveNewContact()" style="flex:1; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold;">Guardar</button>
-                <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:12px; background:#e2e8f0; color:#475569; border:none; border-radius:8px;">Cancelar</button>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="saveNewContact()" style="flex:1; padding:12px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold;">Guardar</button>
+                    <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:12px; background:#e2e8f0; color:#475569; border:none; border-radius:8px;">Cancelar</button>
+                </div>
             </div>
-        </div>
         </div>
 
         <div class="content">
-            <!-- ... Tu contenido (header, views...) ... -->
-             <div class="mobile-header">
-            <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.5rem;">☰</button>
-            <span id="pageTitle">FLUJO</span>
-            <div style="width:30px"></div>
-        </div>
-
-        <div id="view-flow" class="view active">
-            <div id="cy"></div>
-            <div class="flow-controls">
-                <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()+0.2)"><i class="fas fa-plus"></i></div>
-                <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)"><i class="fas fa-minus"></i></div>
-                <div class="ctrl-btn" onclick="cy.fit()"><i class="fas fa-compress-arrows-alt"></i></div>
+            <div class="mobile-header">
+                <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.5rem;">☰</button>
+                <span id="pageTitle">FLUJO</span>
+                <div style="width:30px"></div>
             </div>
-            <div class="fab" onclick="newStep()">+</div>
-        </div>
 
-        <div id="view-activity" class="view">
-            <div class="card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #f1f5f9; padding-bottom:15px;">
-                    <h3 style="margin:0;">Monitor en Vivo</h3>
-                    <span id="crmStatusBadge" class="status-badge closed"><i class="fas fa-circle" style="font-size:0.6rem"></i> CERRADO</span>
+            <div id="view-flow" class="view active">
+                <div id="cy"></div>
+                <div class="flow-controls">
+                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()+0.2)"><i class="fas fa-plus"></i></div>
+                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)"><i class="fas fa-minus"></i></div>
+                    <div class="ctrl-btn" onclick="cy.fit()"><i class="fas fa-compress-arrows-alt"></i></div>
                 </div>
-                <div style="overflow-x:auto;">
-                    <table class="act-table">
-                        <thead><tr><th>Cliente</th><th>Datos</th><th>Acciones</th></tr></thead>
-                        <tbody id="activityBody"></tbody>
-                    </table>
-                </div>
+                <div class="fab" onclick="newStep()">+</div>
             </div>
-            <button onclick="loadActivity(); showToast('Actualizando...')" style="width:100%; padding:15px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-weight:bold; cursor:pointer;">
-                <i class="fas fa-sync-alt"></i> Forzar Actualización
-            </button>
-        </div>
 
-        <div id="view-agenda" class="view">
-            <div class="card" style="height: 100%; display: flex; flex-direction: column;">
-                <div class="calendar-header">
-                    <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
-                    <h3 id="monthDisplay"></h3>
-                    <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
-                </div>
-
-                <div class="calendar-grid">
-                    <div class="weekday">Dom</div>
-                    <div class="weekday">Lun</div>
-                    <div class="weekday">Mar</div>
-                    <div class="weekday">Mié</div>
-                    <div class="weekday">Jue</div>
-                    <div class="weekday">Vie</div>
-                    <div class="weekday">Sáb</div>
-                </div>
-                
-                <div id="calendarDays" class="calendar-grid" style="flex: 1; margin-top: 10px;">
+            <div id="view-activity" class="view">
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #f1f5f9; padding-bottom:15px;">
+                        <h3 style="margin:0;">Monitor en Vivo</h3>
+                        <span id="crmStatusBadge" class="status-badge closed"><i class="fas fa-circle" style="font-size:0.6rem"></i> CERRADO</span>
                     </div>
+                    <div style="overflow-x:auto;">
+                        <table class="act-table">
+                            <thead><tr><th>Cliente</th><th>Datos</th><th>Acciones</th></tr></thead>
+                            <tbody id="activityBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <button onclick="loadActivity(); showToast('Actualizando...')" style="width:100%; padding:15px; background:white; color:var(--primary); border:1px solid var(--primary); border-radius:8px; font-weight:bold; cursor:pointer;">
+                    <i class="fas fa-sync-alt"></i> Forzar Actualización
+                </button>
             </div>
-        </div>
 
-        <div id="view-contacts" class="view">
-             <div class="card">
-                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                     <h3 style="margin:0;">Base de Datos</h3>
-                     <button onclick="openContactModal()" style="background:var(--success); color:white; border:none; width:35px; height:35px; border-radius:50%; font-size:1.2rem; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">+</button>
-                 </div>
-                 <input type="text" placeholder="🔍 Buscar por número..." oninput="delayedFilter(this.value)">
-                 <div id="contactsList" style="max-height: 60vh; overflow-y: auto;"></div>
-             </div>
-        </div>
+            <div id="view-agenda" class="view">
+                <div class="card" style="height: 100%; display: flex; flex-direction: column;">
+                    <div class="calendar-header">
+                        <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <h3 id="monthDisplay"></h3>
+                        <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                    </div>
 
-        <div id="view-sim" class="view" style="padding:10px;">
-            <div class="chat-container-wrapper">
-                <div class="chat-header">
-                    <span>Bot Test</span>
-                    <i class="fas fa-redo" onclick="restartSim()" style="cursor:pointer;" title="Reiniciar"></i>
-                </div>
-                <div class="chat-msgs" id="simMsgs"></div>
-                <div style="padding: 10px; background: #f0f2f5; display: flex; gap: 10px; align-items: center; border-top: 1px solid #ddd;">
-                    <input type="text" id="simInput" placeholder="Escribe..." style="margin:0; flex:1; border-radius:20px; border:none; padding:12px 20px;" onkeypress="if(event.key==='Enter') sendSim()">
-                    <button onclick="sendSim()" style="background:var(--primary); color:white; border:none; border-radius:50%; width:45px; height:45px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-paper-plane"></i></button>
+                    <div class="calendar-grid">
+                        <div class="weekday">Dom</div>
+                        <div class="weekday">Lun</div>
+                        <div class="weekday">Mar</div>
+                        <div class="weekday">Mié</div>
+                        <div class="weekday">Jue</div>
+                        <div class="weekday">Vie</div>
+                        <div class="weekday">Sáb</div>
+                    </div>
+                    
+                    <div id="calendarDays" class="calendar-grid" style="flex: 1; margin-top: 10px;">
+                        </div>
                 </div>
             </div>
-        </div>
-        
-        <div id="view-settings" class="view">
-            <div class="card" style="max-width: 600px; margin: 0 auto;">
-                <h3><i class="fas fa-store"></i> Horario</h3>
-                <div style="padding:15px; background:#fef2f2; border-radius:8px; margin-bottom:20px; border:1px solid #fecaca;">
-                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; color:var(--primary);">
-                        <input type="checkbox" id="schedActive" style="width:20px; height:20px; accent-color:var(--primary);"> Activar Restricción
-                    </label>
+
+            <div id="view-contacts" class="view">
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 style="margin:0;">Base de Datos</h3>
+                        <button onclick="openContactModal()" style="background:var(--success); color:white; border:none; width:35px; height:35px; border-radius:50%; font-size:1.2rem; cursor:pointer; box-shadow:0 4px 6px rgba(0,0,0,0.1);">+</button>
+                    </div>
+                    <input type="text" placeholder="🔍 Buscar por número..." oninput="delayedFilter(this.value)">
+                    <div id="contactsList" style="max-height: 60vh; overflow-y: auto;"></div>
                 </div>
-                <div style="display:flex; gap:15px; margin-bottom:15px;">
-                    <div style="flex:1"><label style="font-size:0.85rem;">Apertura</label><input type="time" id="schedStart"></div>
-                    <div style="flex:1"><label style="font-size:0.85rem;">Cierre</label><input type="time" id="schedEnd"></div>
-                </div>
-                <label>Mensaje "Cerrado"</label>
-                <textarea id="schedMsg" placeholder="Lo sentimos..." rows="4"></textarea>
-                <button onclick="saveSettings()" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; margin-top:15px; cursor:pointer;">Guardar Cambios</button>
             </div>
-        </div>
+
+            <div id="view-sim" class="view" style="padding:10px;">
+                <div class="chat-container-wrapper">
+                    <div class="chat-header">
+                        <span>Bot Test</span>
+                        <i class="fas fa-redo" onclick="restartSim()" style="cursor:pointer;" title="Reiniciar"></i>
+                    </div>
+                    <div class="chat-msgs" id="simMsgs"></div>
+                    <div style="padding: 10px; background: #f0f2f5; display: flex; gap: 10px; align-items: center; border-top: 1px solid #ddd;">
+                        <input type="text" id="simInput" placeholder="Escribe..." style="margin:0; flex:1; border-radius:20px; border:none; padding:12px 20px;" onkeypress="if(event.key==='Enter') sendSim()">
+                        <button onclick="sendSim()" style="background:var(--primary); color:white; border:none; border-radius:50%; width:45px; height:45px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="view-settings" class="view">
+                <div class="card" style="max-width: 600px; margin: 0 auto;">
+                    <h3><i class="fas fa-store"></i> Horario</h3>
+                    <div style="padding:15px; background:#fef2f2; border-radius:8px; margin-bottom:20px; border:1px solid #fecaca;">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; color:var(--primary);">
+                            <input type="checkbox" id="schedActive" style="width:20px; height:20px; accent-color:var(--primary);"> Activar Restricción
+                        </label>
+                    </div>
+                    <div style="display:flex; gap:15px; margin-bottom:15px;">
+                        <div style="flex:1"><label style="font-size:0.85rem;">Apertura</label><input type="time" id="schedStart"></div>
+                        <div style="flex:1"><label style="font-size:0.85rem;">Cierre</label><input type="time" id="schedEnd"></div>
+                    </div>
+                    <label>Mensaje "Cerrado"</label>
+                    <textarea id="schedMsg" placeholder="Lo sentimos..." rows="4"></textarea>
+                    <button onclick="saveSettings()" style="width:100%; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; margin-top:15px; cursor:pointer;">Guardar Cambios</button>
+                </div>
+            </div>
         </div>
 
         <div class="modal" id="editorModal">
-             <div class="sheet">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:15px; margin-bottom:15px;">
-                <h3 style="margin:0; color:var(--primary);">Editar Paso</h3>
-                <button onclick="closeEditor()" style="background:none; border:none; font-size:1.2rem; color:#94a3b8; cursor:pointer;">✕</button>
-            </div>
-            <div style="flex:1; overflow-y:auto; padding-right:5px;">
-                <input type="hidden" id="stId">
-                <label style="font-weight:600; font-size:0.85rem; color:#64748b;">Tipo</label>
-                <select id="stType" onchange="renderFields()">
-                    <option value="menu">MENÚ</option>
-                    <option value="filtro">FILTRO (Admin)</option>
-                    <option value="input">PREGUNTA</option>
-                    <option value="message">MENSAJE</option>
-                    <option value="cita">CITA (Agendar)</option>
-                </select>
-            
-                <div id="wrapper-msg" style="margin-top:10px;">
-                    <label style="font-weight:600; font-size:0.85rem; color:#64748b; display:block;">Mensaje Bot</label>
-                    <textarea id="stMsg" rows="3"></textarea>
+            <div class="sheet">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f1f5f9; padding-bottom:15px; margin-bottom:15px;">
+                    <h3 style="margin:0; color:var(--primary);">Editar Paso</h3>
+                    <button onclick="closeEditor()" style="background:none; border:none; font-size:1.2rem; color:#94a3b8; cursor:pointer;">✕</button>
                 </div>
-            
-                <div id="wrapper-media" style="background: #f8fafc; padding: 10px; border-radius: 8px; margin: 10px 0; border: 1px dashed #cbd5e1;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <label style="margin:0; font-size:0.8rem; font-weight:600; color:#64748b;">Galería de Imágenes</label>
-                        <span id="imgCount" style="font-size:0.75rem; color:#64748b; background:#e2e8f0; padding:2px 6px; border-radius:4px;">0 fotos</span>
+                <div style="flex:1; overflow-y:auto; padding-right:5px;">
+                    <input type="hidden" id="stId">
+                    <label style="font-weight:600; font-size:0.85rem; color:#64748b;">Tipo</label>
+                    <select id="stType" onchange="renderFields()">
+                        <option value="menu">MENÚ</option>
+                        <option value="filtro">FILTRO (Admin)</option>
+                        <option value="input">PREGUNTA</option>
+                        <option value="message">MENSAJE</option>
+                        <option value="cita">CITA (Agendar)</option>
+                    </select>
+                
+                    <div id="wrapper-msg" style="margin-top:10px;">
+                        <label style="font-weight:600; font-size:0.85rem; color:#64748b; display:block;">Mensaje Bot</label>
+                        <textarea id="stMsg" rows="3"></textarea>
                     </div>
-                    
-                    <div id="galleryContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; min-height:0;"></div>
+                
+                    <div id="wrapper-media" style="background: #f8fafc; padding: 10px; border-radius: 8px; margin: 10px 0; border: 1px dashed #cbd5e1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <label style="margin:0; font-size:0.8rem; font-weight:600; color:#64748b;">Galería de Imágenes</label>
+                            <span id="imgCount" style="font-size:0.75rem; color:#64748b; background:#e2e8f0; padding:2px 6px; border-radius:4px;">0 fotos</span>
+                        </div>
+                        
+                        <div id="galleryContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; min-height:0;"></div>
 
-                    <label class="upload-btn" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; background:white; border:1px solid #e2e8f0; border-radius:6px; font-size:0.85rem; cursor:pointer; color:#475569; transition:0.2s;">
-                        <i class="fas fa-images" style="color:var(--primary);"></i> 
-                        <span id="uploadText">Agregar Imágenes</span>
-                        <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
-                    </label>
+                        <label class="upload-btn" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; background:white; border:1px solid #e2e8f0; border-radius:6px; font-size:0.85rem; cursor:pointer; color:#475569; transition:0.2s;">
+                            <i class="fas fa-images" style="color:var(--primary);"></i> 
+                            <span id="uploadText">Agregar Imágenes</span>
+                            <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
+                        </label>
+                    </div>
+                    <div id="dynFields"></div>
                 </div>
-                <div id="dynFields"></div>
+                <div style="margin-top:20px; display:flex; gap:10px;">
+                    <button onclick="saveStep()" style="flex:1; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Guardar</button>
+                    <button onclick="delStep()" style="width:50px; background:#fee2f2; color:var(--primary); border:none; border-radius:8px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                </div>
             </div>
-            <div style="margin-top:20px; display:flex; gap:10px;">
-                <button onclick="saveStep()" style="flex:1; padding:15px; background:var(--primary); color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">Guardar</button>
-                <button onclick="delStep()" style="width:50px; background:#fee2f2; color:var(--primary); border:none; border-radius:8px; cursor:pointer;"><i class="fas fa-trash"></i></button>
-            </div>
-        </div>
         </div>
     </div>
+    <!-- FIN CONTENEDOR PRINCIPAL DEL CRM -->
+
 
     <!-- SCRIPT PRINCIPAL -->
     <script>
@@ -502,7 +497,7 @@
             // Verificar si hay sesión ANTES de cargar el CRM
             await checkAuthStatus();
             
-            // Iniciar componentes CRM
+            // Iniciar componentes CRM (SOLO si auth check pasó o falló y seguimos adelante)
             loadAll(); 
             setInterval(loadActivity, 8000); 
         };
@@ -513,7 +508,7 @@
                 const data = await res.json();
                 
                 if (!data.sessionExists && !data.isConnected) {
-                    // Si no hay sesión, MOSTRAR Wizard y ocultar CRM
+                    // Si no hay sesión, MOSTRAR Wizard y deshabilitar CRM (blur en fondo)
                     document.getElementById('setupWizard').classList.remove('step-hidden');
                     document.getElementById('mainApp').style.filter = "blur(10px)";
                     document.getElementById('mainApp').style.pointerEvents = "none";
@@ -525,13 +520,21 @@
                     document.getElementById('mainApp').style.pointerEvents = "auto";
                     return true;
                 }
-            } catch (e) { console.error("Error auth", e); }
+            } catch (e) { 
+                console.error("Error al verificar estado de Auth. Asegúrate que PM2 esté corriendo el bot:", e);
+                // Si el bot no responde, asumimos que no hay sesión y mostramos el wizard.
+                document.getElementById('setupWizard').classList.remove('step-hidden');
+                document.getElementById('step2').classList.add('step-hidden');
+                document.getElementById('step1').classList.remove('step-hidden');
+                return false;
+            }
         }
 
         async function startPairing() {
             const phone = document.getElementById('inputPhone').value;
             if(!phone || phone.length < 10) return alert("Ingresa un número válido");
 
+            // UI: Transición a carga
             document.getElementById('step1').classList.add('step-hidden');
             document.getElementById('step2').classList.remove('step-hidden');
 
@@ -543,7 +546,7 @@
                     body: JSON.stringify({ phone })
                 });
 
-                // 2. Esperar código (Polling)
+                // 2. Esperar código (Polling: preguntar cada 2 segundos)
                 let attempts = 0;
                 const interval = setInterval(async () => {
                     attempts++;
@@ -556,19 +559,25 @@
                         document.getElementById('step2').classList.add('step-hidden');
                         document.getElementById('step3').classList.remove('step-hidden');
                     }
-                    if(attempts > 30) { clearInterval(interval); alert("Tiempo agotado"); location.reload(); }
+                    if(attempts > 30) { // Timeout de 60 segundos
+                        clearInterval(interval); 
+                        alert("Tiempo agotado. Intenta de nuevo."); 
+                        location.reload(); 
+                    }
                 }, 2000);
 
-            } catch(e) { alert("Error"); location.reload(); }
+            } catch(e) { alert("Error al iniciar vinculación"); location.reload(); }
         }
 
         function formatCode(code) {
             if(!code) return "----";
+            // Asume 6 dígitos (XXXXXX -> XXX - XXX) o 8 (XXXX - XXXX)
+            if (code.length === 6) return code.slice(0, 3) + " - " + code.slice(3);
             return code.slice(0,4) + " - " + code.slice(4);
         }
 
         async function resetSession() {
-            if(!confirm("¿Cancelar proceso?")) return;
+            if(!confirm("¿Deseas cancelar el proceso y borrar la sesión actual?")) return;
             await fetch('/api/auth/reset', { method: 'POST' });
             location.reload();
         }
@@ -576,13 +585,15 @@
         async function checkConnection() {
             const res = await fetch('/api/auth/status');
             const data = await res.json();
+            
             if(data.isConnected || data.sessionExists) {
-                alert("✅ Conectado Correctamente");
-                location.reload();
+                alert("✅ Conexión Exitosa. El CRM se reiniciará para cargar los datos.");
+                location.reload(); 
             } else {
-                alert("Aún no detecto la conexión en WhatsApp. Inténtalo de nuevo.");
+                alert("Aún no detecto la conexión en WhatsApp. Asegúrate de haber escrito el código y espera unos segundos.");
             }
         }
+
 
         // --- GLOBALES ---
         let flow={}, users=[];
@@ -598,13 +609,6 @@
         const emojis = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
         const delayedFilter = debounce(filterContacts, 300);
-
-        // --- INICIO ---
-        window.onload = () => {
-            loadAll();
-            // Polling cada 8 segundos para actualizar monitor
-            setInterval(loadActivity, 8000); 
-        };
 
         // --- FUNCIÓN DEBOUCE ---
         function debounce(func, delay) {
@@ -819,20 +823,13 @@
         // --- FUNCIÓN DE COPIADO COMPATIBLE CON HTTP (HACK) ---
         function copyToClip(text) {
             if (!text) return showToast("Nada que copiar", "error");
-
-            // 1. Creamos un campo de texto invisible temporal
             const textArea = document.createElement("textarea");
             textArea.value = text;
-            
-            // 2. Lo hacemos parte de la página pero invisible
             textArea.style.position = "fixed"; 
             textArea.style.left = "-9999px";
             document.body.appendChild(textArea);
-            
-            // 3. Seleccionamos el texto y copiamos
             textArea.focus();
             textArea.select();
-            
             try {
                 const successful = document.execCommand('copy');
                 if(successful) showToast("Copiado: " + text);
@@ -841,8 +838,6 @@
                 console.error('Error copiando', err);
                 showToast("Error de navegador", "error");
             }
-            
-            // 4. Borramos el campo temporal
             document.body.removeChild(textArea);
         }
 
@@ -924,8 +919,6 @@
             });
             
             // 2. CONFIGURACIÓN DINÁMICA DEL LAYOUT
-            // Si tenemos una posición guardada, desactivamos el 'fit' y la animación
-            // para que el usuario no sienta que el diagrama se "reinicia".
             const layoutConfig = { 
                 name: 'dagre', 
                 rankDir: 'LR', 
@@ -934,7 +927,6 @@
                 ranker: 'network-simplex', 
                 align: 'UL',
                 
-                // CLAVE: Solo animar y ajustar si NO hay zoom guardado (primera carga)
                 animate: !savedZoom, 
                 animationDuration: 800,
                 fit: !savedZoom 
@@ -1267,7 +1259,6 @@
         function addOpt() { 
             const div = document.createElement('div'); 
             div.className='row'; 
-            // Ajustamos gap y margin para que coincida con el estilo moderno
             div.style.cssText="display:flex; gap:8px; margin-bottom:8px;"; 
 
             const selectStyle = `width:40%; padding:12px; border-radius:8px; border:1px solid #cbd5e1; background-color:#ffffff; font-size:0.95rem; color:#334155; outline:none; box-shadow:0 1px 2px rgba(0,0,0,0.05); appearance:none; background-image:url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23334155%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E'); background-repeat:no-repeat; background-position:right 12px top 50%; background-size:10px auto;`;
@@ -1342,7 +1333,7 @@
 
             let finalHtml = '';
 
-            // --- CORRECCIÓN: SOPORTE VISUAL PARA MÚLTIPLES IMÁGENES ---
+            // --- SOPORTE VISUAL PARA MÚLTIPLES IMÁGENES ---
             if (Array.isArray(s.media)) {
                 // Si es un array (galería), mostramos todas
                 s.media.forEach(url => {
