@@ -698,7 +698,7 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-// --- RENDERIZADO DEL FLUJO (Rendimiento Optimizado y Estricto) ---
+// --- RENDERIZADO DEL FLUJO (Rendimiento Óptimo y Rigidez Estructural) ---
         function renderFlow() {
             if (cy) try { cy.destroy(); } catch(e){}
             let elements = [];
@@ -731,7 +731,7 @@
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 
-                // Bordes para identificar tipo (colores suaves)
+                // Estilos de borde según tipo (Colores de contraste, pero fondo blanco)
                 let borderColor = '#d4d4d8';
                 if(s.type === 'menu') borderColor = '#2563eb';
                 else if(s.type === 'filtro') borderColor = '#9333ea';
@@ -763,9 +763,9 @@
                 elements: elements,
                 
                 // --- AJUSTES DE RENDIMIENTO DEL MOTOR ---
-                autolock: true, // 🔒 Nodos fijos (no se pueden mover)
-                textureOnViewport: true, // Dibuja más rápido al hacer zoom/pan
-                pixelRatio: 1, // Baja resolución durante el movimiento para evitar el lag
+                autolock: true, // 🔒 CLAVE: Los nodos no se pueden mover ni arrastrar
+                textureOnViewport: true, // Mejora el rendimiento al hacer zoom
+                pixelRatio: 1, // Calidad estándar para renderizado rápido
                 
                 userPanningEnabled: true,
                 userZoomingEnabled: true,
@@ -776,7 +776,7 @@
                 wheelSensitivity: 0.1,
 
                 style: [
-                    // NODOS: Blancos, Alto Contraste
+                    // NODOS: Blancos, Fijos, Alto Contraste
                     { selector: 'node', style: {
                         'background-color': '#ffffff',
                         'label': 'data(label)',
@@ -797,12 +797,12 @@
                         'shadow-offset-y': 2
                     } },
 
-                    // LÍNEAS: Curvas suaves y color neutro (mejor rendimiento)
+                    // LÍNEAS: Curvas y color neutro (para priorizar rendimiento)
                     { selector: 'edge', style: {
                         'width': 2,
-                        'line-color': '#71717a', // Gris neutro (evita sobrecarga por color)
+                        'line-color': '#71717a', // Color neutro para mejor rendimiento
                         'target-arrow-color': '#71717a',
-                        'curve-style': 'bezier', // Curva simple y rápida
+                        'curve-style': 'bezier', // Curva suave (rápida de calcular)
                         'target-arrow-shape': 'triangle',
                         'arrow-scale': 1.2,
                         'label': 'data(label)',
@@ -823,28 +823,28 @@
                     }}
                 ],
 
-                // --- MOTOR KLAY (Optimizado para Velocidad y Jerarquía) ---
+                // --- MOTOR KLAY (Configuración Estricta y Rápida) ---
                 layout: {
                     name: 'klay',
                     nodeDimensionsIncludeLabels: true,
                     fit: true,
                     padding: 50,
                     
-                    // 🚨 CLAVE DE RENDIMIENTO: Animar solo al final del cálculo
+                    // Aseguramos que el cálculo sea rápido
                     animate: 'end', 
-                    animationDuration: 500, 
+                    animationDuration: 500,
                     
                     klay: {
-                        direction: 'RIGHT',
+                        direction: 'RIGHT', 
                         spacing: 50,
-                        thoroughness: 7, // 🔴 OPTIMIZACIÓN: Reducir la precisión a 7/10
+                        thoroughness: 7, // 🎯 CLAVE DE RENDIMIENTO: Precisión reducida para evitar congelamiento
                         
-                        // Estas opciones fuerzan la jerarquía y el ruteo de líneas largas:
-                        nodeLayering: 'NETWORK_SIMPLEX', // Mantiene la jerarquía estricta (crecimiento izquierda-derecha)
-                        cycleBreaking: 'GREEDY', // Fuerza a las líneas de reciclaje a ir por fuera
-                        edgeRouting: 'SPLINES', // Líneas curvas que se estiran limpiamente
+                        // Estas opciones fuerzan que los nodos mantengan su posición jerárquica:
+                        nodeLayering: 'NETWORK_SIMPLEX', // Organiza en columnas estrictas
+                        cycleBreaking: 'GREEDY', // CLAVE para ruteo externo de líneas de reciclaje
+                        edgeRouting: 'SPLINES', // Líneas que se estiran limpiamente
                         crossMinimization: 'LAYER_SWEEP', 
-                        fixedAlignment: 'BALANCED'
+                        fixedAlignment: 'BALANCED' 
                     }
                 }
             });
