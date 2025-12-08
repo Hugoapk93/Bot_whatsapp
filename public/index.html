@@ -309,7 +309,16 @@
             <h2 style="color:var(--text-main); margin-top:0;">Iniciando Sistema</h2>
             <p style="color:var(--text-muted); font-size:0.9rem;">Estableciendo conexión segura...</p>
             <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--text-muted); margin-top:20px;"></i>
+            
+            <!-- BOTÓN DE ESCAPE SI SE QUEDA PEGADO -->
+            <div style="margin-top: 25px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">¿Tarda demasiado?</p>
+                <button onclick="resetSession()" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; width: 100%;">
+                    <i class="fas fa-power-off"></i> Forzar Reinicio / Cerrar Sesión
+                </button>
+            </div>
         </div>
+
         <div id="stepQR" class="wizard-card step-hidden">
             <h2 style="color:var(--text-main); margin-top:0;">Vincular Dispositivo</h2>
             <p style="color:var(--text-muted); font-size:0.85rem;">Escanea el código QR desde WhatsApp en tu móvil.</p>
