@@ -698,30 +698,60 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-// --- RENDERIZADO DEL FLUJO (Motor Klay Inteligente) ---
+// --- RENDERIZADO DEL FLUJO (Ordenado por Tamaño de Rama) ---
         function renderFlow() {
             if (cy) try { cy.destroy(); } catch(e){}
             let elements = [];
             if (!flow) return;
 
+            // 1. FUNCIÓN AUXILIAR: Calcular el "peso" de una rama (cuántos pasos tiene)
+            const memoWeights = {};
+            const getBranchWeight = (startNodeId, visited = new Set()) => {
+                if (!startNodeId || !flow[startNodeId]) return 0;
+                if (visited.has(startNodeId)) return 0; // Evitar ciclos infinitos
+                if (memoWeights[startNodeId] !== undefined) return memoWeights[startNodeId];
+                
+                visited.add(startNodeId);
+                const step = flow[startNodeId];
+                let weight = 1; // El nodo en sí vale 1
+
+                if (step.options) {
+                    step.options.forEach(o => {
+                        weight += getBranchWeight(o.next_step, new Set(visited));
+                    });
+                } else if (step.next_step) {
+                    weight += getBranchWeight(step.next_step, new Set(visited));
+                }
+
+                memoWeights[startNodeId] = weight;
+                return weight;
+            };
+
+            // 2. GENERACIÓN DE ELEMENTOS CON ORDENAMIENTO
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 
-                // Color del borde según tipo (sutil pero informativo)
-                let borderColor = '#e4e4e7'; // Gris suave por defecto
-                let labelPrefix = '';
-
-                if(s.type === 'menu') { borderColor = '#2563eb'; labelPrefix = 'ME'; }
-                else if(s.type === 'filtro') { borderColor = '#9333ea'; labelPrefix = 'IF'; }
-                else if(s.type === 'input') { borderColor = '#ea580c'; labelPrefix = 'IN'; }
-                else if(s.type === 'cita') { borderColor = '#db2777'; labelPrefix = 'AG'; }
+                // Estilos de borde según tipo
+                let borderColor = '#e4e4e7'; 
+                if(s.type === 'menu') borderColor = '#2563eb';
+                else if(s.type === 'filtro') borderColor = '#9333ea';
+                else if(s.type === 'input') borderColor = '#ea580c';
+                else if(s.type === 'cita') borderColor = '#db2777';
                 
                 elements.push({ 
                     data: { id: k, label: k, border: borderColor } 
                 });
 
+                // AQUÍ ESTÁ LA MAGIA: Ordenar las conexiones antes de crearlas
                 if(s.options) {
-                    s.options.forEach(o => { 
+                    // Creamos una copia para no afectar el objeto original
+                    const sortedOptions = [...s.options].sort((a, b) => {
+                        const weightA = getBranchWeight(a.next_step);
+                        const weightB = getBranchWeight(b.next_step);
+                        return weightA - weightB; // Menor a Mayor (Pequeños arriba)
+                    });
+
+                    sortedOptions.forEach(o => { 
                         if(o.next_step) elements.push({ 
                             data: { source: k, target: o.next_step, label: o.label || o.trigger } 
                         }); 
@@ -735,20 +765,19 @@
                 container: document.getElementById('cy'), 
                 elements: elements,
                 
-                // --- CONFIGURACIÓN DE ZOOM INTELIGENTE ---
-                minZoom: 0.2, // Permite ver todo el mapa de lejos
-                maxZoom: 3.0, // Permite ver detalles de cerca
-                wheelSensitivity: 0.1, // Zoom suave
+                minZoom: 0.2,
+                maxZoom: 3.0,
+                wheelSensitivity: 0.1,
 
                 style: [ 
-                    // NODOS: Estilo Tarjeta Blanca (High Contrast)
+                    // NODOS (Estilo Tarjeta Blanca)
                     { selector: 'node', style: { 
                         'background-color': '#ffffff', 
                         'label': 'data(label)', 
-                        'color': '#09090b', // Negro casi puro
+                        'color': '#09090b', 
                         'shape': 'round-rectangle', 
                         'width': 'label', 
-                        'height': 50, // Altura fija elegante
+                        'height': 50, 
                         'padding': '20px', 
                         'text-valign': 'center', 
                         'text-halign': 'center', 
@@ -757,20 +786,20 @@
                         'font-weight': '600',
                         'border-width': 2, 
                         'border-color': 'data(border)',
-                        'border-opacity': 1,
-                        // Sombra para dar efecto de "flotar"
                         'shadow-blur': 12,
                         'shadow-color': '#000',
                         'shadow-opacity': 0.1,
                         'shadow-offset-y': 4
                     } }, 
                     
-                    // LÍNEAS: Curvas suaves que evitan colisiones
+                    // LÍNEAS (Curvas Bezier)
                     { selector: 'edge', style: { 
                         'width': 2, 
-                        'line-color': '#a1a1aa', // Gris medio
-                        'curve-style': 'bezier', // Curva inteligente
-                        'target-arrow-shape': 'triangle-backcurve', // Flecha moderna
+                        'line-color': '#a1a1aa', 
+                        'curve-style': 'unbundled-bezier', // Curva suave manual
+                        'control-point-distances': 20,     // Ligera curvatura
+                        'control-point-weights': 0.5,
+                        'target-arrow-shape': 'triangle-backcurve', 
                         'target-arrow-color': '#a1a1aa',
                         'arrow-scale': 1.2,
                         'label': 'data(label)', 
@@ -783,33 +812,31 @@
                         'text-rotation': 'autorotate' 
                     } },
 
-                    // ESTADO SELECCIONADO (Al hacer click)
                     { selector: ':selected', style: {
                         'border-width': 3,
-                        'border-color': '#000000', // Borde negro fuerte
-                        'background-color': '#f4f4f5',
+                        'border-color': '#000000',
                         'line-color': '#000000',
                         'target-arrow-color': '#000000',
                         'z-index': 9999
                     }}
                 ],
                 
-                // --- MOTOR KLAY (ORGANIZACIÓN INTELIGENTE) ---
+                // CONFIGURACIÓN KLAY OPTIMIZADA
                 layout: { 
                     name: 'klay', 
                     nodeDimensionsIncludeLabels: true,
                     fit: true,
                     padding: 50,
                     klay: {
-                        direction: 'RIGHT', // Flujo de Izquierda a Derecha
-                        spacing: 60,        // Espacio entre nodos hermanos
-                        thoroughness: 10,   // Precisión del algoritmo
-                        edgeRouting: 'ORTHOGONAL', // Intenta hacer rutas limpias
-                        fixedAlignment: 'BALANCED',
-                        nodeLayering: 'NETWORK_SIMPLEX', // Mejor distribución de capas
-                        // Esto ayuda a que las líneas de retorno vayan "por fuera"
-                        cycleBreaking: 'GREEDY', 
-                        crossingMinimization: 'LAYER_SWEEP'
+                        direction: 'RIGHT', 
+                        spacing: 40,        
+                        thoroughness: 20,   // Mayor precisión
+                        edgeRouting: 'SPLINES', // Curvas suaves calculadas
+                        cycleBreaking: 'GREEDY', // Importante: fuerza a los retornos a ir por fuera
+                        layoutHierarchy: true,
+                        // Estas opciones ayudan a respetar el orden de inserción (sort)
+                        fixedAlignment: 'NONE', 
+                        mergeEdges: false
                     }
                 }
             });
