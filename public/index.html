@@ -698,22 +698,22 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-// --- RENDERIZADO DEL FLUJO (Ordenado por Tamaño de Rama) ---
+// --- RENDERIZADO DEL FLUJO (Estricto, Fijo y Alto Contraste) ---
         function renderFlow() {
             if (cy) try { cy.destroy(); } catch(e){}
             let elements = [];
             if (!flow) return;
 
-            // 1. FUNCIÓN AUXILIAR: Calcular el "peso" de una rama (cuántos pasos tiene)
+            // 1. CÁLCULO DE PESOS (Para ordenar ramas pequeñas arriba)
             const memoWeights = {};
             const getBranchWeight = (startNodeId, visited = new Set()) => {
                 if (!startNodeId || !flow[startNodeId]) return 0;
-                if (visited.has(startNodeId)) return 0; // Evitar ciclos infinitos
+                if (visited.has(startNodeId)) return 0; 
                 if (memoWeights[startNodeId] !== undefined) return memoWeights[startNodeId];
                 
                 visited.add(startNodeId);
                 const step = flow[startNodeId];
-                let weight = 1; // El nodo en sí vale 1
+                let weight = 1; 
 
                 if (step.options) {
                     step.options.forEach(o => {
@@ -727,12 +727,12 @@
                 return weight;
             };
 
-            // 2. GENERACIÓN DE ELEMENTOS CON ORDENAMIENTO
+            // 2. GENERACIÓN DE ELEMENTOS
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 
-                // Estilos de borde según tipo
-                let borderColor = '#e4e4e7'; 
+                // Bordes sutiles para identificar tipo, fondo blanco manda
+                let borderColor = '#d4d4d8'; 
                 if(s.type === 'menu') borderColor = '#2563eb';
                 else if(s.type === 'filtro') borderColor = '#9333ea';
                 else if(s.type === 'input') borderColor = '#ea580c';
@@ -742,13 +742,10 @@
                     data: { id: k, label: k, border: borderColor } 
                 });
 
-                // AQUÍ ESTÁ LA MAGIA: Ordenar las conexiones antes de crearlas
                 if(s.options) {
-                    // Creamos una copia para no afectar el objeto original
+                    // Ordenamos: Ramas más ligeras arriba
                     const sortedOptions = [...s.options].sort((a, b) => {
-                        const weightA = getBranchWeight(a.next_step);
-                        const weightB = getBranchWeight(b.next_step);
-                        return weightA - weightB; // Menor a Mayor (Pequeños arriba)
+                        return getBranchWeight(a.next_step) - getBranchWeight(b.next_step);
                     });
 
                     sortedOptions.forEach(o => { 
@@ -765,16 +762,21 @@
                 container: document.getElementById('cy'), 
                 elements: elements,
                 
+                // --- PROHIBIDO ARRASTRAR NODOS (Solo Zoom y Pan) ---
+                autolock: true, 
+                userPanningEnabled: true,
+                userZoomingEnabled: true,
+                boxSelectionEnabled: false,
+
                 minZoom: 0.2,
                 maxZoom: 3.0,
-                wheelSensitivity: 0.1,
 
                 style: [ 
-                    // NODOS (Estilo Tarjeta Blanca)
+                    // NODOS: Blancos, limpios, fijos visualmente
                     { selector: 'node', style: { 
                         'background-color': '#ffffff', 
                         'label': 'data(label)', 
-                        'color': '#09090b', 
+                        'color': '#000000', 
                         'shape': 'round-rectangle', 
                         'width': 'label', 
                         'height': 50, 
@@ -782,46 +784,43 @@
                         'text-valign': 'center', 
                         'text-halign': 'center', 
                         'font-size': '12px', 
-                        'font-family': 'Inter, sans-serif',
-                        'font-weight': '600',
+                        'font-weight': '700',
                         'border-width': 2, 
                         'border-color': 'data(border)',
-                        'shadow-blur': 12,
+                        'shadow-blur': 5,
                         'shadow-color': '#000',
-                        'shadow-opacity': 0.1,
-                        'shadow-offset-y': 4
+                        'shadow-opacity': 0.2,
+                        'shadow-offset-y': 2
                     } }, 
                     
-                    // LÍNEAS (Curvas Bezier)
+                    // LÍNEAS: ROJAS Y CURVAS SUAVES
                     { selector: 'edge', style: { 
                         'width': 2, 
-                        'line-color': '#a1a1aa', 
-                        'curve-style': 'unbundled-bezier', // Curva suave manual
-                        'control-point-distances': 20,     // Ligera curvatura
-                        'control-point-weights': 0.5,
-                        'target-arrow-shape': 'triangle-backcurve', 
-                        'target-arrow-color': '#a1a1aa',
+                        'line-color': '#dc2626', // ROJO INTENSO (Red-600)
+                        'target-arrow-color': '#dc2626', // Flecha Roja
+                        'curve-style': 'bezier', // Curva natural (evita ángulos rectos tipo araña)
+                        'target-arrow-shape': 'triangle', 
                         'arrow-scale': 1.2,
                         'label': 'data(label)', 
                         'font-size': '10px', 
-                        'color': '#71717a', 
+                        'color': '#dc2626', // Texto rojo también
                         'text-background-opacity': 1, 
-                        'text-background-color': '#ffffff', 
-                        'text-background-padding': '4px',
+                        'text-background-color': '#ffffff', // Fondo blanco para leer texto sobre líneas
+                        'text-background-padding': '3px',
                         'text-background-shape': 'roundrectangle',
                         'text-rotation': 'autorotate' 
                     } },
 
+                    // Al seleccionar, se pone negro para resaltar
                     { selector: ':selected', style: {
-                        'border-width': 3,
+                        'border-width': 4,
                         'border-color': '#000000',
                         'line-color': '#000000',
-                        'target-arrow-color': '#000000',
-                        'z-index': 9999
+                        'target-arrow-color': '#000000'
                     }}
                 ],
                 
-                // CONFIGURACIÓN KLAY OPTIMIZADA
+                // --- MOTOR KLAY ESTRICTO ---
                 layout: { 
                     name: 'klay', 
                     nodeDimensionsIncludeLabels: true,
@@ -829,14 +828,21 @@
                     padding: 50,
                     klay: {
                         direction: 'RIGHT', 
-                        spacing: 40,        
-                        thoroughness: 20,   // Mayor precisión
+                        spacing: 50,        
+                        thoroughness: 10,
+                        
+                        // CLAVE PARA JERARQUÍA ESTRICTA (Evita efecto araña)
+                        // 'NETWORK_SIMPLEX' intenta mantener los nodos en capas verticales estrictas
+                        nodeLayering: 'NETWORK_SIMPLEX', 
+                        
+                        // CLAVE PARA QUE NO SE MUEVAN AL RECICLAR
+                        // Si un nodo se usa muchas veces, se queda en su capa lógica
+                        cycleBreaking: 'GREEDY', 
+                        
+                        // Rutas de borde
                         edgeRouting: 'SPLINES', // Curvas suaves calculadas
-                        cycleBreaking: 'GREEDY', // Importante: fuerza a los retornos a ir por fuera
-                        layoutHierarchy: true,
-                        // Estas opciones ayudan a respetar el orden de inserción (sort)
-                        fixedAlignment: 'NONE', 
-                        mergeEdges: false
+                        crossMinimization: 'LAYER_SWEEP', // Reduce cruces
+                        fixedAlignment: 'BALANCED' // Mantiene el equilibrio vertical
                     }
                 }
             });
