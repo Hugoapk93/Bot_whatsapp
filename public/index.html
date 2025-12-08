@@ -7,14 +7,17 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Librerías Gráficas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    <!-- Librería para QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
         /* --- VARIABLES & RESET --- */
         :root { 
-            --primary: #da291c; /* Rojo Elektra */
+            --primary: #da291c; 
             --primary-dark: #b91d11;
             --dark: #1e293b; 
             --light: #f8fafc; 
@@ -34,7 +37,7 @@
         .menu-item:hover { background: #fee2e2; color: var(--primary); }
         .menu-item.active { background: #fef2f2; color: var(--primary); font-weight: 600; border-left: 4px solid var(--primary); }
         
-        .badge-count { background: var(--primary); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; position: absolute; right: 10px; display: none; animation: pulse 2s infinite; box-shadow: 0 2px 5px (218,41,28,0.4); }
+        .badge-count { background: var(--primary); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 20px; position: absolute; right: 10px; display: none; animation: pulse 2s infinite; box-shadow: 0 2px 5px rgba(218,41,28,0.4); }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
 
         /* --- LAYOUT --- */
@@ -102,22 +105,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        /* Modal de Detalles */
-        .appt-list { list-style: none; padding: 0; margin: 0; }
-        .appt-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #f1f5f9;
-        }
-        .appt-item:last-child { border-bottom: none; }
-        .appt-time { font-weight: bold; color: var(--primary); margin-right: 10px; }
-        .appt-name { font-weight: 600; font-size: 0.9rem; }
-        .btn-delete { color: #ef4444; background: #fee2e2; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; }
-        .btn-delete:hover { background: #fecaca; }
-
-        /* FLOW EDITOR */
+        /* --- FLOW EDITOR --- */
         #cy { 
             width: 100%; 
             height: 100%; 
@@ -133,12 +121,11 @@
             height: 100%;
             flex: 1;
         }
-
         .flow-controls { position: absolute; bottom: 30px; left: 30px; display: flex; gap: 10px; z-index: 10; }
         .ctrl-btn { width: 40px; height: 40px; background: white; border-radius: 50%; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid #e2e8f0; color: #64748b; }
         .fab { position: fixed; bottom: 30px; right: 30px; background: var(--primary); color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(218, 41, 28, 0.4); z-index: 150; font-size: 28px; transition: transform 0.2s; }
 
-        /* CHAT & MODALS */
+        /* --- CHAT & MODALS --- */
         .chat-container-wrapper { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #e5ddd5; border-radius: var(--radius); border: 1px solid #d1d7db; }
         .chat-header { padding: 15px; background: #008069; color: white; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
         .chat-msgs { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-blend-mode: soft-light; }
@@ -150,30 +137,27 @@
         @keyframes fadeModal { from { opacity: 0; } to { opacity: 1; } }
         .sheet { background: white; width: 100%; max-width: 500px; max-height: 90vh; border-radius: 16px; padding: 25px; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
 
-        /* TOASTS */
+        /* --- TOASTS --- */
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { background: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); display: flex; align-items: center; gap: 10px; font-size: 0.9rem; border-left: 4px solid var(--success); opacity: 0; transform: translateX(50px); animation: slideIn 0.3s forwards; pointer-events: auto; min-width: 250px; }
         .toast.error { border-left-color: var(--primary); }
         @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
 
-        /* INPUTS */
         input, select, textarea { width: 100%; padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 12px; font-size: 0.95rem; background: #f8fafc; }
 
-        /* MOBILE OPTIMIZATIONS */
         @media(max-width: 768px) { 
             .mobile-header { display: flex; }
             .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 2px 0 10px rgba(0,0,0,0.1); } 
             .sidebar.active { transform: translateX(0); } 
             .sheet { height: 95%; max-height: 95%; border-radius: 12px 12px 0 0; position: absolute; bottom: 0; max-width: 100%; }
             .modal { align-items: flex-end; }
-            /* Mobile Cards for Table */
             .act-table, .act-table thead, .act-table tbody, .act-table th, .act-table td, .act-table tr { display: block; }
             .act-table thead tr { position: absolute; top: -9999px; left: -9999px; }
             .act-table tr { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 10px; background: white; padding: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
             .act-table td { border: none; padding: 5px 0; position: relative; }
         }
 
-        /* --- ESTILOS WIZARD DE CONEXIÓN --- */
+        /* --- ESTILOS WIZARD QR --- */
         #setupWizard {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #f8fafc; z-index: 9999; display: flex;
@@ -182,26 +166,21 @@
         .step-hidden { display: none !important; }
         .wizard-card {
             background: white; padding: 40px; border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 90%; max-width: 450px;
         }
-        .code-display {
-            font-size: 2rem; letter-spacing: 5px; font-weight: bold;
-            color: var(--primary); background: #fee2e2; padding: 15px;
-            border-radius: 8px; margin: 20px 0; border: 2px dashed var(--primary);
+        .qr-container {
+            margin: 20px auto; padding: 15px; background: white;
+            border: 2px dashed #cbd5e1; border-radius: 12px; display: inline-block;
         }
-        .w-input {
-            width: 100%; padding: 15px; font-size: 1.2rem; text-align: center;
-            border: 2px solid #cbd5e1; border-radius: 8px; margin-bottom: 20px;
-        }
+        canvas#qrCanvas { width: 250px; height: 250px; }
+        
         .w-btn {
             width: 100%; padding: 15px; background: var(--primary); color: white;
             border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.2s;
         }
         .w-btn:hover { background: var(--primary-dark); }
-        .w-btn-sec {
-            background: transparent; color: #64748b; margin-top: 10px;
-        }
-        #mainApp { width: 100%; height: 100%; display: flex; transition: filter 0.3s; }
+        .w-btn-sec { background: transparent; color: #64748b; margin-top: 10px; border: 1px solid #e2e8f0; }
+
     </style>
 </head>
 <body>
@@ -209,38 +188,30 @@
     <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
     <div id="toast-container"></div>
 
-    <!-- 👇 WIZARD DE CONEXIÓN AUTOMÁTICA 👇 -->
+    <!-- 👇 WIZARD CON CÓDIGO QR (NUEVO) 👇 -->
     <div id="setupWizard" class="step-hidden">
         
-        <!-- PASO 1: Ingresar Teléfono -->
-        <div id="step1" class="wizard-card">
-            <h2 style="color:var(--dark)">📱 Conectar Negocio</h2>
-            <p style="color:#64748b; font-size:0.9rem;">Ingresa el número de WhatsApp (con código de país, ej: 521...)</p>
-            <input type="number" id="inputPhone" class="w-input" placeholder="5218991234567">
-            <button class="w-btn" onclick="startPairing()">Solicitar Código</button>
+        <!-- PANTALLA DE CARGA / ESPERA -->
+        <div id="stepLoading" class="wizard-card">
+            <h2 style="color:var(--dark)">🔄 Iniciando Bot</h2>
+            <p style="color:#64748b;">Generando sesión QR...</p>
+            <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--primary); margin-top:15px;"></i>
         </div>
 
-        <!-- PASO 2: Cargando -->
-        <div id="step2" class="wizard-card step-hidden">
-            <i class="fas fa-circle-notch fa-spin" style="font-size:3rem; color:var(--primary)"></i>
-            <h3 style="margin-top:20px;">Conectando...</h3>
-            <p style="color:#64748b;">Generando código de vinculación</p>
-        </div>
-
-        <!-- PASO 3: Mostrar Código -->
-        <div id="step3" class="wizard-card step-hidden">
-            <h3>🔢 Código de Vinculación</h3>
-            <p style="font-size:0.85rem; color:#64748b;">
-                1. Ve a WhatsApp en tu celular<br>
-                2. Menú > Dispositivos Vinculados > Vincular<br>
-                3. "Vincular con el número de teléfono"<br>
-                4. Escribe este código:
+        <!-- PANTALLA DEL QR -->
+        <div id="stepQR" class="wizard-card step-hidden">
+            <h2 style="color:var(--dark)">📱 Escanea el Código</h2>
+            <p style="color:#64748b; font-size:0.9rem;">
+                Abre WhatsApp > Menú > Dispositivos Vinculados > Vincular Dispositivo
             </p>
             
-            <div id="pairingCodeDisplay" class="code-display">----</div>
+            <div class="qr-container">
+                <canvas id="qrCanvas"></canvas>
+            </div>
             
-            <button class="w-btn" onclick="checkConnection()">✅ Ya lo ingresé</button>
-            <button class="w-btn w-btn-sec" onclick="resetSession()">❌ Cancelar / Reiniciar</button>
+            <p id="qrStatus" style="font-size:0.8rem; color:#94a3b8; margin-bottom:15px;">Esperando código QR...</p>
+
+            <button class="w-btn w-btn-sec" onclick="resetSession()">🔄 Generar Nuevo QR / Reiniciar</button>
         </div>
     </div>
     <!-- 👆 FIN DEL WIZARD 👆 -->
@@ -490,108 +461,89 @@
     <!-- SCRIPT PRINCIPAL -->
     <script>
         // ==========================================
-        // 🧙‍♂️ LÓGICA DEL WIZARD DE VINCULACIÓN
+        // 🧙‍♂️ LÓGICA DEL WIZARD QR
         // ==========================================
         
+        let pollingInterval = null;
+        let lastQr = '';
+
         window.onload = async () => {
-            // Verificar si hay sesión ANTES de cargar el CRM
-            await checkAuthStatus();
+            // Mostrar carga inicial del wizard
+            document.getElementById('setupWizard').classList.remove('step-hidden');
             
-            // Iniciar componentes CRM (SOLO si auth check pasó o falló y seguimos adelante)
+            // Iniciar ciclo de chequeo
+            startPolling();
+
+            // Iniciar componentes CRM en segundo plano
             loadAll(); 
             setInterval(loadActivity, 8000); 
         };
 
-        async function checkAuthStatus() {
-            try {
-                const res = await fetch('/api/auth/status');
-                const data = await res.json();
-                
-                if (!data.sessionExists && !data.isConnected) {
-                    // Si no hay sesión, MOSTRAR Wizard y deshabilitar CRM (blur en fondo)
-                    document.getElementById('setupWizard').classList.remove('step-hidden');
-                    document.getElementById('mainApp').style.filter = "blur(10px)";
-                    document.getElementById('mainApp').style.pointerEvents = "none";
-                    return false;
-                } else {
-                    // Si hay sesión, ocultar wizard
-                    document.getElementById('setupWizard').classList.add('step-hidden');
-                    document.getElementById('mainApp').style.filter = "none";
-                    document.getElementById('mainApp').style.pointerEvents = "auto";
-                    return true;
-                }
-            } catch (e) { 
-                console.error("Error al verificar estado de Auth. Asegúrate que PM2 esté corriendo el bot:", e);
-                // Si el bot no responde, asumimos que no hay sesión y mostramos el wizard.
-                document.getElementById('setupWizard').classList.remove('step-hidden');
-                document.getElementById('step2').classList.add('step-hidden');
-                document.getElementById('step1').classList.remove('step-hidden');
-                return false;
-            }
-        }
-
-        async function startPairing() {
-            const phone = document.getElementById('inputPhone').value;
-            if(!phone || phone.length < 10) return alert("Ingresa un número válido");
-
-            // UI: Transición a carga
-            document.getElementById('step1').classList.add('step-hidden');
-            document.getElementById('step2').classList.remove('step-hidden');
-
-            try {
-                // 1. Iniciar en backend
-                await fetch('/api/auth/init', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ phone })
-                });
-
-                // 2. Esperar código (Polling: preguntar cada 2 segundos)
-                let attempts = 0;
-                const interval = setInterval(async () => {
-                    attempts++;
+        function startPolling() {
+            if(pollingInterval) clearInterval(pollingInterval);
+            
+            pollingInterval = setInterval(async () => {
+                try {
                     const res = await fetch('/api/auth/status');
                     const data = await res.json();
 
-                    if (data.pairingCode && data.pairingCode !== "ERROR") {
-                        clearInterval(interval);
-                        document.getElementById('pairingCodeDisplay').innerText = formatCode(data.pairingCode);
-                        document.getElementById('step2').classList.add('step-hidden');
-                        document.getElementById('step3').classList.remove('step-hidden');
-                    }
-                    if(attempts > 30) { // Timeout de 60 segundos
-                        clearInterval(interval); 
-                        alert("Tiempo agotado. Intenta de nuevo."); 
-                        location.reload(); 
-                    }
-                }, 2000);
+                    if (data.isConnected) {
+                        // CASO 1: CONECTADO
+                        clearInterval(pollingInterval);
+                        document.getElementById('setupWizard').classList.add('step-hidden');
+                        document.getElementById('mainApp').style.filter = "none";
+                        document.getElementById('mainApp').style.pointerEvents = "auto";
+                        console.log("✅ Conectado");
+                    } 
+                    else if (data.qr) {
+                        // CASO 2: NECESITA ESCANEO (HAY QR)
+                        document.getElementById('stepLoading').classList.add('step-hidden');
+                        document.getElementById('stepQR').classList.remove('step-hidden');
+                        document.getElementById('mainApp').style.filter = "blur(5px)";
+                        document.getElementById('mainApp').style.pointerEvents = "none";
 
-            } catch(e) { alert("Error al iniciar vinculación"); location.reload(); }
+                        // Dibujar QR solo si cambió
+                        if (data.qr !== lastQr) {
+                            lastQr = data.qr;
+                            renderQR(data.qr);
+                            document.getElementById('qrStatus').innerText = "QR Actualizado. Escanea ahora.";
+                            document.getElementById('qrStatus').style.color = "var(--success)";
+                        }
+                    } 
+                    else {
+                        // CASO 3: CARGANDO / ESPERANDO QR (Inicia conexión si no hay)
+                        if (!data.sessionExists) {
+                             // Si no existe sesión, aseguramos que el back inicie
+                             fetch('/api/auth/init', { method: 'POST' });
+                        }
+                        document.getElementById('stepLoading').classList.remove('step-hidden');
+                        document.getElementById('stepQR').classList.add('step-hidden');
+                        document.getElementById('mainApp').style.filter = "blur(5px)";
+                    }
+
+                } catch (e) { console.error("Error polling", e); }
+            }, 2000); // Revisar cada 2 segundos
         }
 
-        function formatCode(code) {
-            if(!code) return "----";
-            // Asume 6 dígitos (XXXXXX -> XXX - XXX) o 8 (XXXX - XXXX)
-            if (code.length === 6) return code.slice(0, 3) + " - " + code.slice(3);
-            return code.slice(0,4) + " - " + code.slice(4);
+        function renderQR(qrString) {
+            const qr = new QRious({
+                element: document.getElementById('qrCanvas'),
+                value: qrString,
+                size: 250,
+                level: 'H'
+            });
         }
 
         async function resetSession() {
-            if(!confirm("¿Deseas cancelar el proceso y borrar la sesión actual?")) return;
-            await fetch('/api/auth/reset', { method: 'POST' });
-            location.reload();
-        }
+            if(!confirm("¿Reiniciar sesión del bot y generar nuevo QR?")) return;
+            document.getElementById('stepQR').classList.add('step-hidden');
+            document.getElementById('stepLoading').classList.remove('step-hidden');
+            lastQr = ''; // Resetear QR cache
 
-        async function checkConnection() {
-            const res = await fetch('/api/auth/status');
-            const data = await res.json();
-            
-            if(data.isConnected || data.sessionExists) {
-                alert("✅ Conexión Exitosa. El CRM se reiniciará para cargar los datos.");
-                location.reload(); 
-            } else {
-                alert("Aún no detecto la conexión en WhatsApp. Asegúrate de haber escrito el código y espera unos segundos.");
-            }
+            try {
+                await fetch('/api/auth/reset', { method: 'POST' });
+                // El polling seguirá corriendo y detectará el nuevo QR cuando llegue
+            } catch(e) { alert("Error al reiniciar"); }
         }
 
 
@@ -937,7 +889,7 @@
                     container: document.getElementById('cy'), 
                     elements: elements, 
                     
-                    autoungrabify: true,      
+                    autoungrabify: true,       
                     autounselectify: false,
                     boxSelectionEnabled: false,
                     wheelSensitivity: 0.2,
@@ -1077,9 +1029,11 @@
             let data = { type };
 
             // --- NUEVO: GUARDAR KEYWORDS ---
-            const kwInput = document.getElementById('stKeywords').value;
-            // Convertimos el texto "hola, adios" en un array ["hola", "adios"] limpiando espacios
-            data.keywords = kwInput.split(',').map(w => w.trim().toLowerCase()).filter(w => w !== '');
+            // Si el input existe (algunos tipos de paso podrían no tenerlo visible aún, pero renderFields lo maneja)
+            const kwInput = document.getElementById('stKeywords');
+            if (kwInput) {
+                data.keywords = kwInput.value.split(',').map(w => w.trim().toLowerCase()).filter(w => w !== '');
+            }
             
             if (type !== 'cita') {
                 data.message = document.getElementById('stMsg').value;
@@ -1265,7 +1219,6 @@
 
             let s = '<option value="">-- Seleccionar --</option>'; 
             
-            // CORRECCIÓN CLAVE: Agregamos .reverse() aquí también
             Object.keys(flow).reverse().forEach(k=> s+=`<option value="${k}">${k}</option>`); 
 
             div.innerHTML = `
