@@ -765,6 +765,7 @@
                 container: document.getElementById('cy'), 
                 elements: elements,
                 
+		autolock: true,
                 minZoom: 0.2,
                 maxZoom: 3.0,
                 wheelSensitivity: 0.1,
@@ -829,8 +830,8 @@
                     padding: 50,
                     klay: {
                         direction: 'RIGHT', 
-                        spacing: 40,        
-                        thoroughness: 20,   // Mayor precisión
+                        spacing: 50,        
+                        thoroughness: 7,   // Mayor precisión
                         edgeRouting: 'SPLINES', // Curvas suaves calculadas
                         cycleBreaking: 'GREEDY', // Importante: fuerza a los retornos a ir por fuera
                         layoutHierarchy: true,
