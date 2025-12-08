@@ -700,11 +700,15 @@
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
         function renderFlow() {
+            let savedPositions = {};
             let savedZoom = null;
             let savedPan = null;
-            
-            if (cy && typeof cy.zoom === 'function') {
+
+            if (cy && typeof cy.nodes === 'function') {
                 try {
+                    cy.nodes().forEach(n => {
+                        savedPositions[n.id()] = n.position();
+                    });
                     savedZoom = cy.zoom();
                     savedPan = cy.pan();
                 } catch(e) {}
@@ -712,95 +716,130 @@
             }
 
             let elements = [];
-            
             if (!flow || Object.keys(flow).length === 0) return;
 
-            Object.keys(flow).forEach(k => {
+            // Calcular profundidad para ordenar arriba (menos pasos) y abajo (más)
+            const depth = {};
+            const calcDepth = (id) => {
+                if (depth[id] !== undefined) return depth[id];
+                const s = flow[id];
+                if (!s) return depth[id] = 0;
+                const nexts = s.options?.map(o => o.next_step).filter(n => flow[n]) 
+                                || (s.next_step && [s.next_step]) 
+                                || [];
+                if (nexts.length === 0) return depth[id] = 0;
+                return depth[id] = 1 + Math.max(...nexts.map(calcDepth));
+            };
+
+            Object.keys(flow).forEach(calcDepth);
+
+            const sortedKeys = Object.keys(flow).sort((a,b) => depth[a] - depth[b]);
+
+            sortedKeys.forEach(k => {
                 const s = flow[k];
                 if (!s) return;
 
-                let color = '#94a3b8'; 
-                if(s.type === 'menu') color = '#3b82f6'; 
-                else if(s.type === 'filtro') color = '#8b5cf6'; 
-                else if(s.type === 'input') color = '#f59e0b'; 
-                else if(s.type === 'message') color = '#10b981'; 
-                else if(s.type === 'cita') color = '#ec4899';
-                
-                elements.push({ data: { id: k, label: k, color: color } });
-                
-                if(s.options && Array.isArray(s.options) && s.options.length > 0) { 
-                    s.options.forEach(o => { 
+                let color = '#1e293b'; // texto casi negro
+                let bgColor = '#ffffff'; // fondo blanco nodo
+
+                if(s.type === 'menu') bgColor = '#e0f2fe';
+                else if(s.type === 'filtro') bgColor = '#ede9fe';
+                else if(s.type === 'input') bgColor = '#fef9c3';
+                else if(s.type === 'message') bgColor = '#dcfce7';
+                else if(s.type === 'cita') bgColor = '#fce7f3';
+
+                elements.push({ 
+                    data: { id: k, label: k, color: color, bg: bgColor }
+                });
+
+                if(s.options && Array.isArray(s.options)) {
+                    s.options.forEach(o => {
                         if(o.next_step && flow[o.next_step]) {
-                            elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } }); 
+                            elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } });
                         }
-                    }); 
-                } else if(s.next_step && flow[s.next_step]) {
-                    elements.push({ data: { source: k, target: s.next_step } }); 
+                    });
+                } else if(s.next_step) {
+                    elements.push({ data: { source: k, target: s.next_step } });
                 }
             });
-            
-            const layoutConfig = { 
-                name: 'dagre', 
-                rankDir: 'LR', 
-                nodeSep: 60, 
-                rankSep: 150, 
-                ranker: 'network-simplex', 
-                align: 'UL',
-                
-                // CLAVE: Solo animar y ajustar si NO hay zoom guardado (primera carga)
-                animate: !savedZoom, 
-                animationDuration: 800,
-                fit: !savedZoom 
+
+            const layoutConfig = {
+                name: 'dagre',
+                rankDir: 'TB',
+                nodeSep: 60,
+                rankSep: 150,
+                ranker: 'network-simplex',
+                animate: false,
+                fit: !savedZoom
             };
 
-            try {
-                cy = cytoscape({ 
-                    container: document.getElementById('cy'), 
-                    elements: elements, 
-                    
-                    autoungrabify: true,      
-                    autounselectify: false,
-                    boxSelectionEnabled: false,
-                    wheelSensitivity: 0.2,
+            cy = cytoscape({
+                container: document.getElementById('cy'),
 
-                    style: [ 
-                        { selector: 'node', style: { 'background-color': 'data(color)', 'label': 'data(label)', 'color': '#ffffff', 'shape': 'round-rectangle', 'width': 'label', 'height': '40px', 'padding': '10px 20px', 'font-family': 'Poppins, sans-serif', 'font-size': '12px', 'font-weight': '600', 'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 'text-wrap': 'wrap', 'text-max-width': '120px', 'border-width': 0, 'shadow-blur': 10, 'shadow-color': '#000000', 'shadow-opacity': 0.1 } }, 
-                        { selector: 'edge', style: { 'width': 3, 'line-color': '#cbd5e1', 'curve-style': 'bezier', 'target-arrow-shape': 'none', 'opacity': 0.8, 'label': 'data(label)', 'font-size': '9px', 'color': '#94a3b8', 'text-background-color': '#ffffff', 'text-background-opacity': 0.8, 'text-rotation': 'autorotate' } },
-                        
-                        { selector: 'node:selected', style: { 'border-width': 4, 'border-color': '#333', 'shadow-blur': 20, 'shadow-opacity': 0.3 } },
-                        { selector: '.highlighted', style: { 'opacity': 1, 'border-width': 2, 'border-color': '#333' } },
-                        { selector: 'edge.highlighted', style: { 'line-color': '#333', 'width': 4, 'z-index': 99 } },
-                        { selector: '.faded', style: { 'opacity': 0.1, 'label': '' } }
-                    ], 
-                    
-                    layout: layoutConfig
-                });
-                
-                // 3. RESTAURAR POSICIÓN EXACTA
-                if (savedZoom && savedPan) {
-                    cy.viewport({ zoom: savedZoom, pan: savedPan });
-                }
+                elements: elements,
 
-                // EVENTOS
-                cy.on('tap', 'node', function(evt){ 
-                    const node = evt.target;
-                    cy.elements().removeClass('highlighted faded');
-                    const neighborhood = node.predecessors().union(node.successors()).union(node);
-                    cy.elements().not(neighborhood).addClass('faded');
-                    neighborhood.addClass('highlighted');
-                });
+                autoungrabify: true,
+                boxSelectionEnabled: false,
+                wheelSensitivity: 0.2,
 
-                cy.on('dbltap', 'node', function(evt){
-                    edit(evt.target.id());
-                });
+                // 🔒 Nodos 100% fijos
+                userZoomingEnabled: true,
+                userPanningEnabled: true,
+                motionBlur: false,
 
-                cy.on('tap', function(evt){
-                    if(evt.target === cy){
-                        cy.elements().removeClass('highlighted faded');
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': 'data(bg)',
+                            'label': 'data(label)',
+                            'color': 'data(color)',
+                            'shape': 'round-rectangle',
+                            'width': 'label',
+                            'height': '40px',
+                            'padding': '10px 20px',
+                            'font-family': 'Poppins, sans-serif',
+                            'font-size': '12px',
+                            'font-weight': '600',
+                            'text-valign': 'center',
+                            'text-halign': 'center',
+                            'text-wrap': 'wrap',
+                            'border-width': 1,
+                            'border-color': '#94a3b8'
+                        }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 3,
+                            'line-color': '#64748b',
+                            'curve-style': 'bezier',
+                            'target-arrow-shape': 'none',
+                            'label': 'data(label)',
+                            'font-size': '9px',
+                            'color': '#1e293b',
+                            'text-background-color': '#ffffff',
+                            'text-background-opacity': 1,
+                            'text-rotation': 'autorotate'
+                        }
+                    }
+                ],
+
+                layout: layoutConfig
+            });
+
+            // 📌 Restaurar posiciones previas para evitar que se muevan
+            cy.ready(() => {
+                cy.nodes().forEach(n => {
+                    if(savedPositions[n.id()]) {
+                        n.position(savedPositions[n.id()]);
                     }
                 });
 
-            } catch(e) { console.error(e); }
+                if (savedZoom && savedPan) {
+                    cy.viewport({ zoom: savedZoom, pan: savedPan });
+                }
+            });
         }
 
         // --- EDITOR (Lógica intacta) ---
