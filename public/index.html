@@ -9,8 +9,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Librerías Gráficas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    <script src="https://unpkg.com/klayjs@0.4.1/klay.js"></script>
+    <script src="https://unpkg.com/cytoscape-klay@3.1.4/cytoscape-klay.js"></script>
     <!-- Librería para QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
@@ -698,6 +698,7 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
+// --- RENDERIZADO DEL FLUJO (Motor Klay Inteligente) ---
         function renderFlow() {
             if (cy) try { cy.destroy(); } catch(e){}
             let elements = [];
@@ -706,42 +707,27 @@
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 
-                // COLORES DE BORDE (Para distinguir tipos, pero manteniendo el fondo blanco)
-                let borderColor = '#71717a'; // Gris por defecto
+                // Color del borde según tipo (sutil pero informativo)
+                let borderColor = '#e4e4e7'; // Gris suave por defecto
+                let labelPrefix = '';
+
+                if(s.type === 'menu') { borderColor = '#2563eb'; labelPrefix = 'ME'; }
+                else if(s.type === 'filtro') { borderColor = '#9333ea'; labelPrefix = 'IF'; }
+                else if(s.type === 'input') { borderColor = '#ea580c'; labelPrefix = 'IN'; }
+                else if(s.type === 'cita') { borderColor = '#db2777'; labelPrefix = 'AG'; }
                 
-                if(s.type === 'menu') borderColor = '#2563eb'; // Azul fuerte
-                else if(s.type === 'filtro') borderColor = '#9333ea'; // Morado fuerte
-                else if(s.type === 'input') borderColor = '#ea580c'; // Naranja fuerte
-                else if(s.type === 'message') borderColor = '#059669'; // Verde fuerte
-                else if(s.type === 'cita') borderColor = '#db2777'; // Rosa fuerte (Citas)
-                
-                // Nodo
                 elements.push({ 
-                    data: { 
-                        id: k, 
-                        label: k, 
-                        border: borderColor 
-                    } 
+                    data: { id: k, label: k, border: borderColor } 
                 });
 
-                // Conexiones (Edges)
                 if(s.options) {
                     s.options.forEach(o => { 
                         if(o.next_step) elements.push({ 
-                            data: { 
-                                source: k, 
-                                target: o.next_step, 
-                                label: o.label || o.trigger 
-                            } 
+                            data: { source: k, target: o.next_step, label: o.label || o.trigger } 
                         }); 
                     });
                 } else if(s.next_step) {
-                    elements.push({ 
-                        data: { 
-                            source: k, 
-                            target: s.next_step 
-                        } 
-                    });
+                    elements.push({ data: { source: k, target: s.next_step } });
                 }
             });
 
@@ -749,73 +735,82 @@
                 container: document.getElementById('cy'), 
                 elements: elements,
                 
-                // CONFIGURACIÓN DE ZOOM (Para que no se haga microscópico)
-                minZoom: 0.5,
-                maxZoom: 2.0,
-                wheelSensitivity: 0.2,
+                // --- CONFIGURACIÓN DE ZOOM INTELIGENTE ---
+                minZoom: 0.2, // Permite ver todo el mapa de lejos
+                maxZoom: 3.0, // Permite ver detalles de cerca
+                wheelSensitivity: 0.1, // Zoom suave
 
                 style: [ 
-                    // ESTILO DE LOS NODOS (Blanco, Grande, Legible)
+                    // NODOS: Estilo Tarjeta Blanca (High Contrast)
                     { selector: 'node', style: { 
                         'background-color': '#ffffff', 
                         'label': 'data(label)', 
-                        'color': '#000000', // Texto negro puro
-                        'shape': 'round-rectangle', // Rectángulos redondeados
+                        'color': '#09090b', // Negro casi puro
+                        'shape': 'round-rectangle', 
                         'width': 'label', 
-                        'height': 'label', 
-                        'padding': '16px', // Más espacio interno
+                        'height': 50, // Altura fija elegante
+                        'padding': '20px', 
                         'text-valign': 'center', 
                         'text-halign': 'center', 
-                        'font-size': '14px', // Letra más grande
-                        'font-weight': '700', // Negrita
-                        'border-width': 3, // Borde grueso
+                        'font-size': '12px', 
+                        'font-family': 'Inter, sans-serif',
+                        'font-weight': '600',
+                        'border-width': 2, 
                         'border-color': 'data(border)',
-                        'text-wrap': 'wrap',
-                        'text-max-width': '140px',
-                        'shadow-blur': 10,
+                        'border-opacity': 1,
+                        // Sombra para dar efecto de "flotar"
+                        'shadow-blur': 12,
                         'shadow-color': '#000',
-                        'shadow-opacity': 0.3
+                        'shadow-opacity': 0.1,
+                        'shadow-offset-y': 4
                     } }, 
                     
-                    // ESTILO DE LAS LÍNEAS (Curvas y Elegantes)
+                    // LÍNEAS: Curvas suaves que evitan colisiones
                     { selector: 'edge', style: { 
-                        'width': 3, 
-                        'line-color': '#52525b', // Gris Zinc
-                        'curve-style': 'unbundled-bezier', // CURVAS MANUALES ELEGANTES
-                        'control-point-distances': [40, -40], // Ondulación
-                        'control-point-weights': [0.25, 0.75],
-                        'target-arrow-shape': 'triangle', 
-                        'target-arrow-color': '#52525b', 
-                        'arrow-scale': 1.5,
+                        'width': 2, 
+                        'line-color': '#a1a1aa', // Gris medio
+                        'curve-style': 'bezier', // Curva inteligente
+                        'target-arrow-shape': 'triangle-backcurve', // Flecha moderna
+                        'target-arrow-color': '#a1a1aa',
+                        'arrow-scale': 1.2,
                         'label': 'data(label)', 
-                        'font-size': '11px', 
-                        'font-weight': '600',
-                        'color': '#e4e4e7', // Texto de la línea claro
+                        'font-size': '10px', 
+                        'color': '#71717a', 
                         'text-background-opacity': 1, 
-                        'text-background-color': '#18181b', // Fondo negro para leer bien el conector
-                        'text-background-padding': '6px',
+                        'text-background-color': '#ffffff', 
+                        'text-background-padding': '4px',
                         'text-background-shape': 'roundrectangle',
-                        'text-rotation': 'autorotate' // El texto sigue la curva
+                        'text-rotation': 'autorotate' 
                     } },
 
-                    // ESTILO AL SELECCIONAR
+                    // ESTADO SELECCIONADO (Al hacer click)
                     { selector: ':selected', style: {
-                        'border-width': 5,
-                        'border-color': '#ffffff',
-                        'line-color': '#ffffff',
-                        'target-arrow-color': '#ffffff'
+                        'border-width': 3,
+                        'border-color': '#000000', // Borde negro fuerte
+                        'background-color': '#f4f4f5',
+                        'line-color': '#000000',
+                        'target-arrow-color': '#000000',
+                        'z-index': 9999
                     }}
                 ],
                 
-                // ORGANIZACIÓN INTELIGENTE (Más espaciado)
+                // --- MOTOR KLAY (ORGANIZACIÓN INTELIGENTE) ---
                 layout: { 
-                    name: 'dagre', 
-                    rankDir: 'LR', // De Izquierda a Derecha (Mejor lectura)
-                    nodeSep: 100,  // Separación vertical entre nodos
-                    rankSep: 200,  // Separación horizontal entre niveles
+                    name: 'klay', 
+                    nodeDimensionsIncludeLabels: true,
+                    fit: true,
                     padding: 50,
-                    animate: true,
-                    animationDuration: 500
+                    klay: {
+                        direction: 'RIGHT', // Flujo de Izquierda a Derecha
+                        spacing: 60,        // Espacio entre nodos hermanos
+                        thoroughness: 10,   // Precisión del algoritmo
+                        edgeRouting: 'ORTHOGONAL', // Intenta hacer rutas limpias
+                        fixedAlignment: 'BALANCED',
+                        nodeLayering: 'NETWORK_SIMPLEX', // Mejor distribución de capas
+                        // Esto ayuda a que las líneas de retorno vayan "por fuera"
+                        cycleBreaking: 'GREEDY', 
+                        crossingMinimization: 'LAYER_SWEEP'
+                    }
                 }
             });
             
