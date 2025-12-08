@@ -731,7 +731,7 @@
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 
-                // Bordes sutiles para identificar tipo, fondo blanco manda
+                // Bordes sutiles para identificar tipo
                 let borderColor = '#d4d4d8'; 
                 if(s.type === 'menu') borderColor = '#2563eb';
                 else if(s.type === 'filtro') borderColor = '#9333ea';
@@ -762,7 +762,7 @@
                 container: document.getElementById('cy'), 
                 elements: elements,
                 
-                // --- PROHIBIDO ARRASTRAR NODOS (Solo Zoom y Pan) ---
+                // --- PROHIBIDO ARRASTRAR NODOS ---
                 autolock: true, 
                 userPanningEnabled: true,
                 userZoomingEnabled: true,
@@ -772,7 +772,7 @@
                 maxZoom: 3.0,
 
                 style: [ 
-                    // NODOS: Blancos, limpios, fijos visualmente
+                    // NODOS: Blancos y fijos
                     { selector: 'node', style: { 
                         'background-color': '#ffffff', 
                         'label': 'data(label)', 
@@ -796,22 +796,21 @@
                     // LÍNEAS: ROJAS Y CURVAS SUAVES
                     { selector: 'edge', style: { 
                         'width': 2, 
-                        'line-color': '#dc2626', // ROJO INTENSO (Red-600)
-                        'target-arrow-color': '#dc2626', // Flecha Roja
-                        'curve-style': 'bezier', // Curva natural (evita ángulos rectos tipo araña)
+                        'line-color': '#dc2626', // Rojo Intenso
+                        'target-arrow-color': '#dc2626', 
+                        'curve-style': 'bezier', 
                         'target-arrow-shape': 'triangle', 
                         'arrow-scale': 1.2,
                         'label': 'data(label)', 
                         'font-size': '10px', 
-                        'color': '#dc2626', // Texto rojo también
+                        'color': '#dc2626', 
                         'text-background-opacity': 1, 
-                        'text-background-color': '#ffffff', // Fondo blanco para leer texto sobre líneas
+                        'text-background-color': '#ffffff', 
                         'text-background-padding': '3px',
                         'text-background-shape': 'roundrectangle',
                         'text-rotation': 'autorotate' 
                     } },
 
-                    // Al seleccionar, se pone negro para resaltar
                     { selector: ':selected', style: {
                         'border-width': 4,
                         'border-color': '#000000',
@@ -820,7 +819,7 @@
                     }}
                 ],
                 
-                // --- MOTOR KLAY ESTRICTO ---
+                // --- MOTOR KLAY (Aquí ocurre la magia de la organización) ---
                 layout: { 
                     name: 'klay', 
                     nodeDimensionsIncludeLabels: true,
@@ -830,19 +829,11 @@
                         direction: 'RIGHT', 
                         spacing: 50,        
                         thoroughness: 10,
-                        
-                        // CLAVE PARA JERARQUÍA ESTRICTA (Evita efecto araña)
-                        // 'NETWORK_SIMPLEX' intenta mantener los nodos en capas verticales estrictas
-                        nodeLayering: 'NETWORK_SIMPLEX', 
-                        
-                        // CLAVE PARA QUE NO SE MUEVAN AL RECICLAR
-                        // Si un nodo se usa muchas veces, se queda en su capa lógica
-                        cycleBreaking: 'GREEDY', 
-                        
-                        // Rutas de borde
-                        edgeRouting: 'SPLINES', // Curvas suaves calculadas
-                        crossMinimization: 'LAYER_SWEEP', // Reduce cruces
-                        fixedAlignment: 'BALANCED' // Mantiene el equilibrio vertical
+                        nodeLayering: 'NETWORK_SIMPLEX', // Mantiene la jerarquía estricta
+                        cycleBreaking: 'GREEDY', // Vueltas largas por fuera
+                        edgeRouting: 'SPLINES', 
+                        crossMinimization: 'LAYER_SWEEP', 
+                        fixedAlignment: 'BALANCED' 
                     }
                 }
             });
