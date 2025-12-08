@@ -75,21 +75,34 @@ function validateBusinessRules(timeStr, settings) {
     return { valid: true };
 }
 
-// 🕒 VALIDACIÓN DE HORARIO DE ATENCIÓN
+// 🕒 VALIDACIÓN DE HORARIO DE ATENCIÓN (FIX ZONA HORARIA MÉXICO)
 const isBusinessClosed = () => {
     const settings = getSettings();
     if (!settings.schedule || !settings.schedule.active) return false;
     
-    const now = new Date();
-    const currentMins = (now.getHours() * 60) + now.getMinutes();
-    const currentDay = now.getDay(); 
+    // 1. Obtener la hora actual del servidor
+    const nowServer = new Date();
 
+    // 2. Convertir explícitamente a Hora CDMX/Reynosa
+    // Esto crea un objeto Date "engañado" que tiene la hora local correcta en .getHours()
+    const mxDate = new Date(nowServer.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+
+    const currentMins = (mxDate.getHours() * 60) + mxDate.getMinutes();
+    const currentDay = mxDate.getDay(); // 0 = Domingo, 6 = Sábado
+
+    console.log(`🕒 Verificando Horario: ${mxDate.getHours()}:${mxDate.getMinutes()} (Día: ${currentDay})`);
+
+    // Verificar día
     if (settings.schedule.days && !settings.schedule.days.includes(currentDay)) return true;
 
+    // Verificar hora
     const [sh, sm] = (settings.schedule.start || "09:00").split(':').map(Number);
     const [eh, em] = (settings.schedule.end || "18:00").split(':').map(Number);
 
-    return (currentMins < ((sh * 60) + sm) || currentMins >= ((eh * 60) + em));
+    const startMins = (sh * 60) + sm;
+    const endMins = (eh * 60) + em;
+
+    return (currentMins < startMins || currentMins >= endMins);
 };
 
 // --- SIMULACIÓN DE TYPING ---
@@ -105,7 +118,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId} a ${jid}`);
     let step = getFlowStep(stepId);
     
-    // Auto-reparación paso inicial si no existe
+    // Auto-reparación paso inicial
     if (!step && stepId === INITIAL_STEP) {
         console.log("🔧 Auto-reparando paso INICIAL...");
         step = { type: 'menu', message: '¡Hola! Bienvenido al sistema.', options: [] };
@@ -120,7 +133,9 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     let messageText = step.message || "";
     const settings = getSettings();
 
+    // Verificar si está cerrado
     if (step.type === 'filtro' && isBusinessClosed()) {
+        console.log("⛔ Negocio CERRADO por horario.");
         messageText = settings.schedule.offline_message || "⛔ Nuestro horario de atención ha terminado. Te responderemos mañana.";
     }
 
@@ -341,8 +356,6 @@ const handleMessage = async (sock, msg) => {
         const nextStepConfig = getFlowStep(nextStepId);
         
         if (nextStepConfig && nextStepConfig.type === 'cita') {
-            // ... (lógica citas sin cambios, solo logs si quieres agregar) ...
-            // [Mantenemos lógica citas igual para no alargar más, ya que el error suele estar antes]
              // Intentamos recuperar fecha/hora del historial
              let rawDate = user.history['fecha_cita'] || user.history['fecha']; 
              let rawTime = user.history['hora_cita'] || user.history['hora'];    
