@@ -546,8 +546,19 @@
         </div>
     </div>
 
-    <!-- SCRIPT LÓGICO (Sin cambios funcionales, solo se integra con el nuevo HTML) -->
+    <!-- SCRIPT LÓGICO -->
     <script>
+        // Configuración de la URL Base de la API
+        // Esto corrige el error en entornos donde no hay un origen claro (blobs, iframes locales)
+        const API_BASE = (() => {
+            const { protocol } = window.location;
+            // Si estamos en un blob, archivo local o entorno sin origen standard
+            if (protocol === 'file:' || protocol === 'blob:' || protocol === 'data:') {
+                return 'http://localhost:3000';
+            }
+            return ''; // Rutas relativas por defecto para producción
+        })();
+
         // Mantiene la lógica exacta del archivo original para garantizar funcionamiento
         let pollingInterval = null;
         let lastQr = '';
@@ -561,7 +572,7 @@
             if(pollingInterval) clearInterval(pollingInterval);
             pollingInterval = setInterval(async () => {
                 try {
-                    const res = await fetch('/api/status');
+                    const res = await fetch(`${API_BASE}/api/status`);
                     const data = await res.json();
                     if (data.status === 'connected') {
                         clearInterval(pollingInterval);
@@ -571,7 +582,7 @@
                         document.getElementById('stepQR').classList.remove('step-hidden');
                         if (data.qr !== lastQr) { lastQr = data.qr; renderQR(data.qr); document.getElementById('qrStatus').innerText = "Escanea ahora"; }
                     } else {
-                        if(data.status === 'disconnected') fetch('/api/auth/init', { method: 'POST' });
+                        if(data.status === 'disconnected') fetch(`${API_BASE}/api/auth/init`, { method: 'POST' });
                         document.getElementById('stepLoading').classList.remove('step-hidden');
                         document.getElementById('stepQR').classList.add('step-hidden');
                     }
@@ -579,7 +590,7 @@
             }, 2000);
         }
         function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
-        async function resetSession() { if(!confirm("¿Reiniciar conexión?")) return; await fetch('/api/logout', { method: 'POST' }); location.reload(); }
+        async function resetSession() { if(!confirm("¿Reiniciar conexión?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
 
         let flow={}, users=[];
         let simPhone = '5218991234567'; 
@@ -623,9 +634,9 @@
 
         async function loadAll() {
             try {
-                flow = await (await fetch('/api/flow')).json();
+                flow = await (await fetch(`${API_BASE}/api/flow`)).json();
                 renderFlow();
-                const set = await (await fetch('/api/settings')).json();
+                const set = await (await fetch(`${API_BASE}/api/settings`)).json();
                 if(set.schedule) {
                     document.getElementById('schedActive').checked = set.schedule.active;
                     document.getElementById('schedStart').value = set.schedule.start;
@@ -637,8 +648,8 @@
 
         async function loadActivity() {
             try {
-                flow = await (await fetch('/api/flow')).json();
-                users = await (await fetch('/api/users')).json();
+                flow = await (await fetch(`${API_BASE}/api/flow`)).json();
+                users = await (await fetch(`${API_BASE}/api/users`)).json();
                 updateStatusUI();
                 const tb = document.getElementById('activityBody'); tb.innerHTML = ''; 
                 let allToShow = users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a, b) => new Date(b.last_active||0) - new Date(a.last_active||0));
@@ -676,7 +687,7 @@
             badge.innerHTML = '● ONLINE';
         }
 
-        async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch('/api/crm/execute', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
+        async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
         // --- RENDERIZADO DEL FLUJO (Estilo Dark Tech) ---
         function renderFlow() {
@@ -785,12 +796,12 @@
                 if(document.getElementById('stNxt')) data.next_step = document.getElementById('stNxt').value;
                 if(type==='input') data.save_var = document.getElementById('stVar').value;
             }
-            await fetch('/api/flow/step', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({stepId:id, stepData:data}) });
+            await fetch(`${API_BASE}/api/flow/step`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({stepId:id, stepData:data}) });
             loadAll(); closeEditor(); showToast('Guardado');
         }
 
         function newStep() { const id = prompt("Nombre del Nuevo Paso (ej: MENU_VENTAS):"); if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlow(); setTimeout(()=>edit(id.toUpperCase()),200); } }
-        async function delStep() { const id=document.getElementById('stId').value; if(confirm('¿Eliminar este paso?')) { await fetch('/api/flow/step/'+id, {method:'DELETE'}); loadAll(); closeEditor(); showToast('Eliminado'); } }
+        async function delStep() { const id=document.getElementById('stId').value; if(confirm('¿Eliminar este paso?')) { await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); loadAll(); closeEditor(); showToast('Eliminado'); } }
 
         function renderGallery() {
             const c = document.getElementById('galleryContainer'); c.innerHTML='';
@@ -800,7 +811,7 @@
         async function uploadImages(inp) {
             if(!inp.files.length) return;
             const fd = new FormData(); for(let f of inp.files) fd.append('images', f);
-            const res = await (await fetch('/api/upload', {method:'POST', body:fd})).json();
+            const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json();
             if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
         }
 
@@ -814,7 +825,7 @@
             document.getElementById('monthDisplay').innerText = `${months[m]} ${y}`;
             const g = document.getElementById('calendarDays'); g.innerHTML = '';
             
-            let appts = {}; try { appts = await (await fetch('/api/agenda')).json(); } catch(e){}
+            let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
 
             for(let i=0; i<firstDay; i++) g.innerHTML += `<div class="day empty"></div>`;
             for(let i=1; i<=daysInMonth; i++) {
@@ -835,7 +846,7 @@
 
         async function renderEventList(dateKey) {
             const list = document.getElementById('modalApptList'); list.innerHTML = 'Cargando...';
-            const allAppts = await (await fetch('/api/agenda')).json();
+            const allAppts = await (await fetch(`${API_BASE}/api/agenda`)).json();
             const appts = allAppts[dateKey] || [];
             list.innerHTML = '';
             if(!appts.length) list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic; font-size:0.85rem;">No hay eventos para este día.</div>';
@@ -871,18 +882,18 @@
             const note = document.getElementById('evtNote').value;
             if(!time || !name) return showToast('Falta hora o nombre', 'error');
             
-            await fetch('/api/agenda/book', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time, name, phone, note}) });
+            await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time, name, phone, note}) });
             hideEventForm(); renderEventList(date); showToast('Evento Guardado');
         }
         async function deleteAppt(date, time) {
             if(!confirm('¿Eliminar?')) return;
-            await fetch('/api/agenda/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) });
+            await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) });
             renderEventList(date);
         }
 
         // --- CONTACTOS ---
         async function renderContacts() {
-            const list = await (await fetch('/api/contacts')).json();
+            const list = await (await fetch(`${API_BASE}/api/contacts`)).json();
             const c = document.getElementById('contactsList'); c.innerHTML='';
             list.forEach(u => {
                 c.innerHTML += `
@@ -903,7 +914,7 @@
             document.head.appendChild(style);
         }
         function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
-        async function toggleUser(phone, en) { await fetch('/api/contacts/toggle', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
+        async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
         
         function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
         async function saveNewContact() {
@@ -911,7 +922,7 @@
             const phone = document.getElementById('newContPhone').value;
             const enable = document.getElementById('newContEnable').checked;
             if(!phone) return;
-            await fetch('/api/contacts/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})});
+            await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})});
             document.getElementById('contactModal').classList.remove('active');
             renderContacts();
         }
@@ -922,7 +933,7 @@
             const t = document.getElementById('simInput'); const txt = t.value; if(!txt) return;
             addMsg(txt, true); t.value=''; 
             simState.history['last_input'] = txt; // Mock save
-            fetch('/api/crm/execute', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:simPhone, stepId:simState.step})}); // Just to trigger log
+            fetch(`${API_BASE}/api/crm/execute`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:simPhone, stepId:simState.step})}); // Just to trigger log
             
             // Simulación visual rápida
             setTimeout(() => {
@@ -942,7 +953,7 @@
         // --- SETTINGS ---
         async function saveSettings() {
             const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
-            await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
+            await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
             showToast('Configuración Guardada');
         }
 
