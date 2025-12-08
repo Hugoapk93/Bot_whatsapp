@@ -698,52 +698,127 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-        // --- RENDERIZADO DEL FLUJO (Estilo Dark Tech) ---
         function renderFlow() {
             if (cy) try { cy.destroy(); } catch(e){}
             let elements = [];
             if (!flow) return;
+
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
-                // Colores desaturados para modo oscuro
-                let color = '#27272a'; // Default Node (Zinc-800)
-                let borderColor = '#52525b';
                 
-                if(s.type === 'menu') { color = '#1e3a8a'; borderColor = '#3b82f6'; } // Blue
-                else if(s.type === 'filtro') { color = '#581c87'; borderColor = '#a855f7'; } // Purple
-                else if(s.type === 'input') { color = '#7c2d12'; borderColor = '#f97316'; } // Orange
-                else if(s.type === 'message') { color = '#064e3b'; borderColor = '#10b981'; } // Emerald
+                // COLORES DE BORDE (Para distinguir tipos, pero manteniendo el fondo blanco)
+                let borderColor = '#71717a'; // Gris por defecto
                 
-                elements.push({ data: { id: k, label: k, color: color, border: borderColor } });
-                if(s.options) s.options.forEach(o => { if(o.next_step) elements.push({ data: { source: k, target: o.next_step, label: o.label } }); });
-                else if(s.next_step) elements.push({ data: { source: k, target: s.next_step } });
+                if(s.type === 'menu') borderColor = '#2563eb'; // Azul fuerte
+                else if(s.type === 'filtro') borderColor = '#9333ea'; // Morado fuerte
+                else if(s.type === 'input') borderColor = '#ea580c'; // Naranja fuerte
+                else if(s.type === 'message') borderColor = '#059669'; // Verde fuerte
+                else if(s.type === 'cita') borderColor = '#db2777'; // Rosa fuerte (Citas)
+                
+                // Nodo
+                elements.push({ 
+                    data: { 
+                        id: k, 
+                        label: k, 
+                        border: borderColor 
+                    } 
+                });
+
+                // Conexiones (Edges)
+                if(s.options) {
+                    s.options.forEach(o => { 
+                        if(o.next_step) elements.push({ 
+                            data: { 
+                                source: k, 
+                                target: o.next_step, 
+                                label: o.label || o.trigger 
+                            } 
+                        }); 
+                    });
+                } else if(s.next_step) {
+                    elements.push({ 
+                        data: { 
+                            source: k, 
+                            target: s.next_step 
+                        } 
+                    });
+                }
             });
 
             cy = cytoscape({ 
-                container: document.getElementById('cy'), elements: elements, 
+                container: document.getElementById('cy'), 
+                elements: elements,
+                
+                // CONFIGURACIÓN DE ZOOM (Para que no se haga microscópico)
+                minZoom: 0.5,
+                maxZoom: 2.0,
+                wheelSensitivity: 0.2,
+
                 style: [ 
+                    // ESTILO DE LOS NODOS (Blanco, Grande, Legible)
                     { selector: 'node', style: { 
-                        'background-color': 'data(color)', 
+                        'background-color': '#ffffff', 
                         'label': 'data(label)', 
-                        'color': '#ffffff', 
-                        'shape': 'round-rectangle', 
-                        'width': 'label', 'height': '36px', 'padding': '8px', 
-                        'text-valign': 'center', 'text-halign': 'center', 
-                        'font-size': '11px', 'font-weight': '500',
-                        'border-width': 1, 'border-color': 'data(border)'
+                        'color': '#000000', // Texto negro puro
+                        'shape': 'round-rectangle', // Rectángulos redondeados
+                        'width': 'label', 
+                        'height': 'label', 
+                        'padding': '16px', // Más espacio interno
+                        'text-valign': 'center', 
+                        'text-halign': 'center', 
+                        'font-size': '14px', // Letra más grande
+                        'font-weight': '700', // Negrita
+                        'border-width': 3, // Borde grueso
+                        'border-color': 'data(border)',
+                        'text-wrap': 'wrap',
+                        'text-max-width': '140px',
+                        'shadow-blur': 10,
+                        'shadow-color': '#000',
+                        'shadow-opacity': 0.3
                     } }, 
+                    
+                    // ESTILO DE LAS LÍNEAS (Curvas y Elegantes)
                     { selector: 'edge', style: { 
-                        'width': 1.5, 
-                        'line-color': '#52525b', 
-                        'curve-style': 'bezier', 
+                        'width': 3, 
+                        'line-color': '#52525b', // Gris Zinc
+                        'curve-style': 'unbundled-bezier', // CURVAS MANUALES ELEGANTES
+                        'control-point-distances': [40, -40], // Ondulación
+                        'control-point-weights': [0.25, 0.75],
                         'target-arrow-shape': 'triangle', 
                         'target-arrow-color': '#52525b', 
-                        'label': 'data(label)', 'font-size': '9px', 'color': '#a1a1aa', 
-                        'text-background-opacity': 1, 'text-background-color': '#050505', 'text-background-padding': '2px' 
-                    } }
+                        'arrow-scale': 1.5,
+                        'label': 'data(label)', 
+                        'font-size': '11px', 
+                        'font-weight': '600',
+                        'color': '#e4e4e7', // Texto de la línea claro
+                        'text-background-opacity': 1, 
+                        'text-background-color': '#18181b', // Fondo negro para leer bien el conector
+                        'text-background-padding': '6px',
+                        'text-background-shape': 'roundrectangle',
+                        'text-rotation': 'autorotate' // El texto sigue la curva
+                    } },
+
+                    // ESTILO AL SELECCIONAR
+                    { selector: ':selected', style: {
+                        'border-width': 5,
+                        'border-color': '#ffffff',
+                        'line-color': '#ffffff',
+                        'target-arrow-color': '#ffffff'
+                    }}
                 ],
-                layout: { name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 120 }
+                
+                // ORGANIZACIÓN INTELIGENTE (Más espaciado)
+                layout: { 
+                    name: 'dagre', 
+                    rankDir: 'LR', // De Izquierda a Derecha (Mejor lectura)
+                    nodeSep: 100,  // Separación vertical entre nodos
+                    rankSep: 200,  // Separación horizontal entre niveles
+                    padding: 50,
+                    animate: true,
+                    animationDuration: 500
+                }
             });
+            
             cy.on('dbltap', 'node', function(evt){ edit(evt.target.id()); });
         }
 
