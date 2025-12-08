@@ -828,14 +828,16 @@
                     nodeDimensionsIncludeLabels: true,
                     fit: true,
                     padding: 50,
+		    animate: 'end',
+		    animationDuration: 500,
                     klay: {
                         direction: 'RIGHT', 
-                        spacing: 50,        
-                        thoroughness: 7,   // Mayor precisión
-                        edgeRouting: 'SPLINES', // Curvas suaves calculadas
-                        cycleBreaking: 'GREEDY', // Importante: fuerza a los retornos a ir por fuera
+                        spacing: 120,        
+                        thoroughness: 7,
+                        edgeRouting: 'ORTHOGONAL',
+                        cycleBreaking: 'GREEDY',
+			crossMinimization: 'LAYER_SWEEP,
                         layoutHierarchy: true,
-                        // Estas opciones ayudan a respetar el orden de inserción (sort)
                         fixedAlignment: 'NONE', 
                         mergeEdges: false
                     }
