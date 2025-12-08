@@ -698,22 +698,22 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-// --- RENDERIZADO DEL FLUJO (Estricto, Fijo y Alto Contraste) ---
+// --- RENDERIZADO DEL FLUJO (Rendimiento Optimizado y Estricto) ---
         function renderFlow() {
             if (cy) try { cy.destroy(); } catch(e){}
             let elements = [];
             if (!flow) return;
 
-            // 1. CÁLCULO DE PESOS (Para ordenar ramas pequeñas arriba)
+            // 1. FUNCIÓN AUXILIAR: Calcular el "peso" de una rama (cuántos pasos tiene)
             const memoWeights = {};
             const getBranchWeight = (startNodeId, visited = new Set()) => {
                 if (!startNodeId || !flow[startNodeId]) return 0;
-                if (visited.has(startNodeId)) return 0; 
+                if (visited.has(startNodeId)) return 0;
                 if (memoWeights[startNodeId] !== undefined) return memoWeights[startNodeId];
                 
                 visited.add(startNodeId);
                 const step = flow[startNodeId];
-                let weight = 1; 
+                let weight = 1;
 
                 if (step.options) {
                     step.options.forEach(o => {
@@ -727,12 +727,12 @@
                 return weight;
             };
 
-            // 2. GENERACIÓN DE ELEMENTOS
+            // 2. GENERACIÓN DE ELEMENTOS CON ORDENAMIENTO
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 
-                // Bordes sutiles para identificar tipo
-                let borderColor = '#d4d4d8'; 
+                // Bordes para identificar tipo (colores suaves)
+                let borderColor = '#d4d4d8';
                 if(s.type === 'menu') borderColor = '#2563eb';
                 else if(s.type === 'filtro') borderColor = '#9333ea';
                 else if(s.type === 'input') borderColor = '#ea580c';
@@ -743,7 +743,7 @@
                 });
 
                 if(s.options) {
-                    // Ordenamos: Ramas más ligeras arriba
+                    // Ordenamos: Ramas más ligeras arriba (Menor a Mayor)
                     const sortedOptions = [...s.options].sort((a, b) => {
                         return getBranchWeight(a.next_step) - getBranchWeight(b.next_step);
                     });
@@ -758,57 +758,61 @@
                 }
             });
 
-            cy = cytoscape({ 
-                container: document.getElementById('cy'), 
+            cy = cytoscape({
+                container: document.getElementById('cy'),
                 elements: elements,
                 
-                // --- PROHIBIDO ARRASTRAR NODOS ---
-                autolock: true, 
+                // --- AJUSTES DE RENDIMIENTO DEL MOTOR ---
+                autolock: true, // 🔒 Nodos fijos (no se pueden mover)
+                textureOnViewport: true, // Dibuja más rápido al hacer zoom/pan
+                pixelRatio: 1, // Baja resolución durante el movimiento para evitar el lag
+                
                 userPanningEnabled: true,
                 userZoomingEnabled: true,
                 boxSelectionEnabled: false,
 
                 minZoom: 0.2,
                 maxZoom: 3.0,
+                wheelSensitivity: 0.1,
 
-                style: [ 
-                    // NODOS: Blancos y fijos
-                    { selector: 'node', style: { 
-                        'background-color': '#ffffff', 
-                        'label': 'data(label)', 
-                        'color': '#000000', 
-                        'shape': 'round-rectangle', 
-                        'width': 'label', 
-                        'height': 50, 
-                        'padding': '20px', 
-                        'text-valign': 'center', 
-                        'text-halign': 'center', 
-                        'font-size': '12px', 
+                style: [
+                    // NODOS: Blancos, Alto Contraste
+                    { selector: 'node', style: {
+                        'background-color': '#ffffff',
+                        'label': 'data(label)',
+                        'color': '#000000',
+                        'shape': 'round-rectangle',
+                        'width': 'label',
+                        'height': 50,
+                        'padding': '20px',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'font-size': '12px',
                         'font-weight': '700',
-                        'border-width': 2, 
+                        'border-width': 2,
                         'border-color': 'data(border)',
                         'shadow-blur': 5,
                         'shadow-color': '#000',
                         'shadow-opacity': 0.2,
                         'shadow-offset-y': 2
-                    } }, 
-                    
-                    // LÍNEAS: ROJAS Y CURVAS SUAVES
-                    { selector: 'edge', style: { 
-                        'width': 2, 
-                        'line-color': '#dc2626', // Rojo Intenso
-                        'target-arrow-color': '#dc2626', 
-                        'curve-style': 'bezier', 
-                        'target-arrow-shape': 'triangle', 
+                    } },
+
+                    // LÍNEAS: Curvas suaves y color neutro (mejor rendimiento)
+                    { selector: 'edge', style: {
+                        'width': 2,
+                        'line-color': '#71717a', // Gris neutro (evita sobrecarga por color)
+                        'target-arrow-color': '#71717a',
+                        'curve-style': 'bezier', // Curva simple y rápida
+                        'target-arrow-shape': 'triangle',
                         'arrow-scale': 1.2,
-                        'label': 'data(label)', 
-                        'font-size': '10px', 
-                        'color': '#dc2626', 
-                        'text-background-opacity': 1, 
-                        'text-background-color': '#ffffff', 
+                        'label': 'data(label)',
+                        'font-size': '10px',
+                        'color': '#71717a',
+                        'text-background-opacity': 1,
+                        'text-background-color': '#ffffff',
                         'text-background-padding': '3px',
                         'text-background-shape': 'roundrectangle',
-                        'text-rotation': 'autorotate' 
+                        'text-rotation': 'autorotate'
                     } },
 
                     { selector: ':selected', style: {
@@ -818,26 +822,33 @@
                         'target-arrow-color': '#000000'
                     }}
                 ],
-                
-                // --- MOTOR KLAY (Aquí ocurre la magia de la organización) ---
-                layout: { 
-                    name: 'klay', 
+
+                // --- MOTOR KLAY (Optimizado para Velocidad y Jerarquía) ---
+                layout: {
+                    name: 'klay',
                     nodeDimensionsIncludeLabels: true,
                     fit: true,
                     padding: 50,
+                    
+                    // 🚨 CLAVE DE RENDIMIENTO: Animar solo al final del cálculo
+                    animate: 'end', 
+                    animationDuration: 500, 
+                    
                     klay: {
-                        direction: 'RIGHT', 
-                        spacing: 50,        
-                        thoroughness: 10,
-                        nodeLayering: 'NETWORK_SIMPLEX', // Mantiene la jerarquía estricta
-                        cycleBreaking: 'GREEDY', // Vueltas largas por fuera
-                        edgeRouting: 'SPLINES', 
+                        direction: 'RIGHT',
+                        spacing: 50,
+                        thoroughness: 7, // 🔴 OPTIMIZACIÓN: Reducir la precisión a 7/10
+                        
+                        // Estas opciones fuerzan la jerarquía y el ruteo de líneas largas:
+                        nodeLayering: 'NETWORK_SIMPLEX', // Mantiene la jerarquía estricta (crecimiento izquierda-derecha)
+                        cycleBreaking: 'GREEDY', // Fuerza a las líneas de reciclaje a ir por fuera
+                        edgeRouting: 'SPLINES', // Líneas curvas que se estiran limpiamente
                         crossMinimization: 'LAYER_SWEEP', 
-                        fixedAlignment: 'BALANCED' 
+                        fixedAlignment: 'BALANCED'
                     }
                 }
             });
-            
+
             cy.on('dbltap', 'node', function(evt){ edit(evt.target.id()); });
         }
 
