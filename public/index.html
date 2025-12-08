@@ -698,7 +698,7 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-// --- RENDERIZADO DEL FLUJO (Rendimiento Óptimo y Rigidez Estructural) ---
+// --- RENDERIZADO DEL FLUJO (Ordenado por Tamaño de Rama) ---
         function renderFlow() {
             if (cy) try { cy.destroy(); } catch(e){}
             let elements = [];
@@ -708,12 +708,12 @@
             const memoWeights = {};
             const getBranchWeight = (startNodeId, visited = new Set()) => {
                 if (!startNodeId || !flow[startNodeId]) return 0;
-                if (visited.has(startNodeId)) return 0;
+                if (visited.has(startNodeId)) return 0; // Evitar ciclos infinitos
                 if (memoWeights[startNodeId] !== undefined) return memoWeights[startNodeId];
                 
                 visited.add(startNodeId);
                 const step = flow[startNodeId];
-                let weight = 1;
+                let weight = 1; // El nodo en sí vale 1
 
                 if (step.options) {
                     step.options.forEach(o => {
@@ -731,8 +731,8 @@
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 
-                // Estilos de borde según tipo (Colores de contraste, pero fondo blanco)
-                let borderColor = '#d4d4d8';
+                // Estilos de borde según tipo
+                let borderColor = '#e4e4e7'; 
                 if(s.type === 'menu') borderColor = '#2563eb';
                 else if(s.type === 'filtro') borderColor = '#9333ea';
                 else if(s.type === 'input') borderColor = '#ea580c';
@@ -742,10 +742,13 @@
                     data: { id: k, label: k, border: borderColor } 
                 });
 
+                // AQUÍ ESTÁ LA MAGIA: Ordenar las conexiones antes de crearlas
                 if(s.options) {
-                    // Ordenamos: Ramas más ligeras arriba (Menor a Mayor)
+                    // Creamos una copia para no afectar el objeto original
                     const sortedOptions = [...s.options].sort((a, b) => {
-                        return getBranchWeight(a.next_step) - getBranchWeight(b.next_step);
+                        const weightA = getBranchWeight(a.next_step);
+                        const weightB = getBranchWeight(b.next_step);
+                        return weightA - weightB; // Menor a Mayor (Pequeños arriba)
                     });
 
                     sortedOptions.forEach(o => { 
@@ -758,97 +761,86 @@
                 }
             });
 
-            cy = cytoscape({
-                container: document.getElementById('cy'),
+            cy = cytoscape({ 
+                container: document.getElementById('cy'), 
                 elements: elements,
                 
-                // --- AJUSTES DE RENDIMIENTO DEL MOTOR ---
-                autolock: true, // 🔒 CLAVE: Los nodos no se pueden mover ni arrastrar
-                textureOnViewport: true, // Mejora el rendimiento al hacer zoom
-                pixelRatio: 1, // Calidad estándar para renderizado rápido
-                
-                userPanningEnabled: true,
-                userZoomingEnabled: true,
-                boxSelectionEnabled: false,
-
                 minZoom: 0.2,
                 maxZoom: 3.0,
                 wheelSensitivity: 0.1,
 
-                style: [
-                    // NODOS: Blancos, Fijos, Alto Contraste
-                    { selector: 'node', style: {
-                        'background-color': '#ffffff',
-                        'label': 'data(label)',
-                        'color': '#000000',
-                        'shape': 'round-rectangle',
-                        'width': 'label',
-                        'height': 50,
-                        'padding': '20px',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'font-size': '12px',
-                        'font-weight': '700',
-                        'border-width': 2,
+                style: [ 
+                    // NODOS (Estilo Tarjeta Blanca)
+                    { selector: 'node', style: { 
+                        'background-color': '#ffffff', 
+                        'label': 'data(label)', 
+                        'color': '#09090b', 
+                        'shape': 'round-rectangle', 
+                        'width': 'label', 
+                        'height': 50, 
+                        'padding': '20px', 
+                        'text-valign': 'center', 
+                        'text-halign': 'center', 
+                        'font-size': '12px', 
+                        'font-family': 'Inter, sans-serif',
+                        'font-weight': '600',
+                        'border-width': 2, 
                         'border-color': 'data(border)',
-                        'shadow-blur': 5,
+                        'shadow-blur': 12,
                         'shadow-color': '#000',
-                        'shadow-opacity': 0.2,
-                        'shadow-offset-y': 2
-                    } },
-
-                    // LÍNEAS: Curvas y color neutro (para priorizar rendimiento)
-                    { selector: 'edge', style: {
-                        'width': 2,
-                        'line-color': '#71717a', // Color neutro para mejor rendimiento
-                        'target-arrow-color': '#71717a',
-                        'curve-style': 'bezier', // Curva suave (rápida de calcular)
-                        'target-arrow-shape': 'triangle',
+                        'shadow-opacity': 0.1,
+                        'shadow-offset-y': 4
+                    } }, 
+                    
+                    // LÍNEAS (Curvas Bezier)
+                    { selector: 'edge', style: { 
+                        'width': 2, 
+                        'line-color': '#a1a1aa', 
+                        'curve-style': 'unbundled-bezier', // Curva suave manual
+                        'control-point-distances': 20,     // Ligera curvatura
+                        'control-point-weights': 0.5,
+                        'target-arrow-shape': 'triangle-backcurve', 
+                        'target-arrow-color': '#a1a1aa',
                         'arrow-scale': 1.2,
-                        'label': 'data(label)',
-                        'font-size': '10px',
-                        'color': '#71717a',
-                        'text-background-opacity': 1,
-                        'text-background-color': '#ffffff',
-                        'text-background-padding': '3px',
+                        'label': 'data(label)', 
+                        'font-size': '10px', 
+                        'color': '#71717a', 
+                        'text-background-opacity': 1, 
+                        'text-background-color': '#ffffff', 
+                        'text-background-padding': '4px',
                         'text-background-shape': 'roundrectangle',
-                        'text-rotation': 'autorotate'
+                        'text-rotation': 'autorotate' 
                     } },
 
                     { selector: ':selected', style: {
-                        'border-width': 4,
+                        'border-width': 3,
                         'border-color': '#000000',
                         'line-color': '#000000',
-                        'target-arrow-color': '#000000'
+                        'target-arrow-color': '#000000',
+                        'z-index': 9999
                     }}
                 ],
-
-                // --- MOTOR KLAY (Configuración Estricta y Rápida) ---
-                layout: {
-                    name: 'klay',
+                
+                // CONFIGURACIÓN KLAY OPTIMIZADA
+                layout: { 
+                    name: 'klay', 
                     nodeDimensionsIncludeLabels: true,
                     fit: true,
                     padding: 50,
-                    
-                    // Aseguramos que el cálculo sea rápido
-                    animate: 'end', 
-                    animationDuration: 500,
-                    
                     klay: {
                         direction: 'RIGHT', 
-                        spacing: 50,
-                        thoroughness: 7, // 🎯 CLAVE DE RENDIMIENTO: Precisión reducida para evitar congelamiento
-                        
-                        // Estas opciones fuerzan que los nodos mantengan su posición jerárquica:
-                        nodeLayering: 'NETWORK_SIMPLEX', // Organiza en columnas estrictas
-                        cycleBreaking: 'GREEDY', // CLAVE para ruteo externo de líneas de reciclaje
-                        edgeRouting: 'SPLINES', // Líneas que se estiran limpiamente
-                        crossMinimization: 'LAYER_SWEEP', 
-                        fixedAlignment: 'BALANCED' 
+                        spacing: 40,        
+                        thoroughness: 20,   // Mayor precisión
+                        edgeRouting: 'SPLINES', // Curvas suaves calculadas
+                        cycleBreaking: 'GREEDY', // Importante: fuerza a los retornos a ir por fuera
+                        layoutHierarchy: true,
+                        // Estas opciones ayudan a respetar el orden de inserción (sort)
+                        fixedAlignment: 'NONE', 
+                        mergeEdges: false
                     }
                 }
             });
-
+            
             cy.on('dbltap', 'node', function(evt){ edit(evt.target.id()); });
         }
 
