@@ -569,34 +569,96 @@
             return ''; // Rutas relativas por defecto para producción
         })();
 
-        // Mantiene la lógica exacta del archivo original para garantizar funcionamiento
+        // Variables mejoradas para control de polling
         let pollingInterval = null;
+        let activityInterval = null;
         let lastQr = '';
+        let isConnected = false;
+        let isPollingActive = false;
+
+        // Función para limpiar todos los intervals
+        function cleanupAllIntervals() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
+            if (activityInterval) {
+                clearInterval(activityInterval);
+                activityInterval = null;
+            }
+            isPollingActive = false;
+        }
+
         window.onload = async () => {
             document.getElementById('setupWizard').classList.remove('step-hidden');
             startPolling();
-            loadAll(); 
-            setInterval(loadActivity, 8000); 
+            loadAll();
+            
+            // Intervalo optimizado para carga de actividad
+            activityInterval = setInterval(() => {
+                // Solo cargar actividad si la vista está activa
+                if (document.getElementById('view-activity').classList.contains('active')) {
+                    loadActivity();
+                }
+            }, 8000);
         };
+
         function startPolling() {
-            if(pollingInterval) clearInterval(pollingInterval);
+            // Limpiar intervalo existente
+            cleanupAllIntervals();
+            isPollingActive = true;
+            
             pollingInterval = setInterval(async () => {
+                // Verificar si el polling sigue activo
+                if (!isPollingActive) {
+                    clearInterval(pollingInterval);
+                    return;
+                }
+                
                 try {
-                    const res = await fetch(`${API_BASE}/api/status`);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+                    
+                    const res = await fetch(`${API_BASE}/api/status`, {
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    
                     const data = await res.json();
+                    
                     if (data.status === 'connected') {
-                        clearInterval(pollingInterval);
+                        isConnected = true;
+                        cleanupAllIntervals(); // Detener polling una vez conectado
                         document.getElementById('setupWizard').classList.add('step-hidden');
+                        
+                        // Notificar y actualizar interfaz
+                        showToast('Conectado exitosamente');
+                        updateStatusUI();
                     } else if (data.qr) {
                         document.getElementById('stepLoading').classList.add('step-hidden');
                         document.getElementById('stepQR').classList.remove('step-hidden');
-                        if (data.qr !== lastQr) { lastQr = data.qr; renderQR(data.qr); document.getElementById('qrStatus').innerText = "Escanea ahora"; }
+                        
+                        if (data.qr !== lastQr) { 
+                            lastQr = data.qr; 
+                            renderQR(data.qr); 
+                            document.getElementById('qrStatus').innerText = "Escanea ahora"; 
+                        }
                     } else {
-                        if(data.status === 'disconnected') fetch(`${API_BASE}/api/auth/init`, { method: 'POST' });
+                        if (data.status === 'disconnected') {
+                            // Llamada sin esperar respuesta para no bloquear
+                            fetch(`${API_BASE}/api/auth/init`, { 
+                                method: 'POST' 
+                            }).catch(e => console.warn("Init error:", e));
+                        }
                         document.getElementById('stepLoading').classList.remove('step-hidden');
                         document.getElementById('stepQR').classList.add('step-hidden');
                     }
-                } catch (e) { console.error("Polling error", e); }
+                } catch (e) { 
+                    if (e.name !== 'AbortError') {
+                        console.warn("Polling error (no crítico):", e);
+                    }
+                    // No hacer nada en caso de error - el intervalo continuará
+                }
             }, 2000);
         }
         function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
