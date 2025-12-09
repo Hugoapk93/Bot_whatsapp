@@ -766,13 +766,16 @@
                 const s = flow[k];
                 if (!s) return;
 
-                // Colores Neón Dark Mode
-                let color = '#475569'; 
-                if(s.type === 'menu') color = '#2563eb';      
-                else if(s.type === 'filtro') color = '#9333ea'; 
-                else if(s.type === 'input') color = '#ea580c';  
-                else if(s.type === 'message') color = '#059669';
-                else if(s.type === 'cita') color = '#db2777';   
+                // --- PALETA DE COLORES INTENSOS (BRILLANTES) ---
+                let color = '#94a3b8'; // Default: Gris Acero
+                
+                // Estos colores se usarán para el BORDE y el RESPLANDOR
+                if(s.type === 'menu') color = '#3b82f6';      // Azul Eléctrico
+                else if(s.type === 'filtro') color = '#a855f7'; // Violeta Neón
+                else if(s.type === 'input') color = '#f97316';  // Naranja Intenso
+                else if(s.type === 'message') color = '#10b981';// Verde Esmeralda
+                else if(s.type === 'cita') color = '#ec4899';   // Rosa Hot Pink
+                else if(s.type === 'fin') color = '#ef4444';    // Rojo Intenso
                 
                 elements.push({ data: { id: k, label: k, color: color } });
                 
@@ -788,7 +791,7 @@
             });
 
             try {
-                // 3. Inicializar Cytoscape (SIN LAYOUT TODAVÍA)
+                // 3. Inicializar Cytoscape
                 cy = cytoscape({ 
                     container: document.getElementById('cy'), 
                     elements: elements, 
@@ -797,85 +800,114 @@
                     wheelSensitivity: 0.2,
                     
                     style: [ 
+                        // --- ESTILO DE TARJETAS (NODOS) ---
                         { selector: 'node', style: { 
-                            'background-color': 'data(color)', 
+                            'background-color': '#ffffff', // FONDO BLANCO
                             'label': 'data(label)', 
-                            'color': '#ffffff', 
-                            'text-outline-color': '#000000', 'text-outline-width': 2,
-                            'shape': 'round-rectangle', 'width': 'label', 'height': '40px', 'padding': '10px 20px', 
-                            'font-family': 'Poppins, sans-serif', 'font-size': '12px', 'font-weight': '600', 
-                            'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 
-                            'text-wrap': 'wrap', 'text-max-width': '120px', 
-                            'border-width': 1, 'border-color': 'rgba(255,255,255,0.2)', 
-                            'shadow-blur': 10, 'shadow-color': 'data(color)', 'shadow-opacity': 0.4 
+                            'color': '#0f172a', // TEXTO OSCURO (Casi negro) para contraste
+                            'text-margin-y': 0,
+                            
+                            // Forma y Tamaño
+                            'shape': 'round-rectangle', 
+                            'width': 'label', 
+                            'height': 'label', // Se adapta al contenido
+                            'padding': '16px 24px', // Tarjetas más grandes y espaciosas
+                            
+                            // Tipografía
+                            'font-family': 'Inter, sans-serif', 
+                            'font-size': '14px', // Letra más grande
+                            'font-weight': '700', 
+                            'text-valign': 'center', 
+                            'text-halign': 'center', 
+                            'text-transform': 'uppercase', 
+                            'text-wrap': 'wrap', 
+                            'text-max-width': '140px', 
+                            
+                            // BORDE DE COLOR INTENSO
+                            'border-width': 3, 
+                            'border-color': 'data(color)', 
+                            
+                            // EFECTO RESPLANDOR (Sombra del color del borde)
+                            'shadow-blur': 20, 
+                            'shadow-color': 'data(color)', 
+                            'shadow-opacity': 0.25,
+                            'shadow-offset-y': 4
                         }}, 
-                        // Estilo para líneas PRINCIPALES (Sólidas y rectas)
+                        
+                        // --- LÍNEAS (EDGES) ---
                         { selector: 'edge', style: { 
                             'width': 2, 
-                            'line-color': '#94a3b8', 
-                            'curve-style': 'taxi', // Taxi hace esquinas rectas
-                            'taxi-direction': 'rightward', // Fuerza la salida hacia la derecha
-                            'target-arrow-shape': 'triangle', 'target-arrow-color': '#94a3b8', 
-                            'opacity': 0.8, 'label': 'data(label)', 'font-size': '10px', 'color': '#e2e8f0', 
-                            'text-background-color': '#000000', 'text-background-opacity': 0.7, 
-                            'text-background-padding': '3px', 'text-background-shape': 'roundrectangle', 
+                            'line-color': '#cbd5e1', // Gris suave para no distraer
+                            'curve-style': 'taxi', 
+                            'taxi-direction': 'rightward', 
+                            'target-arrow-shape': 'triangle', 
+                            'target-arrow-color': '#cbd5e1', 
+                            'opacity': 1, 
+                            
+                            // Etiquetas de líneas
+                            'label': 'data(label)', 
+                            'font-size': '11px', 
+                            'font-weight': '600',
+                            'color': '#ffffff', 
+                            'text-background-color': '#1e293b', // Etiqueta oscura
+                            'text-background-opacity': 1, 
+                            'text-background-padding': '4px', 
+                            'text-background-shape': 'roundrectangle',
+                            'text-border-width': 1,
+                            'text-border-color': '#475569',
                             'text-rotation': 'autorotate' 
                         }},
-                        // --- CAMBIO AQUÍ: Estilo para líneas de REUTILIZACIÓN (Punteadas y rectas) ---
+                        
+                        // LÍNEAS PUNTEADAS (REUTILIZACIÓN)
                         { selector: 'edge.cross-edge', style: {
-                            'line-style': 'dashed', // Mantiene el estilo punteado
-                            'line-color': '#64748b', // Un gris un poco diferente para distinguir
-                            'opacity': 0.7,
-                            'curve-style': 'taxi', // <--- CAMBIO CLAVE: Ahora son rectas tipo "taxi"
-                            'taxi-direction': 'rightward', // Misma dirección que las principales
-                            'target-arrow-color': '#64748b' // Flecha del mismo color
+                            'line-style': 'dashed', 
+                            'line-dash-pattern': [6, 3],
+                            'line-color': '#64748b', 
+                            'target-arrow-color': '#64748b',
+                            'opacity': 0.6
                         }},
-                        // --------------------------------------------------------------------------
-                        { selector: 'node:selected', style: { 'border-width': 2, 'border-color': '#ffffff', 'shadow-blur': 20, 'shadow-opacity': 0.8 } },
-                        { selector: '.highlighted', style: { 'opacity': 1, 'border-width': 2, 'border-color': '#ffffff' } },
-                        { selector: '.faded', style: { 'opacity': 0.1, 'label': '' } }
+                        
+                        // ESTADOS ACTIVOS
+                        { selector: 'node:selected', style: { 
+                            'border-width': 4, 
+                            'shadow-blur': 30, 
+                            'shadow-opacity': 0.6,
+                            'background-color': '#f8fafc' // Un blanco un poco más brillante al seleccionar
+                        }},
+                        { selector: '.highlighted', style: { 'opacity': 1, 'z-index': 999 } },
+                        { selector: '.faded', style: { 'opacity': 0.15, 'label': '' } }
                     ],
-                    layout: { name: 'preset' } // Cargamos sin mover nada primero
+                    layout: { name: 'preset' } 
                 });
 
-                // 4. LÓGICA MAGICA: Clasificar Aristas (Main vs Cross)
+                // 4. LÓGICA DE ÁRBOL Y LÍNEAS (BFS) - Igual que antes
                 let roots = cy.nodes().roots();
                 if(roots.length === 0) roots = cy.nodes().first(); 
-
-                // Marcamos TODAS las líneas como "cross-edge" (secundarias) primero
                 cy.edges().addClass('cross-edge');
 
-                // Recorremos el árbol (BFS) para encontrar la ruta principal
                 cy.elements().bfs({
                     roots: roots,
                     visit: function(v, e, u, i, depth) {
-                        if (e) {
-                            // Si la línea descubre un nodo nuevo, es principal, quitamos la marca "cross-edge"
-                            e.removeClass('cross-edge');
-                        }
+                        if (e) { e.removeClass('cross-edge'); }
                     },
                     directed: true
                 });
 
-                // 5. EJECUTAR LAYOUT SOLO EN EL ÁRBOL PRINCIPAL
-                // Usamos un selector que excluye las líneas marcadas como '.cross-edge'
                 const layoutElements = cy.elements().not('edge.cross-edge');
                 
                 layoutElements.layout({ 
                     name: 'dagre', 
                     rankDir: 'LR', 
-                    nodeSep: 60, 
-                    rankSep: 150, 
+                    nodeSep: 60,  // Separación horizontal
+                    rankSep: 120, // Separación vertical (niveles)
                     ranker: 'network-simplex', 
                     align: 'UL',
                     animate: false,
                     fit: !savedZoom
                 }).run();
 
-                // Restaurar vista
                 if (savedZoom && savedPan) cy.viewport({ zoom: savedZoom, pan: savedPan });
 
-                // Eventos
                 cy.on('tap', 'node', function(evt){ 
                     const node = evt.target;
                     cy.elements().removeClass('highlighted faded');
