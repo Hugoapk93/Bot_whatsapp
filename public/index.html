@@ -767,12 +767,14 @@
                 const s = flow[k];
                 if (!s) return;
 
-                let color = '#94a3b8'; 
-                if(s.type === 'menu') color = '#3b82f6'; 
-                else if(s.type === 'filtro') color = '#8b5cf6'; 
-                else if(s.type === 'input') color = '#f59e0b'; 
-                else if(s.type === 'message') color = '#10b981'; 
-                else if(s.type === 'cita') color = '#ec4899';
+                // --- PALETA DE COLORES "NEÓN" PARA MODO OSCURO ---
+                let color = '#475569'; // Default (Gris azulado oscuro)
+                
+                if(s.type === 'menu') color = '#2563eb';      // Azul brillante
+                else if(s.type === 'filtro') color = '#9333ea'; // Violeta eléctrico
+                else if(s.type === 'input') color = '#ea580c';  // Naranja quemado
+                else if(s.type === 'message') color = '#059669';// Verde esmeralda
+                else if(s.type === 'cita') color = '#db2777';   // Rosa fucsia
                 
                 elements.push({ data: { id: k, label: k, color: color } });
                 
@@ -787,9 +789,6 @@
                 }
             });
             
-            // 2. CONFIGURACIÓN DINÁMICA DEL LAYOUT
-            // Si tenemos una posición guardada, desactivamos el 'fit' y la animación
-            // para que el usuario no sienta que el diagrama se "reinicia".
             const layoutConfig = { 
                 name: 'dagre', 
                 rankDir: 'LR', 
@@ -807,18 +806,63 @@
                     container: document.getElementById('cy'), 
                     elements: elements, 
                     
-                    autoungrabify: true,      
+                    autoungrabify: true,       
                     autounselectify: false,
                     boxSelectionEnabled: false,
                     wheelSensitivity: 0.2,
 
                     style: [ 
-                        { selector: 'node', style: { 'background-color': 'data(color)', 'label': 'data(label)', 'color': '#ffffff', 'shape': 'round-rectangle', 'width': 'label', 'height': '40px', 'padding': '10px 20px', 'font-family': 'Poppins, sans-serif', 'font-size': '12px', 'font-weight': '600', 'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 'text-wrap': 'wrap', 'text-max-width': '120px', 'border-width': 0, 'shadow-blur': 10, 'shadow-color': '#000000', 'shadow-opacity': 0.1 } }, 
-                        { selector: 'edge', style: { 'width': 3, 'line-color': '#cbd5e1', 'curve-style': 'bezier', 'target-arrow-shape': 'none', 'opacity': 0.8, 'label': 'data(label)', 'font-size': '9px', 'color': '#94a3b8', 'text-background-color': '#ffffff', 'text-background-opacity': 0.8, 'text-rotation': 'autorotate' } },
+                        { 
+                            selector: 'node', 
+                            style: { 
+                                'background-color': 'data(color)', 
+                                'label': 'data(label)', 
+                                'color': '#ffffff', // Texto Blanco
+                                'text-outline-color': '#000000', // Borde negro al texto para lectura
+                                'text-outline-width': 2,
+                                'shape': 'round-rectangle', 
+                                'width': 'label', 
+                                'height': '40px', 
+                                'padding': '10px 20px', 
+                                'font-family': 'Poppins, sans-serif', 
+                                'font-size': '12px', 
+                                'font-weight': '600', 
+                                'text-valign': 'center', 
+                                'text-halign': 'center', 
+                                'text-transform': 'uppercase', 
+                                'text-wrap': 'wrap', 
+                                'text-max-width': '120px', 
+                                'border-width': 1,
+                                'border-color': 'rgba(255,255,255,0.2)', // Borde sutil blanco al nodo
+                                'shadow-blur': 10, 
+                                'shadow-color': 'data(color)', // Sombra del mismo color que el nodo (Efecto Glow)
+                                'shadow-opacity': 0.4 
+                            } 
+                        }, 
+                        { 
+                            selector: 'edge', 
+                            style: { 
+                                'width': 2, 
+                                'line-color': '#94a3b8', // GRIS CLARO (Vital para fondo negro)
+                                'curve-style': 'taxi', // Taxi o Bezier
+                                'taxi-direction': 'rightward',
+                                'target-arrow-shape': 'triangle', 
+                                'target-arrow-color': '#94a3b8', // Flecha clara
+                                'opacity': 0.8, 
+                                'label': 'data(label)', 
+                                'font-size': '10px', 
+                                'color': '#e2e8f0', // Texto de línea claro
+                                'text-background-color': '#000000', // Fondo del texto de línea negro
+                                'text-background-opacity': 0.7, 
+                                'text-background-padding': '3px',
+                                'text-background-shape': 'roundrectangle',
+                                'text-rotation': 'autorotate' 
+                            } 
+                        },
                         
-                        { selector: 'node:selected', style: { 'border-width': 4, 'border-color': '#333', 'shadow-blur': 20, 'shadow-opacity': 0.3 } },
-                        { selector: '.highlighted', style: { 'opacity': 1, 'border-width': 2, 'border-color': '#333' } },
-                        { selector: 'edge.highlighted', style: { 'line-color': '#333', 'width': 4, 'z-index': 99 } },
+                        { selector: 'node:selected', style: { 'border-width': 2, 'border-color': '#ffffff', 'shadow-blur': 20, 'shadow-opacity': 0.8 } },
+                        { selector: '.highlighted', style: { 'opacity': 1, 'border-width': 2, 'border-color': '#ffffff' } },
+                        { selector: 'edge.highlighted', style: { 'line-color': '#ffffff', 'target-arrow-color': '#ffffff', 'width': 4, 'z-index': 99 } },
                         { selector: '.faded', style: { 'opacity': 0.1, 'label': '' } }
                     ], 
                     
