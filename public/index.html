@@ -855,13 +855,15 @@
                     ],
 
                     layout: {
-                        name: 'dagre', // Usamos Dagre, es más robusto
-                        rankDir: 'LR', // Izquierda a Derecha
-                        nodeSep: 50,
-                        rankSep: 100,
+                        name: 'breadthfirst', 
+                        
+                        directed: true,
+                        padding: 30,
+                        spacingFactor: 1.5,
                         animate: false,
-                        fit: true,
-                        padding: 30
+                        avoidOverlap: true,
+                        nodeDimensionsIncludeLabels: true,
+                        transform: function (node, pos) { return { x: pos.y, y: pos.x }; } 
                     }
                 });
 
