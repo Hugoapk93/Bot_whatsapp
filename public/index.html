@@ -899,25 +899,25 @@
                         }}
                     ],
 
-                    // 5. LAYOUT INTELIGENTE (KLAY)
-                    // Usamos Klay en vez de Dagre porque Dagre mueve los nodos
-                    // cuando hay bucles. Klay los deja fijos.
                     layout: {
                         name: 'klay',
-                        nodeDimensionsIncludeLabels: true,
-                        fit: !savedZoom, // Solo ajustar si no hay zoom guardado
-                        padding: 50,
-                        animate: false,  // Desactivar animación inicial para carga instantánea
+                        nodeDimensionsIncludeLabels: true, // Importante para que no se encimen
+                        fit: true,
+                        padding: 20,
+                        animate: false, 
 
                         klay: {
-                            direction: 'RIGHT',
-                            spacing: 80, 
-                            thoroughness: 7, // Precisión media (Rápido)
+                            // Cambiamos a 'LONGEST_PATH' porque es más robusto y evita el apilamiento
+                            nodeLayering: 'LONGEST_PATH', 
                             
-                            // 🛑 ESTO ES LO QUE ESTIRA LA LÍNEA SIN MOVER EL NODO 🛑
-                            nodeLayering: 'NETWORK_SIMPLEX', 
-                            cycleBreaking: 'GREEDY', 
-                            edgeRouting: 'ORTHOGONAL', // Líneas rectas (Rendimiento)
+                            direction: 'RIGHT',
+                            spacing: 100,           // Aumentado: Más espacio entre nodos
+                            intCoordinates: true,   // Ayuda a la precisión
+                            compactComponents: false, // Evita agrupar islas desconectadas
+                            
+                            // Configuración de líneas
+                            edgeRouting: 'ORTHOGONAL', 
+                            cycleBreaking: 'GREEDY',
                             fixedAlignment: 'BALANCED'
                         }
                     }
