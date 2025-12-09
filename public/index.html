@@ -747,7 +747,7 @@
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
         // --- RENDER FLOW CORREGIDO Y BLINDADO ---
-        function renderFlow() {
+	function renderFlow() {
             let savedZoom = null;
             let savedPan = null;
             
@@ -763,23 +763,52 @@
             
             if (!flow || Object.keys(flow).length === 0) return;
 
+            // --- NUEVO: FUNCIÓN PARA CONTAR EL PESO (CANTIDAD DE PASOS) DE UNA RAMA ---
+            const memoWeight = {}; // Para no calcular lo mismo dos veces
+            const getWeight = (nodeId, visited = new Set()) => {
+                if (!nodeId || !flow[nodeId] || visited.has(nodeId)) return 0;
+                if (memoWeight[nodeId] !== undefined) return memoWeight[nodeId];
+                
+                visited.add(nodeId);
+                let weight = 1; // Contamos el nodo actual
+                const s = flow[nodeId];
+
+                // Sumamos recursivamente los hijos
+                if (s.options && Array.isArray(s.options)) {
+                    s.options.forEach(o => weight += getWeight(o.next_step, new Set(visited)));
+                } else if (s.next_step) {
+                    weight += getWeight(s.next_step, new Set(visited));
+                }
+
+                memoWeight[nodeId] = weight;
+                return weight;
+            };
+            // --------------------------------------------------------------------------
+
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 if (!s) return;
 
-                // --- PALETA DE COLORES "NEÓN" PARA MODO OSCURO ---
-                let color = '#475569'; // Default (Gris azulado oscuro)
-                
-                if(s.type === 'menu') color = '#2563eb';      // Azul brillante
-                else if(s.type === 'filtro') color = '#9333ea'; // Violeta eléctrico
-                else if(s.type === 'input') color = '#ea580c';  // Naranja quemado
-                else if(s.type === 'message') color = '#059669';// Verde esmeralda
-                else if(s.type === 'cita') color = '#db2777';   // Rosa fucsia
+                // --- PALETA DE COLORES "NEÓN" ---
+                let color = '#475569'; 
+                if(s.type === 'menu') color = '#2563eb';      
+                else if(s.type === 'filtro') color = '#9333ea'; 
+                else if(s.type === 'input') color = '#ea580c';  
+                else if(s.type === 'message') color = '#059669';
+                else if(s.type === 'cita') color = '#db2777';   
                 
                 elements.push({ data: { id: k, label: k, color: color } });
                 
                 if(s.options && Array.isArray(s.options) && s.options.length > 0) { 
-                    s.options.forEach(o => { 
+                    
+                    // --- NUEVO: ORDENAR LAS CONEXIONES ---
+                    // Creamos una copia para no alterar el orden lógico del bot, solo el visual
+                    const sortedOptions = [...s.options].sort((a, b) => {
+                        // Orden Ascendente: El que tiene menos pasos (getWeight) va primero (Arriba)
+                        return getWeight(a.next_step) - getWeight(b.next_step);
+                    });
+
+                    sortedOptions.forEach(o => { 
                         if(o.next_step && flow[o.next_step]) {
                             elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } }); 
                         }
@@ -795,7 +824,7 @@
                 nodeSep: 60, 
                 rankSep: 150, 
                 ranker: 'network-simplex', 
-                align: 'UL',
+                align: 'UL', // Alineación Up-Left (Arriba-Izquierda)
                 animate: !savedZoom, 
                 animationDuration: 800,
                 fit: !savedZoom 
@@ -817,8 +846,8 @@
                             style: { 
                                 'background-color': 'data(color)', 
                                 'label': 'data(label)', 
-                                'color': '#ffffff', // Texto Blanco
-                                'text-outline-color': '#000000', // Borde negro al texto para lectura
+                                'color': '#ffffff', 
+                                'text-outline-color': '#000000', 
                                 'text-outline-width': 2,
                                 'shape': 'round-rectangle', 
                                 'width': 'label', 
@@ -833,9 +862,9 @@
                                 'text-wrap': 'wrap', 
                                 'text-max-width': '120px', 
                                 'border-width': 1,
-                                'border-color': 'rgba(255,255,255,0.2)', // Borde sutil blanco al nodo
+                                'border-color': 'rgba(255,255,255,0.2)', 
                                 'shadow-blur': 10, 
-                                'shadow-color': 'data(color)', // Sombra del mismo color que el nodo (Efecto Glow)
+                                'shadow-color': 'data(color)', 
                                 'shadow-opacity': 0.4 
                             } 
                         }, 
@@ -843,16 +872,16 @@
                             selector: 'edge', 
                             style: { 
                                 'width': 2, 
-                                'line-color': '#94a3b8', // GRIS CLARO (Vital para fondo negro)
-                                'curve-style': 'taxi', // Taxi o Bezier
+                                'line-color': '#94a3b8', 
+                                'curve-style': 'taxi', 
                                 'taxi-direction': 'rightward',
                                 'target-arrow-shape': 'triangle', 
-                                'target-arrow-color': '#94a3b8', // Flecha clara
+                                'target-arrow-color': '#94a3b8', 
                                 'opacity': 0.8, 
                                 'label': 'data(label)', 
                                 'font-size': '10px', 
-                                'color': '#e2e8f0', // Texto de línea claro
-                                'text-background-color': '#000000', // Fondo del texto de línea negro
+                                'color': '#e2e8f0', 
+                                'text-background-color': '#000000', 
                                 'text-background-opacity': 0.7, 
                                 'text-background-padding': '3px',
                                 'text-background-shape': 'roundrectangle',
@@ -869,12 +898,10 @@
                     layout: layoutConfig
                 });
                 
-                // 3. RESTAURAR POSICIÓN EXACTA
                 if (savedZoom && savedPan) {
                     cy.viewport({ zoom: savedZoom, pan: savedPan });
                 }
 
-                // EVENTOS
                 cy.on('tap', 'node', function(evt){ 
                     const node = evt.target;
                     cy.elements().removeClass('highlighted faded');
