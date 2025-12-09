@@ -8,6 +8,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
+    <!-- 1. Cytoscape Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+    
+    <!-- 2. Dagre Core (Motor Matemático) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+    
+    <!-- 3. Cytoscape Dagre (El Puente) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape-dagre/2.5.0/cytoscape-dagre.min.js"></script>
+
     <!-- 1. ORDEN CRÍTICO DE LIBRERÍAS GRÁFICAS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
     <script src="https://unpkg.com/klayjs@0.4.1/klay.js"></script>
@@ -747,7 +756,7 @@
 
         // --- RENDER FLOW CORREGIDO Y BLINDADO ---
         function renderFlow() {
-            // 1. LIMPIEZA DE MEMORIA
+            // 1. Limpieza segura de memoria
             let savedZoom = null;
             let savedPan = null;
 
@@ -762,7 +771,7 @@
 
             if (!flow || Object.keys(flow).length === 0) return;
 
-            // 2. PREPARAR DATOS
+            // 2. Definición de colores
             const nodeColors = {
                 'menu': '#2563eb',    
                 'filtro': '#7c3aed',  
@@ -792,19 +801,21 @@
                 }
             });
 
-            // 3. INICIALIZAR CYTOSCAPE
+            // 3. Inicialización (Dagre)
             try {
                 cy = cytoscape({
                     container: document.getElementById('cy'),
                     elements: elements,
                     
-                    // --- CONFIGURACIÓN VISUAL ---
+                    // OPTIMIZACIONES DE RENDIMIENTO (Clave para que no se congele)
                     textureOnViewport: true,
-                    pixelRatio: 1,           
+                    pixelRatio: 1,
+                    motionBlur: false,
+                    
+                    // BLOQUEO
                     autolock: true,          
                     autoungrabify: true,
                     boxSelectionEnabled: false,
-                    wheelSensitivity: 0.1,   
 
                     style: [
                         { selector: 'node', style: {
@@ -817,7 +828,6 @@
                             'width': 'label',
                             'height': '40px',
                             'padding': '12px',
-                            'min-width': '50px', 
                             'font-family': 'Inter, sans-serif',
                             'font-size': '12px',
                             'font-weight': '700',
@@ -849,40 +859,25 @@
                         { selector: '.highlighted', style: { 'opacity': 1, 'z-index': 999 }}
                     ],
 
-                    // ⚠️ TRUCO CLAVE: Usamos 'grid' primero. 
-                    // Si klay falla, al menos verás una cuadrícula ordenada y no una pila.
-                    layout: { name: 'grid', rows: 1 }
+                    layout: {
+                        name: 'dagre', // Usamos Dagre, es más robusto
+                        rankDir: 'LR', // Izquierda a Derecha
+                        nodeSep: 50,
+                        rankSep: 100,
+                        animate: false,
+                        fit: true,
+                        padding: 30
+                    }
                 });
 
-                // 4. APLICAR DISEÑO INTELIGENTE (KLAY) CON RETRASO
-                // Esto asegura que el contenedor tenga tamaño antes de calcular posiciones
-                setTimeout(() => {
-                    if(!cy) return;
-                    
-                    const layout = cy.layout({
-                        name: 'klay', // Usamos klay explícitamente aquí
-                        animate: false,
-                        nodeDimensionsIncludeLabels: true,
-                        fit: true,
-                        padding: 30,
-                        klay: {
-                            direction: 'RIGHT',
-                            spacing: 80,
-                            compactComponents: false,
-                            edgeRouting: 'ORTHOGONAL',
-                            fixedAlignment: 'BALANCED'
-                        }
-                    });
-                    
-                    layout.run(); // Ejecutar layout
-                    
-                    // Restaurar zoom si existía
-                    if (savedZoom && savedPan) {
-                        cy.viewport({ zoom: savedZoom, pan: savedPan });
-                    }
-                }, 150); // 150ms de espera para asegurar renderizado
+                // Asegurar renderizado
+                cy.resize(); 
 
-                // Eventos de click (Highlighting)
+                if (savedZoom && savedPan) {
+                    cy.viewport({ zoom: savedZoom, pan: savedPan });
+                }
+
+                // Eventos
                 cy.on('tap', 'node', function(evt){
                     const node = evt.target;
                     cy.elements().removeClass('highlighted faded');
