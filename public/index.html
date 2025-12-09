@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CRM - Monitor Dark</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <!-- 1. ORDEN CRÍTICO DE LIBRERÍAS GRÁFICAS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
     <script src="https://unpkg.com/klayjs@0.4.1/klay.js"></script>
     <script src="https://unpkg.com/cytoscape-klay@3.1.4/cytoscape-klay.js"></script>
@@ -49,7 +52,7 @@
 
         /* --- LAYOUT PRINCIPAL (FLEXBOX CORREGIDO) --- */
         #mainApp {
-            display: flex;       
+            display: flex;        
             width: 100%;
             height: 100%;
             overflow: hidden;
@@ -220,7 +223,7 @@
             display: flex; align-items: center; justify-content: center;
         }
 
-        /* --- FLOW EDITOR (CORREGIDO) --- */
+        /* --- FLOW EDITOR --- */
         #view-flow {
             position: relative; /* Clave para que los hijos absolutos se posicionen respecto a esto */
             width: 100%;
@@ -362,7 +365,7 @@
 
             <!-- VISTA: FLUJO (EDITOR) -->
             <div id="view-flow" class="view active">
-                <div id="cy"></div> <!-- AHORA POSICIONADO ABSOLUTAMENTE -->
+                <div id="cy"></div>
                 <div class="flow-controls">
                     <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()+0.2)"><i class="fas fa-plus"></i></div>
                     <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)"><i class="fas fa-minus"></i></div>
@@ -556,34 +559,23 @@
 
     <!-- SCRIPT LÓGICO -->
     <script>
-        // Configuración de la URL Base de la API
-        // Esto corrige el error en entornos donde no hay un origen claro (blobs, iframes locales)
         const API_BASE = (() => {
             const { protocol } = window.location;
-            // Si estamos en un blob, archivo local o entorno sin origen standard
             if (protocol === 'file:' || protocol === 'blob:' || protocol === 'data:') {
                 return 'http://localhost:3000';
             }
-            return ''; // Rutas relativas por defecto para producción
+            return ''; 
         })();
 
-        // Variables mejoradas para control de polling
         let pollingInterval = null;
         let activityInterval = null;
         let lastQr = '';
         let isConnected = false;
         let isPollingActive = false;
 
-        // Función para limpiar todos los intervals
         function cleanupAllIntervals() {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-            }
-            if (activityInterval) {
-                clearInterval(activityInterval);
-                activityInterval = null;
-            }
+            if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+            if (activityInterval) { clearInterval(activityInterval); activityInterval = null; }
             isPollingActive = false;
         }
 
@@ -592,9 +584,7 @@
             startPolling();
             loadAll();
             
-            // Intervalo optimizado para carga de actividad
             activityInterval = setInterval(() => {
-                // Solo cargar actividad si la vista está activa
                 if (document.getElementById('view-activity').classList.contains('active')) {
                     loadActivity();
                 }
@@ -602,34 +592,25 @@
         };
 
         function startPolling() {
-            // Limpiar intervalo existente
             cleanupAllIntervals();
             isPollingActive = true;
             
             pollingInterval = setInterval(async () => {
-                // Verificar si el polling sigue activo
-                if (!isPollingActive) {
-                    clearInterval(pollingInterval);
-                    return;
-                }
+                if (!isPollingActive) { clearInterval(pollingInterval); return; }
                 
                 try {
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 5000);
                     
-                    const res = await fetch(`${API_BASE}/api/status`, {
-                        signal: controller.signal
-                    });
+                    const res = await fetch(`${API_BASE}/api/status`, { signal: controller.signal });
                     clearTimeout(timeoutId);
                     
                     const data = await res.json();
                     
                     if (data.status === 'connected') {
                         isConnected = true;
-                        cleanupAllIntervals(); // Detener polling una vez conectado
+                        cleanupAllIntervals(); 
                         document.getElementById('setupWizard').classList.add('step-hidden');
-                        
-                        // Notificar y actualizar interfaz
                         showToast('Conectado exitosamente');
                         updateStatusUI();
                     } else if (data.qr) {
@@ -643,19 +624,13 @@
                         }
                     } else {
                         if (data.status === 'disconnected') {
-                            // Llamada sin esperar respuesta para no bloquear
-                            fetch(`${API_BASE}/api/auth/init`, { 
-                                method: 'POST' 
-                            }).catch(e => console.warn("Init error:", e));
+                            fetch(`${API_BASE}/api/auth/init`, { method: 'POST' }).catch(e => console.warn("Init error:", e));
                         }
                         document.getElementById('stepLoading').classList.remove('step-hidden');
                         document.getElementById('stepQR').classList.add('step-hidden');
                     }
                 } catch (e) { 
-                    if (e.name !== 'AbortError') {
-                        console.warn("Polling error (no crítico):", e);
-                    }
-                    // No hacer nada en caso de error - el intervalo continuará
+                    if (e.name !== 'AbortError') console.warn("Polling error (no crítico):", e);
                 }
             }, 2000);
         }
@@ -668,31 +643,26 @@
         let cy = null;
         let currentRefDate = new Date();
         let wakeLock = null;
-        const emojis = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
         const delayedFilter = debounce(filterContacts, 300);
 
         function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
         
         function nav(v, btn) {
-            // Gestión de clases activas
             document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
             document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
             document.getElementById('view-' + v).classList.add('active');
             if (btn) btn.classList.add('active');
             
-            // Títulos
             const titles = { flow: 'FLUJO VISUAL', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'TEST BOT' };
             document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
             document.getElementById('sidebar').classList.remove('active');
             
-            // 🛑 LIMPIEZA DE MEMORIA AL CAMBIAR DE PESTAÑA 🛑
             if (v !== 'flow' && cy) {
                 try { cy.destroy(); cy = null; } catch(e){}
             }
             
-            // Renderizado específico
-            if (v === 'flow') setTimeout(renderFlow, 50); // Pequeño delay para que la UI respire
+            if (v === 'flow') setTimeout(renderFlow, 100); 
             if (v === 'activity') loadActivity();
             if (v === 'agenda') renderCalendar();
             if (v === 'sim') scrollToBottomSim(); 
@@ -712,8 +682,18 @@
 
         async function loadAll() {
             try {
-                flow = await (await fetch(`${API_BASE}/api/flow`)).json();
+                // Intentamos cargar
+                const res = await fetch(`${API_BASE}/api/flow`);
+                flow = await res.json();
                 renderFlow();
+            } catch(e) {
+                // SI FALLA LA CARGA, MOSTRAMOS UN MENSAJE EN EL CONTAINER
+                console.error("No se pudo cargar el flujo");
+                const c = document.getElementById('cy');
+                if(c) c.innerHTML = '<div style="color:white; text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
+            }
+
+            try {
                 const set = await (await fetch(`${API_BASE}/api/settings`)).json();
                 if(set.schedule) {
                     document.getElementById('schedActive').checked = set.schedule.active;
@@ -739,7 +719,6 @@
                         let actionsHtml = `<div style="margin-bottom:5px;"><span style="font-size:0.7rem; background:var(--bg-body); padding:2px 6px; border:1px solid var(--border); border-radius:4px; color:var(--text-muted);">${u.current_step}</span></div>`;
                         if (s.type === 'filtro' && s.options) {
                             s.options.forEach(opt => {
-                                // Estilo minimalista para botones
                                 actionsHtml += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${opt.next_step}')">${opt.label}</button>`;
                             });
                         }
@@ -759,7 +738,6 @@
         }
 
         function updateStatusUI() {
-            // Placeholder para estado del negocio
             const badge = document.getElementById('crmStatusBadge');
             badge.className = 'status-badge open'; 
             badge.innerHTML = '● ONLINE';
@@ -767,8 +745,8 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
+        // --- RENDER FLOW CORREGIDO Y BLINDADO ---
         function renderFlow() {
-            // 1. Gestión de Memoria y Estado de la Vista
             let savedZoom = null;
             let savedPan = null;
 
@@ -777,23 +755,22 @@
                     savedZoom = cy.zoom();
                     savedPan = cy.pan();
                 } catch(e) {}
-                cy.destroy(); // Limpiamos la instancia anterior para liberar RAM
+                cy.destroy();
                 cy = null;
             }
 
+            // Si no hay datos, no hacer nada (o mostrar aviso)
             if (!flow || Object.keys(flow).length === 0) return;
 
-            // 2. Mapa de Colores (Más limpio y rápido que múltiples if/else)
             const nodeColors = {
-                'menu': '#2563eb',    // Azul
-                'filtro': '#7c3aed',  // Violeta
-                'input': '#d97706',   // Naranja
-                'message': '#059669', // Verde
-                'cita': '#db2777',    // Rosa
-                'default': '#334155'  // Gris
+                'menu': '#2563eb',    
+                'filtro': '#7c3aed',  
+                'input': '#d97706',   
+                'message': '#059669', 
+                'cita': '#db2777',    
+                'default': '#334155'  
             };
 
-            // 3. Construcción de Elementos
             let elements = [];
             
             Object.keys(flow).forEach(k => {
@@ -802,12 +779,10 @@
 
                 const color = nodeColors[s.type] || nodeColors['default'];
                 
-                // Nodo
                 elements.push({ 
                     data: { id: k, label: k, color: color } 
                 });
 
-                // Conexiones (Edges)
                 if (s.options && Array.isArray(s.options)) {
                     s.options.forEach(o => {
                         if (o.next_step && flow[o.next_step]) {
@@ -823,36 +798,29 @@
                 }
             });
 
-            // 4. Inicialización de Cytoscape Optimizado
             try {
                 cy = cytoscape({
                     container: document.getElementById('cy'),
                     elements: elements,
-
-                    // --- OPTIMIZACIONES DE RENDIMIENTO ---
-                    textureOnViewport: true, // Dibuja una 'foto' al mover, elimina el lag
-                    pixelRatio: 1,           // Baja la resolución interna para velocidad
-                    motionBlur: false,       // Desactiva efectos costosos
-                    // -------------------------------------
-
-                    // --- REGLAS DE INTERACCIÓN ---
-                    autolock: true,          // 🔒 NODOS FIJOS: No se pueden arrastrar
+                    textureOnViewport: true,
+                    pixelRatio: 1,           
+                    autolock: true,          
                     autoungrabify: true,
                     boxSelectionEnabled: false,
-                    wheelSensitivity: 0.1,   // Zoom más suave
+                    wheelSensitivity: 0.1,   
 
                     style: [
-                        // NODOS
                         { selector: 'node', style: {
-                            'background-color': '#ffffff', // Fondo blanco para contraste
+                            'background-color': '#ffffff', 
                             'border-width': 2,
-                            'border-color': 'data(color)', // Borde del color del tipo
+                            'border-color': 'data(color)', 
                             'label': 'data(label)',
-                            'color': '#1e293b', // Texto oscuro
+                            'color': '#1e293b', 
                             'shape': 'round-rectangle',
                             'width': 'label',
                             'height': '40px',
                             'padding': '12px',
+                            'min-width': '60px', // IMPORTANTE: Evita colapso si la fuente no carga
                             'font-family': 'Inter, sans-serif',
                             'font-size': '12px',
                             'font-weight': '700',
@@ -860,18 +828,17 @@
                             'text-halign': 'center',
                             'text-transform': 'uppercase',
                             'shadow-blur': 12,
-                            'shadow-color': 'data(color)', // Sombra del color del tipo
+                            'shadow-color': 'data(color)', 
                             'shadow-opacity': 0.15,
                             'shadow-offset-y': 2
                         }},
-                        // LÍNEAS (Edges)
                         { selector: 'edge', style: {
                             'width': 2,
-                            'line-color': '#dc2626',         // 🔴 LÍNEAS ROJAS (Solicitado)
+                            'line-color': '#dc2626',         
                             'target-arrow-color': '#dc2626',
                             'target-arrow-shape': 'triangle',
-                            'curve-style': 'taxi',           // 'taxi' o 'bezier' son los más rápidos
-                            'taxi-direction': 'rightward',   // Fuerza líneas rectas tipo tubería
+                            'curve-style': 'taxi',           
+                            'taxi-direction': 'rightward',   
                             'arrow-scale': 1.2,
                             'label': 'data(label)',
                             'font-size': '10px',
@@ -882,13 +849,11 @@
                             'text-background-shape': 'roundrectangle',
                             'text-rotation': 'autorotate'
                         }},
-                        // ESTADO SELECCIONADO
                         { selector: 'node:selected', style: {
                             'border-width': 4,
                             'border-color': '#000000',
                             'shadow-opacity': 0.4
                         }},
-                        // ESTADO FADED (Cuando seleccionas otro nodo)
                         { selector: '.faded', style: {
                             'opacity': 0.1,
                             'label': ''
@@ -901,47 +866,41 @@
 
                     layout: {
                         name: 'klay',
-                        nodeDimensionsIncludeLabels: true, // Importante para que no se encimen
+                        nodeDimensionsIncludeLabels: true,
                         fit: true,
-                        padding: 20,
+                        padding: 30,
                         animate: false, 
 
                         klay: {
-                            // Cambiamos a 'LONGEST_PATH' porque es más robusto y evita el apilamiento
-                            nodeLayering: 'LONGEST_PATH', 
-                            
+                            nodeLayering: 'NETWORK_SIMPLEX', // Más estable que LONGEST_PATH
                             direction: 'RIGHT',
-                            spacing: 100,           // Aumentado: Más espacio entre nodos
-                            intCoordinates: true,   // Ayuda a la precisión
-                            compactComponents: false, // Evita agrupar islas desconectadas
-                            
-                            // Configuración de líneas
+                            spacing: 80, 
+                            thoroughness: 10,
+                            compactComponents: false,
                             edgeRouting: 'ORTHOGONAL', 
-                            cycleBreaking: 'GREEDY',
                             fixedAlignment: 'BALANCED'
                         }
                     }
                 });
 
-                // 6. Restaurar Vista (Anti-Salto)
+                // FORZAR REDIBUJADO
+                cy.resize();
+                cy.fit();
+
                 if (savedZoom && savedPan) {
                     cy.viewport({ zoom: savedZoom, pan: savedPan });
                 }
 
-                // 7. Eventos de Interacción (Highlighting)
                 cy.on('tap', 'node', function(evt){
                     const node = evt.target;
-                    // Limpiar previos
                     cy.elements().removeClass('highlighted faded');
-                    // Calcular vecindario (padres e hijos directos)
                     const neighborhood = node.predecessors().union(node.successors()).union(node);
-                    // Aplicar clases
                     cy.elements().not(neighborhood).addClass('faded');
                     neighborhood.addClass('highlighted');
                 });
 
                 cy.on('tap', function(evt){
-                    if(evt.target === cy){ // Click en el fondo vacío
+                    if(evt.target === cy){ 
                         cy.elements().removeClass('highlighted faded');
                     }
                 });
@@ -1082,7 +1041,6 @@
                 `;
                 list.appendChild(row);
             });
-            // Guardamos fecha actual para el form
             document.getElementById('evtOldTime').dataset.date = dateKey; 
         }
 
@@ -1106,16 +1064,12 @@
             renderEventList(date);
         }
 
-        // --- CONTACTOS (OPTIMIZADO) ---
+        // --- CONTACTOS ---
         async function renderContacts() {
             try {
-                // 1. Obtener datos
                 const list = await (await fetch(`${API_BASE}/api/contacts`)).json();
                 const c = document.getElementById('contactsList');
-                
-                // 2. Construir HTML en una variable (Buffer) para no congelar la UI
                 let htmlBuffer = '';
-                
                 list.forEach(u => {
                     htmlBuffer += `
                     <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
@@ -1130,11 +1084,7 @@
                         </label>
                     </div>`;
                 });
-
-                // 3. Actualizar el DOM una sola vez
                 c.innerHTML = htmlBuffer;
-
-                // 4. Inyectar estilos del switch solo si no existen
                 if (!document.getElementById('toggle-style')) {
                     const style = document.createElement('style');
                     style.id = 'toggle-style';
@@ -1164,14 +1114,12 @@
         function sendSim() {
             const t = document.getElementById('simInput'); const txt = t.value; if(!txt) return;
             addMsg(txt, true); t.value=''; 
-            simState.history['last_input'] = txt; // Mock save
-            fetch(`${API_BASE}/api/crm/execute`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:simPhone, stepId:simState.step})}); // Just to trigger log
+            simState.history['last_input'] = txt; 
+            fetch(`${API_BASE}/api/crm/execute`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:simPhone, stepId:simState.step})}); 
             
-            // Simulación visual rápida
             setTimeout(() => {
                 const step = flow[simState.step] || {};
                 if(step.type === 'menu' || step.type === 'input') {
-                    // Lógica real está en server, esto es solo UI feedback
                     addMsg("Procesando...", false); 
                 }
             }, 600);
