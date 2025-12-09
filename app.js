@@ -8,15 +8,23 @@ const cors = require('cors');
 
 // --- IMPORTS ---
 const { handleMessage, sendStepMessage } = require('./src/flow');
-// Asegúrate de importar getAllUsers y las demás funciones de base de datos correctamente
 const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, saveSettings, getAllUsers, updateUser, getUser, clearAllSessions } = require('./src/database');
-
-// --- IMPORTANTE: Aquí traemos getAllContacts para el filtro maestro ---
 const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
 
 const app = express();
 app.use(cors());
-const port = 3000;
+
+// =================================================================
+// 1. CONFIGURACIÓN DINÁMICA DE PUERTO (MODIFICADO)
+// =================================================================
+// Buscamos si la Torre nos mandó el puerto (ej: --port 3005)
+const args = process.argv.slice(2);
+const portArgIndex = args.indexOf('--port');
+const PORT = portArgIndex !== -1 ? parseInt(args[portArgIndex + 1]) : 3000; // Si no, usa 3000 por defecto
+
+// CONFIG DE LA TORRE
+const TOWER_URL = 'http://localhost:8888/api/instances/report'; // Dirección de la Torre
+const INSTANCE_ID = 'bot_' + PORT; // ID único para la torre
 
 // --- CONFIGURACIÓN DE CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
@@ -30,6 +38,28 @@ if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 let globalSock;
 let globalQR = null; 
 let connectionStatus = 'disconnected'; 
+
+// =================================================================
+// 2. FUNCIÓN DE REPORTE A LA TORRE (NUEVO)
+// =================================================================
+async function reportToTower() {
+    try {
+        // En Node 18+ fetch es nativo. Si usas Node viejo, ignora el error.
+        await fetch(TOWER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: INSTANCE_ID,
+                port: PORT,
+                status: connectionStatus,
+                qr: globalQR,
+                version: '2.0.0'
+            })
+        });
+    } catch (e) {
+        // Silencioso: Si la torre está apagada, el bot sigue funcionando normal.
+    }
+}
 
 // --- HELPER PARA LEER JSON SEGURO ---
 function safeReadJSON(filePath, defaultVal) {
@@ -71,18 +101,12 @@ initializeDB();
 // --- LÓGICA DE CONEXIÓN WHATSAPP ---
 async function connectToWhatsApp() {
     if (connectionStatus === 'connecting' || connectionStatus === 'rebooting' || connectionStatus === 'connected') {
-        console.log("⚠️ Intento de conexión duplicada ignorado. Estado:", connectionStatus);
         return;
     }
 
     connectionStatus = 'connecting';
+    reportToTower(); // <--- AVISAR TORRE
     console.log("🔄 Iniciando conexión a WhatsApp...");
-
-    if (fs.existsSync(authDir) && fs.readdirSync(authDir).length > 0) {
-        console.log("📂 Sesión encontrada. Intentando restaurar...");
-    } else {
-        console.log("📂 Nueva sesión. Se generará QR.");
-    }
 
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
     const { version } = await fetchLatestBaileysVersion();
@@ -110,6 +134,7 @@ async function connectToWhatsApp() {
             console.log("📡 QR Generado");
             globalQR = qr; 
             connectionStatus = 'qr_ready';
+            reportToTower(); // <--- AVISAR TORRE (Nuevo QR)
         }
 
         if (connection === 'close') {
@@ -119,6 +144,7 @@ async function connectToWhatsApp() {
             
             if (connectionStatus !== 'rebooting') connectionStatus = 'disconnected';
             globalQR = null;
+            reportToTower(); // <--- AVISAR TORRE (Desconectado)
 
             if (shouldReconnect && connectionStatus !== 'rebooting') {
                 setTimeout(() => {
@@ -130,18 +156,29 @@ async function connectToWhatsApp() {
             console.log('✅ Bot CONECTADO');
             connectionStatus = 'connected';
             globalQR = null; 
+            reportToTower(); // <--- AVISAR TORRE (Conectado)
         }
     });
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
     // =================================================================
-    // >>> FILTRO MAESTRO: NOMBRE + TELÉFONO <<<
+    // >>> LOGICA DE MENSAJES (FILTROS + LICENCIA) <<<
     // =================================================================
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
 
-        // 1. Obtenemos lista fresca de contactos (con sus switches)
+        // 1. REVISAR VIGENCIA DE LA LICENCIA (NUEVO)
+        const settings = getSettings();
+        if (settings.license && settings.license.end) {
+            const today = new Date().toISOString().split('T')[0];
+            if (today > settings.license.end) {
+                console.log("🔒 LICENCIA VENCIDA. Bot en pausa.");
+                return; // Detener ejecución si la licencia expiró
+            }
+        }
+
+        // 2. FILTRO DE CONTACTOS Y NOMBRES
         const allContacts = getAllContacts(); 
 
         for (const msg of messages) {
@@ -150,40 +187,25 @@ async function connectToWhatsApp() {
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') continue;
 
-            // Datos del Remitente (Entrante)
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, ''); 
             const incomingName = msg.pushName || ''; 
 
-            // --- LÓGICA DE BLOQUEO ---
-            // Buscamos si existe ALGÚN contacto en nuestra BD que coincida y tenga el bot apagado
             const isBlocked = allContacts.some(contact => {
-                // Solo nos importa revisar si el bot está APAGADO para este contacto
                 if (contact.bot_enabled !== false) return false; 
-
-                // Datos del Contacto (Guardado en BD)
                 const dbPhoneRaw = (contact.phone || '').replace(/[^0-9]/g, '');
-                
-                // A) COINCIDENCIA DE TELÉFONO (Últimos 10 dígitos para evitar líos de lada)
                 const phoneMatch = dbPhoneRaw.slice(-10) === incomingPhoneRaw.slice(-10);
-
-                // B) COINCIDENCIA DE NOMBRE (Si existe nombre guardado y entrante)
                 let nameMatch = false;
                 if (contact.name && incomingName) {
-                    // Quitamos espacios y minúsculas para comparar "Juan Perez" con "juan perez"
                     nameMatch = contact.name.trim().toLowerCase() === incomingName.trim().toLowerCase();
                 }
-
-                // Si coincide el teléfono O el nombre, y bot_enabled es false, BLOQUEAMOS.
                 return phoneMatch || nameMatch;
             });
 
             if (isBlocked) {
-                // Log para que sepas por qué no respondió
-                console.log(`⛔ Bot SILENCIADO para: ${incomingName || 'Desconocido'} (${incomingPhoneRaw})`);
-                continue; // SALTAMOS al siguiente mensaje, handleMessage NO se ejecuta
+                console.log(`⛔ Bot SILENCIADO para: ${incomingName} (${incomingPhoneRaw})`);
+                continue; 
             }
 
-            // Si pasa el filtro, procesamos
             await handleMessage(sock, msg);
         }
     });
@@ -218,6 +240,7 @@ app.post('/api/logout', async (req, res) => {
     try {
         console.log("🛑 Solicitud de REINICIO recibida.");
         connectionStatus = 'rebooting'; 
+        reportToTower(); // <--- AVISAR TORRE
         globalQR = null;
 
         if (globalSock) {
@@ -240,6 +263,7 @@ app.post('/api/logout', async (req, res) => {
     } catch (e) {
         console.error(e);
         connectionStatus = 'disconnected';
+        reportToTower(); // <--- AVISAR TORRE
         res.status(500).json({ error: 'Error al reiniciar' });
     }
 });
@@ -335,13 +359,22 @@ app.get('/api/admin/clear-monitor', (req, res) => {
 });
 
 app.get('/api/settings', (req, res) => res.json(getSettings()));
+
+// =================================================================
+// 3. GUARDAR AJUSTES + LICENCIAS (MODIFICADO)
+// =================================================================
 app.post('/api/settings', async (req, res) => { 
     const current = getSettings();
-    await saveSettings({ ...current, schedule: req.body.schedule }); 
+    // Ahora hacemos MERGE de todo lo que llegue (schedule, license, etc)
+    const newSettings = { ...current, ...req.body };
+    await saveSettings(newSettings); 
     res.json({ success: true }); 
 });
 
-app.listen(port, () => {
-    console.log(`🚀 Torre de Control en http://localhost:${port}`);
+// ARRANCAR EL BOT
+app.listen(PORT, () => {
+    console.log(`🚀 Torre de Control Local en puerto: ${PORT}`);
+    // Intentar conexión inicial y reporte a la Torre Maestra
     connectToWhatsApp();
+    reportToTower();
 });
