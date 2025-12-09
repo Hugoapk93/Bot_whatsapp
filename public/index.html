@@ -809,10 +809,11 @@
                             'border-width': 1, 'border-color': 'rgba(255,255,255,0.2)', 
                             'shadow-blur': 10, 'shadow-color': 'data(color)', 'shadow-opacity': 0.4 
                         }}, 
+                        // Estilo para líneas PRINCIPALES (Sólidas y rectas)
                         { selector: 'edge', style: { 
                             'width': 2, 
                             'line-color': '#94a3b8', 
-                            'curve-style': 'taxi', // Taxi hace esquinas rectas, ideal para diagramas técnicos
+                            'curve-style': 'taxi', // Taxi hace esquinas rectas
                             'taxi-direction': 'rightward', // Fuerza la salida hacia la derecha
                             'target-arrow-shape': 'triangle', 'target-arrow-color': '#94a3b8', 
                             'opacity': 0.8, 'label': 'data(label)', 'font-size': '10px', 'color': '#e2e8f0', 
@@ -820,13 +821,16 @@
                             'text-background-padding': '3px', 'text-background-shape': 'roundrectangle', 
                             'text-rotation': 'autorotate' 
                         }},
-                        // Estilo especial para las líneas de retorno (las que se estiran)
+                        // --- CAMBIO AQUÍ: Estilo para líneas de REUTILIZACIÓN (Punteadas y rectas) ---
                         { selector: 'edge.cross-edge', style: {
-                            'line-style': 'dashed', // Opcional: línea punteada para diferenciar visualmente
-                            'line-color': '#64748b',
-                            'opacity': 0.5,
-                            'curve-style': 'unbundled-bezier' // Curva suave para saltar nodos
+                            'line-style': 'dashed', // Mantiene el estilo punteado
+                            'line-color': '#64748b', // Un gris un poco diferente para distinguir
+                            'opacity': 0.7,
+                            'curve-style': 'taxi', // <--- CAMBIO CLAVE: Ahora son rectas tipo "taxi"
+                            'taxi-direction': 'rightward', // Misma dirección que las principales
+                            'target-arrow-color': '#64748b' // Flecha del mismo color
                         }},
+                        // --------------------------------------------------------------------------
                         { selector: 'node:selected', style: { 'border-width': 2, 'border-color': '#ffffff', 'shadow-blur': 20, 'shadow-opacity': 0.8 } },
                         { selector: '.highlighted', style: { 'opacity': 1, 'border-width': 2, 'border-color': '#ffffff' } },
                         { selector: '.faded', style: { 'opacity': 0.1, 'label': '' } }
@@ -835,29 +839,27 @@
                 });
 
                 // 4. LÓGICA MAGICA: Clasificar Aristas (Main vs Cross)
-                // Buscamos los nodos raíz (sin padres) o usamos el primero que encontremos
                 let roots = cy.nodes().roots();
-                if(roots.length === 0) roots = cy.nodes().first(); // Si es circular, agarramos cualquiera
+                if(roots.length === 0) roots = cy.nodes().first(); 
 
                 // Marcamos TODAS las líneas como "cross-edge" (secundarias) primero
                 cy.edges().addClass('cross-edge');
 
                 // Recorremos el árbol (BFS) para encontrar la ruta principal
-                // Las líneas que descubren nuevos nodos se vuelven "tree-edge" (principales)
                 cy.elements().bfs({
                     roots: roots,
                     visit: function(v, e, u, i, depth) {
                         if (e) {
+                            // Si la línea descubre un nodo nuevo, es principal, quitamos la marca "cross-edge"
                             e.removeClass('cross-edge');
-                            e.addClass('tree-edge');
                         }
                     },
                     directed: true
                 });
 
                 // 5. EJECUTAR LAYOUT SOLO EN EL ÁRBOL PRINCIPAL
-                // Esto es lo que hace que los nodos no se muevan por culpa de las reutilizaciones
-                const layoutElements = cy.elements('node, edge.tree-edge');
+                // Usamos un selector que excluye las líneas marcadas como '.cross-edge'
+                const layoutElements = cy.elements().not('edge.cross-edge');
                 
                 layoutElements.layout({ 
                     name: 'dagre', 
