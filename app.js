@@ -6,9 +6,12 @@ const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
 
-// --- IMPORTS: Lógica del flujo y Base de Datos ---
+// --- IMPORTS ---
 const { handleMessage, sendStepMessage } = require('./src/flow');
+// Asegúrate de importar getAllUsers y las demás funciones de base de datos correctamente
 const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, saveSettings, getAllUsers, updateUser, getUser, clearAllSessions } = require('./src/database');
+
+// --- IMPORTANTE: Aquí traemos getAllContacts para el filtro maestro ---
 const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
 
 const app = express();
@@ -18,15 +21,15 @@ const port = 3000;
 // --- CONFIGURACIÓN DE CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
 const dataDir = path.join(__dirname, 'data'); 
-const authDir = 'auth_info_baileys'; // Carpeta de sesión
+const authDir = 'auth_info_baileys'; 
 
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// --- VARIABLES GLOBALES PARA CONTROL TOWER ---
+// --- VARIABLES GLOBALES ---
 let globalSock;
 let globalQR = null; 
-let connectionStatus = 'disconnected'; // Estados: disconnected, connecting, qr_ready, connected, rebooting
+let connectionStatus = 'disconnected'; 
 
 // --- HELPER PARA LEER JSON SEGURO ---
 function safeReadJSON(filePath, defaultVal) {
@@ -44,13 +47,12 @@ function safeReadJSON(filePath, defaultVal) {
     }
 }
 
-// --- LÓGICA DE AGENDA (BACKEND) ---
+// --- LÓGICA DE AGENDA ---
 const agendaPath = path.join(dataDir, 'agenda.json');
-
 function getAgenda() { return safeReadJSON(agendaPath, {}); }
 function saveAgenda(data) { fs.writeFileSync(agendaPath, JSON.stringify(data, null, 2)); }
 
-// Configurar Multer
+// Multer Config
 const storage = multer.diskStorage({
     destination: function (req, file, cb) { cb(null, 'public/uploads/') },
     filename: function (req, file, cb) {
@@ -63,25 +65,23 @@ const upload = multer({ storage: storage });
 app.use(express.static('public'));
 app.use(express.json());
 
-// --- INICIALIZAR BASES DE DATOS ---
+// Inicializar DB
 initializeDB();
 
 // --- LÓGICA DE CONEXIÓN WHATSAPP ---
 async function connectToWhatsApp() {
-    // 🔒 BLOQUEO: Si ya se está conectando o reiniciando, no hacer nada.
     if (connectionStatus === 'connecting' || connectionStatus === 'rebooting' || connectionStatus === 'connected') {
-        console.log("⚠️ Intento de conexión duplicada ignorado. Estado actual:", connectionStatus);
+        console.log("⚠️ Intento de conexión duplicada ignorado. Estado:", connectionStatus);
         return;
     }
 
     connectionStatus = 'connecting';
     console.log("🔄 Iniciando conexión a WhatsApp...");
 
-    // Verificar si existe sesión previa para informar en log
     if (fs.existsSync(authDir) && fs.readdirSync(authDir).length > 0) {
-        console.log("📂 Sesión encontrada. Intentando restaurar conexión...");
+        console.log("📂 Sesión encontrada. Intentando restaurar...");
     } else {
-        console.log("📂 No hay sesión previa. Se generará un nuevo QR.");
+        console.log("📂 Nueva sesión. Se generará QR.");
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
@@ -106,9 +106,8 @@ async function connectToWhatsApp() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
-        // 1. CAPTURAR EL QR
         if (qr) {
-            console.log("📡 QR Generado - Actualizando variable global");
+            console.log("📡 QR Generado");
             globalQR = qr; 
             connectionStatus = 'qr_ready';
         }
@@ -118,10 +117,7 @@ async function connectToWhatsApp() {
             const shouldReconnect = reason !== DisconnectReason.loggedOut;
             console.log(`⚠️ Conexión cerrada. Razón: ${reason}, Reconectando: ${shouldReconnect}`);
             
-            if (connectionStatus !== 'rebooting') {
-                connectionStatus = 'disconnected';
-            }
-            
+            if (connectionStatus !== 'rebooting') connectionStatus = 'disconnected';
             globalQR = null;
 
             if (shouldReconnect && connectionStatus !== 'rebooting') {
@@ -131,7 +127,7 @@ async function connectToWhatsApp() {
                 }, 3000); 
             }
         } else if (connection === 'open') {
-            console.log('✅ Bot CONECTADO y sincronizando...');
+            console.log('✅ Bot CONECTADO');
             connectionStatus = 'connected';
             globalQR = null; 
         }
@@ -139,30 +135,69 @@ async function connectToWhatsApp() {
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
+    // =================================================================
+    // >>> FILTRO MAESTRO: NOMBRE + TELÉFONO <<<
+    // =================================================================
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
+
+        // 1. Obtenemos lista fresca de contactos (con sus switches)
+        const allContacts = getAllContacts(); 
+
         for (const msg of messages) {
             if (!msg.message || msg.key.fromMe) continue;
+            
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') continue;
-            if (isBotDisabled(remoteJid)) continue; 
+
+            // Datos del Remitente (Entrante)
+            const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, ''); 
+            const incomingName = msg.pushName || ''; 
+
+            // --- LÓGICA DE BLOQUEO ---
+            // Buscamos si existe ALGÚN contacto en nuestra BD que coincida y tenga el bot apagado
+            const isBlocked = allContacts.some(contact => {
+                // Solo nos importa revisar si el bot está APAGADO para este contacto
+                if (contact.bot_enabled !== false) return false; 
+
+                // Datos del Contacto (Guardado en BD)
+                const dbPhoneRaw = (contact.phone || '').replace(/[^0-9]/g, '');
+                
+                // A) COINCIDENCIA DE TELÉFONO (Últimos 10 dígitos para evitar líos de lada)
+                const phoneMatch = dbPhoneRaw.slice(-10) === incomingPhoneRaw.slice(-10);
+
+                // B) COINCIDENCIA DE NOMBRE (Si existe nombre guardado y entrante)
+                let nameMatch = false;
+                if (contact.name && incomingName) {
+                    // Quitamos espacios y minúsculas para comparar "Juan Perez" con "juan perez"
+                    nameMatch = contact.name.trim().toLowerCase() === incomingName.trim().toLowerCase();
+                }
+
+                // Si coincide el teléfono O el nombre, y bot_enabled es false, BLOQUEAMOS.
+                return phoneMatch || nameMatch;
+            });
+
+            if (isBlocked) {
+                // Log para que sepas por qué no respondió
+                console.log(`⛔ Bot SILENCIADO para: ${incomingName || 'Desconocido'} (${incomingPhoneRaw})`);
+                continue; // SALTAMOS al siguiente mensaje, handleMessage NO se ejecuta
+            }
+
+            // Si pasa el filtro, procesamos
             await handleMessage(sock, msg);
         }
     });
 }
 
 // ==========================================
-//             RUTAS API (CORE)
+//              RUTAS API
 // ==========================================
 
-// 1. ESTADO DEL BOT (Corregido para coincidir con HTML: /api/status)
 app.get('/api/status', (req, res) => {
     const sessionPath = path.join(__dirname, authDir);
-    // Verificamos si hay sesión solo si no estamos reiniciando
     const sessionExists = connectionStatus !== 'rebooting' && fs.existsSync(sessionPath) && fs.readdirSync(sessionPath).length > 0;
-
     res.json({
-        status: connectionStatus === 'connected' ? 'connected' : connectionStatus, // Compatibilidad extra
+        status: connectionStatus === 'connected' ? 'connected' : connectionStatus,
         isConnected: connectionStatus === 'connected',
         qr: globalQR,
         sessionExists: sessionExists,
@@ -170,7 +205,6 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// 2. INICIAR BOT (Protegido contra doble llamada)
 app.post('/api/auth/init', (req, res) => {
     if (connectionStatus === 'disconnected') {
         connectToWhatsApp();
@@ -180,16 +214,14 @@ app.post('/api/auth/init', (req, res) => {
     }
 });
 
-// 3. REINICIAR / LOGOUT (Corregido para coincidir con HTML: /api/logout)
 app.post('/api/logout', async (req, res) => {
     try {
         console.log("🛑 Solicitud de REINICIO recibida.");
-        
         connectionStatus = 'rebooting'; 
         globalQR = null;
 
         if (globalSock) {
-            try { await globalSock.logout(); } catch(e) { console.log("Logout error:", e.message); }
+            try { await globalSock.logout(); } catch(e) {}
             try { globalSock.end(undefined); } catch(e) {}
             globalSock = null;
         }
@@ -198,12 +230,7 @@ app.post('/api/logout', async (req, res) => {
 
         const sessionPath = path.join(__dirname, authDir);
         if (fs.existsSync(sessionPath)) {
-            try {
-                fs.rmSync(sessionPath, { recursive: true, force: true });
-                console.log("🗑️ Carpeta de sesión eliminada.");
-            } catch (err) {
-                console.error("❌ Error borrando carpeta:", err.message);
-            }
+            try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (err) {}
         }
         
         connectionStatus = 'disconnected'; 
@@ -216,10 +243,6 @@ app.post('/api/logout', async (req, res) => {
         res.status(500).json({ error: 'Error al reiniciar' });
     }
 });
-
-// ==========================================
-//             OTRAS RUTAS API
-// ==========================================
 
 app.get('/api/contacts', (req, res) => { res.json(getAllContacts()); });
 app.post('/api/contacts/toggle', (req, res) => { res.json(toggleContactBot(req.body.phone, req.body.enable)); });
