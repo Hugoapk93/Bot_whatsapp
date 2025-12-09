@@ -7,11 +7,11 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
+    <script src="https://unpkg.com/klayjs@0.4.1/klay.js"></script>
+    <script src="https://unpkg.com/cytoscape-klay@3.1.4/cytoscape-klay.js"></script>
     <!-- --- LIBRERÍAS GRÁFICAS (OBLIGATORIAS) --- -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+
     <!-- Librería para QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
@@ -770,150 +770,189 @@
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
         function renderFlow() {
+            // 1. Gestión de Memoria y Estado de la Vista
             let savedZoom = null;
             let savedPan = null;
 
-            if (cy && typeof cy.zoom === 'function') {
+            if (cy && typeof cy.destroy === 'function') {
                 try {
                     savedZoom = cy.zoom();
                     savedPan = cy.pan();
                 } catch(e) {}
-                cy.destroy();
+                cy.destroy(); // Limpiamos la instancia anterior para liberar RAM
+                cy = null;
             }
-
-            let elements = [];
 
             if (!flow || Object.keys(flow).length === 0) return;
 
+            // 2. Mapa de Colores (Más limpio y rápido que múltiples if/else)
+            const nodeColors = {
+                'menu': '#2563eb',    // Azul
+                'filtro': '#7c3aed',  // Violeta
+                'input': '#d97706',   // Naranja
+                'message': '#059669', // Verde
+                'cita': '#db2777',    // Rosa
+                'default': '#334155'  // Gris
+            };
+
+            // 3. Construcción de Elementos
+            let elements = [];
+            
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 if (!s) return;
 
-                let color = '#334155'; // DEFAULT
-                if(s.type === 'menu') color = '#2563eb';
-                else if(s.type === 'filtro') color = '#7c3aed';
-                else if(s.type === 'input') color = '#d97706';
-                else if(s.type === 'message') color = '#059669';
-                else if(s.type === 'cita') color = '#db2777';
+                const color = nodeColors[s.type] || nodeColors['default'];
+                
+                // Nodo
+                elements.push({ 
+                    data: { id: k, label: k, color: color } 
+                });
 
-                elements.push({ data: { id: k, label: k, color: color } });
-
-                if(s.options && Array.isArray(s.options) && s.options.length > 0) {
+                // Conexiones (Edges)
+                if (s.options && Array.isArray(s.options)) {
                     s.options.forEach(o => {
-                        if(o.next_step && flow[o.next_step]) {
-                            elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } });
+                        if (o.next_step && flow[o.next_step]) {
+                            elements.push({ 
+                                data: { source: k, target: o.next_step, label: o.label || '' } 
+                            });
                         }
                     });
-                } else if(s.next_step && flow[s.next_step]) {
-                    elements.push({ data: { source: k, target: s.next_step } });
+                } else if (s.next_step && flow[s.next_step]) {
+                    elements.push({ 
+                        data: { source: k, target: s.next_step, label: '' } 
+                    });
                 }
             });
 
-            const layoutConfig = {
-                name: 'dagre',
-                rankDir: 'LR',
-                nodeSep: 60,
-                rankSep: 150,
-                ranker: 'network-simplex',
-                align: 'UL',
-                animate: !savedZoom,
-                animationDuration: 800,
-                fit: !savedZoom
-            };
-
+            // 4. Inicialización de Cytoscape Optimizado
             try {
                 cy = cytoscape({
                     container: document.getElementById('cy'),
                     elements: elements,
 
+                    // --- OPTIMIZACIONES DE RENDIMIENTO ---
+                    textureOnViewport: true, // Dibuja una 'foto' al mover, elimina el lag
+                    pixelRatio: 1,           // Baja la resolución interna para velocidad
+                    motionBlur: false,       // Desactiva efectos costosos
+                    // -------------------------------------
+
+                    // --- REGLAS DE INTERACCIÓN ---
+                    autolock: true,          // 🔒 NODOS FIJOS: No se pueden arrastrar
                     autoungrabify: true,
-                    autounselectify: false,
                     boxSelectionEnabled: false,
-                    wheelSensitivity: 0.2,
+                    wheelSensitivity: 0.1,   // Zoom más suave
 
                     style: [
+                        // NODOS
                         { selector: 'node', style: {
-                            'background-color': 'data(color)',
+                            'background-color': '#ffffff', // Fondo blanco para contraste
+                            'border-width': 2,
+                            'border-color': 'data(color)', // Borde del color del tipo
                             'label': 'data(label)',
-                            'color': '#f1f5f9',
+                            'color': '#1e293b', // Texto oscuro
                             'shape': 'round-rectangle',
                             'width': 'label',
                             'height': '40px',
-                            'padding': '10px 20px',
-                            'font-family': 'Poppins, sans-serif',
+                            'padding': '12px',
+                            'font-family': 'Inter, sans-serif',
                             'font-size': '12px',
-                            'font-weight': '600',
+                            'font-weight': '700',
                             'text-valign': 'center',
                             'text-halign': 'center',
                             'text-transform': 'uppercase',
-                            'text-wrap': 'wrap',
-                            'text-max-width': '120px',
-                            'border-width': 0,
-                            'shadow-blur': 10,
-                            'shadow-color': '#000000',
-                            'shadow-opacity': 0.1
+                            'shadow-blur': 12,
+                            'shadow-color': 'data(color)', // Sombra del color del tipo
+                            'shadow-opacity': 0.15,
+                            'shadow-offset-y': 2
                         }},
+                        // LÍNEAS (Edges)
                         { selector: 'edge', style: {
-                            'width': 3,
-                            'line-color': '#94a3b8',
-                            'curve-style': 'bezier',
-                            'target-arrow-shape': 'none',
-                            'opacity': 0.8,
+                            'width': 2,
+                            'line-color': '#dc2626',         // 🔴 LÍNEAS ROJAS (Solicitado)
+                            'target-arrow-color': '#dc2626',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'taxi',           // 'taxi' o 'bezier' son los más rápidos
+                            'taxi-direction': 'rightward',   // Fuerza líneas rectas tipo tubería
+                            'arrow-scale': 1.2,
                             'label': 'data(label)',
-                            'font-size': '9px',
-                            'color': '#e2e8f0',
-                            'text-background-color': '#1e293b',
-                            'text-background-opacity': 0.8,
+                            'font-size': '10px',
+                            'color': '#ef4444',
+                            'text-background-opacity': 1,
+                            'text-background-color': '#ffffff',
+                            'text-background-padding': '3px',
+                            'text-background-shape': 'roundrectangle',
                             'text-rotation': 'autorotate'
                         }},
+                        // ESTADO SELECCIONADO
                         { selector: 'node:selected', style: {
                             'border-width': 4,
-                            'border-color': '#e2e8f0',
-                            'shadow-blur': 20,
-                            'shadow-opacity': 0.3
+                            'border-color': '#000000',
+                            'shadow-opacity': 0.4
                         }},
-                        { selector: '.highlighted', style: {
-                            'opacity': 1,
-                            'border-width': 2,
-                            'border-color': '#fafafa'
-                        }},
-                        { selector: 'edge.highlighted', style: {
-                            'line-color': '#fafafa',
-                            'width': 4,
-                            'z-index': 99
-                        }},
+                        // ESTADO FADED (Cuando seleccionas otro nodo)
                         { selector: '.faded', style: {
                             'opacity': 0.1,
                             'label': ''
+                        }},
+                        { selector: '.highlighted', style: {
+                            'opacity': 1,
+                            'z-index': 999
                         }}
                     ],
 
-                    layout: layoutConfig
+                    // 5. LAYOUT INTELIGENTE (KLAY)
+                    // Usamos Klay en vez de Dagre porque Dagre mueve los nodos
+                    // cuando hay bucles. Klay los deja fijos.
+                    layout: {
+                        name: 'klay',
+                        nodeDimensionsIncludeLabels: true,
+                        fit: !savedZoom, // Solo ajustar si no hay zoom guardado
+                        padding: 50,
+                        animate: false,  // Desactivar animación inicial para carga instantánea
+
+                        klay: {
+                            direction: 'RIGHT',
+                            spacing: 80, 
+                            thoroughness: 7, // Precisión media (Rápido)
+                            
+                            // 🛑 ESTO ES LO QUE ESTIRA LA LÍNEA SIN MOVER EL NODO 🛑
+                            nodeLayering: 'NETWORK_SIMPLEX', 
+                            cycleBreaking: 'GREEDY', 
+                            edgeRouting: 'ORTHOGONAL', // Líneas rectas (Rendimiento)
+                            fixedAlignment: 'BALANCED'
+                        }
+                    }
                 });
 
+                // 6. Restaurar Vista (Anti-Salto)
                 if (savedZoom && savedPan) {
                     cy.viewport({ zoom: savedZoom, pan: savedPan });
                 }
 
+                // 7. Eventos de Interacción (Highlighting)
                 cy.on('tap', 'node', function(evt){
                     const node = evt.target;
+                    // Limpiar previos
                     cy.elements().removeClass('highlighted faded');
+                    // Calcular vecindario (padres e hijos directos)
                     const neighborhood = node.predecessors().union(node.successors()).union(node);
+                    // Aplicar clases
                     cy.elements().not(neighborhood).addClass('faded');
                     neighborhood.addClass('highlighted');
+                });
+
+                cy.on('tap', function(evt){
+                    if(evt.target === cy){ // Click en el fondo vacío
+                        cy.elements().removeClass('highlighted faded');
+                    }
                 });
 
                 cy.on('dbltap', 'node', function(evt){
                     edit(evt.target.id());
                 });
 
-                cy.on('tap', function(evt){
-                    if(evt.target === cy){
-                        cy.elements().removeClass('highlighted faded');
-                    }
-                });
-
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Error renderizando grafo:", e); }
         }
 
         // --- EDITOR (Lógica intacta) ---
