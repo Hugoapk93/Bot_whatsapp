@@ -746,11 +746,10 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-        // --- RENDER FLOW CORREGIDO Y BLINDADO ---
 	function renderFlow() {
+            // 1. Limpieza segura
             let savedZoom = null;
             let savedPan = null;
-            
             if (cy && typeof cy.zoom === 'function') {
                 try {
                     savedZoom = cy.zoom();
@@ -759,37 +758,15 @@
                 cy.destroy();
             }
 
+            // 2. Construcción de Datos
             let elements = [];
-            
             if (!flow || Object.keys(flow).length === 0) return;
-
-            // --- NUEVO: FUNCIÓN PARA CONTAR EL PESO (CANTIDAD DE PASOS) DE UNA RAMA ---
-            const memoWeight = {}; // Para no calcular lo mismo dos veces
-            const getWeight = (nodeId, visited = new Set()) => {
-                if (!nodeId || !flow[nodeId] || visited.has(nodeId)) return 0;
-                if (memoWeight[nodeId] !== undefined) return memoWeight[nodeId];
-                
-                visited.add(nodeId);
-                let weight = 1; // Contamos el nodo actual
-                const s = flow[nodeId];
-
-                // Sumamos recursivamente los hijos
-                if (s.options && Array.isArray(s.options)) {
-                    s.options.forEach(o => weight += getWeight(o.next_step, new Set(visited)));
-                } else if (s.next_step) {
-                    weight += getWeight(s.next_step, new Set(visited));
-                }
-
-                memoWeight[nodeId] = weight;
-                return weight;
-            };
-            // --------------------------------------------------------------------------
 
             Object.keys(flow).forEach(k => {
                 const s = flow[k];
                 if (!s) return;
 
-                // --- PALETA DE COLORES "NEÓN" ---
+                // Colores Neón Dark Mode
                 let color = '#475569'; 
                 if(s.type === 'menu') color = '#2563eb';      
                 else if(s.type === 'filtro') color = '#9333ea'; 
@@ -799,16 +776,8 @@
                 
                 elements.push({ data: { id: k, label: k, color: color } });
                 
-                if(s.options && Array.isArray(s.options) && s.options.length > 0) { 
-                    
-                    // --- NUEVO: ORDENAR LAS CONEXIONES ---
-                    // Creamos una copia para no alterar el orden lógico del bot, solo el visual
-                    const sortedOptions = [...s.options].sort((a, b) => {
-                        // Orden Ascendente: El que tiene menos pasos (getWeight) va primero (Arriba)
-                        return getWeight(a.next_step) - getWeight(b.next_step);
-                    });
-
-                    sortedOptions.forEach(o => { 
+                if(s.options && Array.isArray(s.options)) { 
+                    s.options.forEach(o => { 
                         if(o.next_step && flow[o.next_step]) {
                             elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } }); 
                         }
@@ -817,91 +786,94 @@
                     elements.push({ data: { source: k, target: s.next_step } }); 
                 }
             });
-            
-            const layoutConfig = { 
-                name: 'dagre', 
-                rankDir: 'LR', 
-                nodeSep: 60, 
-                rankSep: 150, 
-                ranker: 'network-simplex', 
-                align: 'UL', // Alineación Up-Left (Arriba-Izquierda)
-                animate: !savedZoom, 
-                animationDuration: 800,
-                fit: !savedZoom 
-            };
 
             try {
+                // 3. Inicializar Cytoscape (SIN LAYOUT TODAVÍA)
                 cy = cytoscape({ 
                     container: document.getElementById('cy'), 
                     elements: elements, 
-                    
                     autoungrabify: true,       
-                    autounselectify: false,
                     boxSelectionEnabled: false,
                     wheelSensitivity: 0.2,
-
+                    
                     style: [ 
-                        { 
-                            selector: 'node', 
-                            style: { 
-                                'background-color': 'data(color)', 
-                                'label': 'data(label)', 
-                                'color': '#ffffff', 
-                                'text-outline-color': '#000000', 
-                                'text-outline-width': 2,
-                                'shape': 'round-rectangle', 
-                                'width': 'label', 
-                                'height': '40px', 
-                                'padding': '10px 20px', 
-                                'font-family': 'Poppins, sans-serif', 
-                                'font-size': '12px', 
-                                'font-weight': '600', 
-                                'text-valign': 'center', 
-                                'text-halign': 'center', 
-                                'text-transform': 'uppercase', 
-                                'text-wrap': 'wrap', 
-                                'text-max-width': '120px', 
-                                'border-width': 1,
-                                'border-color': 'rgba(255,255,255,0.2)', 
-                                'shadow-blur': 10, 
-                                'shadow-color': 'data(color)', 
-                                'shadow-opacity': 0.4 
-                            } 
-                        }, 
-                        { 
-                            selector: 'edge', 
-                            style: { 
-                                'width': 2, 
-                                'line-color': '#94a3b8', 
-                                'curve-style': 'taxi', 
-                                'taxi-direction': 'rightward',
-                                'target-arrow-shape': 'triangle', 
-                                'target-arrow-color': '#94a3b8', 
-                                'opacity': 0.8, 
-                                'label': 'data(label)', 
-                                'font-size': '10px', 
-                                'color': '#e2e8f0', 
-                                'text-background-color': '#000000', 
-                                'text-background-opacity': 0.7, 
-                                'text-background-padding': '3px',
-                                'text-background-shape': 'roundrectangle',
-                                'text-rotation': 'autorotate' 
-                            } 
-                        },
-                        
+                        { selector: 'node', style: { 
+                            'background-color': 'data(color)', 
+                            'label': 'data(label)', 
+                            'color': '#ffffff', 
+                            'text-outline-color': '#000000', 'text-outline-width': 2,
+                            'shape': 'round-rectangle', 'width': 'label', 'height': '40px', 'padding': '10px 20px', 
+                            'font-family': 'Poppins, sans-serif', 'font-size': '12px', 'font-weight': '600', 
+                            'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 
+                            'text-wrap': 'wrap', 'text-max-width': '120px', 
+                            'border-width': 1, 'border-color': 'rgba(255,255,255,0.2)', 
+                            'shadow-blur': 10, 'shadow-color': 'data(color)', 'shadow-opacity': 0.4 
+                        }}, 
+                        { selector: 'edge', style: { 
+                            'width': 2, 
+                            'line-color': '#94a3b8', 
+                            'curve-style': 'taxi', // Taxi hace esquinas rectas, ideal para diagramas técnicos
+                            'taxi-direction': 'rightward', // Fuerza la salida hacia la derecha
+                            'target-arrow-shape': 'triangle', 'target-arrow-color': '#94a3b8', 
+                            'opacity': 0.8, 'label': 'data(label)', 'font-size': '10px', 'color': '#e2e8f0', 
+                            'text-background-color': '#000000', 'text-background-opacity': 0.7, 
+                            'text-background-padding': '3px', 'text-background-shape': 'roundrectangle', 
+                            'text-rotation': 'autorotate' 
+                        }},
+                        // Estilo especial para las líneas de retorno (las que se estiran)
+                        { selector: 'edge.cross-edge', style: {
+                            'line-style': 'dashed', // Opcional: línea punteada para diferenciar visualmente
+                            'line-color': '#64748b',
+                            'opacity': 0.5,
+                            'curve-style': 'unbundled-bezier' // Curva suave para saltar nodos
+                        }},
                         { selector: 'node:selected', style: { 'border-width': 2, 'border-color': '#ffffff', 'shadow-blur': 20, 'shadow-opacity': 0.8 } },
                         { selector: '.highlighted', style: { 'opacity': 1, 'border-width': 2, 'border-color': '#ffffff' } },
-                        { selector: 'edge.highlighted', style: { 'line-color': '#ffffff', 'target-arrow-color': '#ffffff', 'width': 4, 'z-index': 99 } },
                         { selector: '.faded', style: { 'opacity': 0.1, 'label': '' } }
-                    ], 
-                    
-                    layout: layoutConfig
+                    ],
+                    layout: { name: 'preset' } // Cargamos sin mover nada primero
                 });
-                
-                if (savedZoom && savedPan) {
-                    cy.viewport({ zoom: savedZoom, pan: savedPan });
-                }
 
+                // 4. LÓGICA MAGICA: Clasificar Aristas (Main vs Cross)
+                // Buscamos los nodos raíz (sin padres) o usamos el primero que encontremos
+                let roots = cy.nodes().roots();
+                if(roots.length === 0) roots = cy.nodes().first(); // Si es circular, agarramos cualquiera
+
+                // Marcamos TODAS las líneas como "cross-edge" (secundarias) primero
+                cy.edges().addClass('cross-edge');
+
+                // Recorremos el árbol (BFS) para encontrar la ruta principal
+                // Las líneas que descubren nuevos nodos se vuelven "tree-edge" (principales)
+                cy.elements().bfs({
+                    roots: roots,
+                    visit: function(v, e, u, i, depth) {
+                        if (e) {
+                            e.removeClass('cross-edge');
+                            e.addClass('tree-edge');
+                        }
+                    },
+                    directed: true
+                });
+
+                // 5. EJECUTAR LAYOUT SOLO EN EL ÁRBOL PRINCIPAL
+                // Esto es lo que hace que los nodos no se muevan por culpa de las reutilizaciones
+                const layoutElements = cy.elements('node, edge.tree-edge');
+                
+                layoutElements.layout({ 
+                    name: 'dagre', 
+                    rankDir: 'LR', 
+                    nodeSep: 60, 
+                    rankSep: 150, 
+                    ranker: 'network-simplex', 
+                    align: 'UL',
+                    animate: false,
+                    fit: !savedZoom
+                }).run();
+
+                // Restaurar vista
+                if (savedZoom && savedPan) cy.viewport({ zoom: savedZoom, pan: savedPan });
+
+                // Eventos
                 cy.on('tap', 'node', function(evt){ 
                     const node = evt.target;
                     cy.elements().removeClass('highlighted faded');
@@ -909,16 +881,9 @@
                     cy.elements().not(neighborhood).addClass('faded');
                     neighborhood.addClass('highlighted');
                 });
-
-                cy.on('dbltap', 'node', function(evt){
-                    edit(evt.target.id());
-                });
-
-                cy.on('tap', function(evt){
-                    if(evt.target === cy){
-                        cy.elements().removeClass('highlighted faded');
-                    }
-                });
+                
+                cy.on('tap', function(evt){ if(evt.target === cy) cy.elements().removeClass('highlighted faded'); });
+                cy.on('dbltap', 'node', function(evt){ edit(evt.target.id()); });
 
             } catch(e) { console.error(e); }
         }
