@@ -677,16 +677,24 @@
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
         
         function nav(v, btn) {
+            // Gestión de clases activas
             document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
             document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
             document.getElementById('view-' + v).classList.add('active');
             if (btn) btn.classList.add('active');
+            
+            // Títulos
             const titles = { flow: 'FLUJO VISUAL', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'TEST BOT' };
             document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
             document.getElementById('sidebar').classList.remove('active');
             
+            // 🛑 LIMPIEZA DE MEMORIA AL CAMBIAR DE PESTAÑA 🛑
+            if (v !== 'flow' && cy) {
+                try { cy.destroy(); cy = null; } catch(e){}
+            }
+            
             // Renderizado específico
-            if (v === 'flow') setTimeout(renderFlow, 100);
+            if (v === 'flow') setTimeout(renderFlow, 50); // Pequeño delay para que la UI respire
             if (v === 'activity') loadActivity();
             if (v === 'agenda') renderCalendar();
             if (v === 'sim') scrollToBottomSim(); 
@@ -1061,27 +1069,44 @@
             renderEventList(date);
         }
 
-        // --- CONTACTOS ---
+        // --- CONTACTOS (OPTIMIZADO) ---
         async function renderContacts() {
-            const list = await (await fetch(`${API_BASE}/api/contacts`)).json();
-            const c = document.getElementById('contactsList'); c.innerHTML='';
-            list.forEach(u => {
-                c.innerHTML += `
-                <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
-                    <div>
-                        <b style="color:var(--text-main); font-size:0.9rem;">${u.name||u.phone}</b>
-                        <div style="color:var(--text-muted); font-size:0.75rem;">${u.phone}</div>
-                    </div>
-                    <label class="switch" style="position:relative; display:inline-block; width:36px; height:20px;">
-                        <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)" style="opacity:0; width:0; height:0;">
-                        <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:var(--bg-hover); transition:.4s; border-radius:34px;"></span>
-                        <span class="slider-ball" style="position:absolute; content:''; height:14px; width:14px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;"></span>
-                    </label>
-                </div>`;
-            });
-            const style = document.createElement('style');
-            style.innerHTML = `input:checked + .slider { background-color: var(--success); } input:checked + .slider + .slider-ball { transform: translateX(16px); }`;
-            document.head.appendChild(style);
+            try {
+                // 1. Obtener datos
+                const list = await (await fetch(`${API_BASE}/api/contacts`)).json();
+                const c = document.getElementById('contactsList');
+                
+                // 2. Construir HTML en una variable (Buffer) para no congelar la UI
+                let htmlBuffer = '';
+                
+                list.forEach(u => {
+                    htmlBuffer += `
+                    <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
+                        <div>
+                            <b style="color:var(--text-main); font-size:0.9rem;">${u.name||u.phone}</b>
+                            <div style="color:var(--text-muted); font-size:0.75rem;">${u.phone}</div>
+                        </div>
+                        <label class="switch" style="position:relative; display:inline-block; width:36px; height:20px;">
+                            <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)" style="opacity:0; width:0; height:0;">
+                            <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:var(--bg-hover); transition:.4s; border-radius:34px;"></span>
+                            <span class="slider-ball" style="position:absolute; content:''; height:14px; width:14px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;"></span>
+                        </label>
+                    </div>`;
+                });
+
+                // 3. Actualizar el DOM una sola vez
+                c.innerHTML = htmlBuffer;
+
+                // 4. Inyectar estilos del switch solo si no existen
+                if (!document.getElementById('toggle-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'toggle-style';
+                    style.innerHTML = `input:checked + .slider { background-color: var(--success); } input:checked + .slider + .slider-ball { transform: translateX(16px); }`;
+                    document.head.appendChild(style);
+                }
+            } catch (e) {
+                console.error("Error cargando contactos:", e);
+            }
         }
         function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
         async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
