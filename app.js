@@ -322,10 +322,7 @@ app.post('/api/crm/execute', async (req, res) => {
     try {
         await updateUser(phone, { current_step: stepId });
         
-        // CORRECCIÓN: Si es el simulador, mandamos OK aunque el bot esté offline
-        // Pero idealmente debería pasar por sendStepMessage para que el simulador reciba la respuesta
         if (phone === 'TEST_SIMULADOR' || phone === '5218991234567') {
-             // Simulamos el objeto socket si no existe, pero sendStepMessage ya lo maneja
              await sendStepMessage(globalSock || {}, phone, stepId, getUser(phone));
              return res.json({ success: true });
         }
@@ -404,10 +401,39 @@ app.post('/api/settings', async (req, res) => {
     res.json({ success: true }); 
 });
 
-// ARRANCAR EL BOT (USANDO server.listen EN LUGAR DE app.listen)
+// =================================================================
+// 4. NUEVA RUTA PARA SIMULACIÓN DE TEXTO
+// =================================================================
+app.post('/api/simulate/text', async (req, res) => {
+    const { phone, text } = req.body;
+    if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
+
+    // Mensaje falso imitando a Baileys
+    const fakeMsg = {
+        key: {
+            remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
+            fromMe: false,
+            id: 'SIM_' + Date.now()
+        },
+        message: { conversation: text },
+        pushName: 'Usuario Simulador'
+    };
+
+    console.log(`🤖 Simulador: ${text}`);
+
+    try {
+        // Pasamos un sock vacío, flow.js ya sabe que no debe usarlo si es el número del simulador
+        await handleMessage(globalSock || {}, fakeMsg);
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ARRANCAR EL BOT
 server.listen(PORT, () => {
     console.log(`🚀 Torre de Control Local + Sockets en puerto: ${PORT}`);
-    // Intentar conexión inicial y reporte a la Torre Maestra
     connectToWhatsApp();
     reportToTower();
 });
