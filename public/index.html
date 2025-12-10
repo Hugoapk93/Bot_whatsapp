@@ -299,69 +299,61 @@
             .sidebar.active { transform: translateX(0); }
             .sheet { height: 100%; max-height: 100%; border-radius: 0; }
 
-        @media (max-width: 768px) {
-            /* 1. Ocultar los encabezados de la tabla */
-            .act-table thead { display: none; }
+/* --- ESTILOS DE TABLA CON SCROLL (TABLET/MOVIL) --- */
+        
+        /* 1. Contenedor Responsivo (El div que envuelve la tabla) */
+        /* Asegúrate de que tu tabla esté dentro de un div con style="overflow-x:auto" o esta clase */
+        .table-responsive {
+            display: block;
+            width: 100%;
+            overflow-x: auto; /* ACTIVA EL SCROLL LATERAL */
+            -webkit-overflow-scrolling: touch; /* Scroll suave en iPhone */
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
 
-            /* 2. Convertir la tabla y filas en bloques flexibles */
-            .act-table, .act-table tbody, .act-table tr, .act-table td {
-                display: block;
-                width: 100%;
-                border: none; /* Quitamos bordes de tabla por defecto */
-            }
+        /* 2. La Tabla en sí */
+        .act-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 0.85rem; 
+            color: var(--text-main);
+            
+            /* TRUCO CLAVE: Ancho mínimo forzado */
+            /* Esto obliga al navegador a crear scroll si la pantalla es menor a 600px */
+            min-width: 600px; 
+        }
 
-            /* 3. Estilo de "Tarjeta" para cada fila (TR) */
-            .act-table tr {
-                background: var(--bg-hover); /* Fondo ligeramente más claro que la base */
-                border: 1px solid var(--border);
-                border-radius: 8px;
-                margin-bottom: 15px; /* Separación entre tarjetas */
-                padding: 15px;
-                
-                /* AQUÍ ESTÁ LA MAGIA: GRID DE 2 COLUMNAS */
-                display: grid;
-                grid-template-columns: 1fr 1fr; /* Dos columnas iguales */
-                gap: 10px;
-            }
+        /* 3. Celdas y Encabezados */
+        .act-table th { 
+            text-align: left; 
+            padding: 12px 15px; 
+            border-bottom: 1px solid var(--border); 
+            color: var(--text-muted); 
+            font-weight: 500; 
+            font-size: 0.8rem; 
+            text-transform: uppercase;
+            white-space: nowrap; /* Mantiene el título en una línea */
+            background: var(--bg-card); /* Encabezado fijo visualmente */
+        }
 
-            /* 4. Celda 1: Cliente (Arriba Izquierda) */
-            .act-table td:nth-child(1) {
-                grid-column: 1 / 2; /* Ocupa columna 1 */
-                padding: 0;
-                border-bottom: none;
-            }
+        .act-table td { 
+            padding: 12px 15px; 
+            border-bottom: 1px solid var(--border); 
+            vertical-align: middle;
+            
+            /* Evita que el texto se aplaste */
+            white-space: nowrap; 
+        }
 
-            /* 5. Celda 2: Datos (Arriba Derecha) */
-            .act-table td:nth-child(2) {
-                grid-column: 2 / 3; /* Ocupa columna 2 */
-                padding: 0;
-                border-bottom: none;
-                font-size: 0.8rem;
-                text-align: right; /* Alineamos datos a la derecha para equilibrio */
-                opacity: 0.9;
-                overflow: hidden; 
-            }
+        /* Opcional: Permitir que la columna de datos (la de en medio) sí pueda saltar de línea si es muuy larga */
+        .act-table td:nth-child(2) {
+            white-space: normal; 
+            min-width: 180px; /* Ancho mínimo para leer cómodo */
+            max-width: 300px;
+        }
 
-            /* 6. Celda 3: Botones (Abajo Completo) */
-            .act-table td:nth-child(3) {
-                grid-column: 1 / -1; /* Ocupa todo el ancho (de 1 al final) */
-                border-top: 1px solid var(--border); /* Línea separadora */
-                padding-top: 10px;
-                margin-top: 5px;
-                display: flex;
-                flex-wrap: wrap;
-                gap: 5px;
-                justify-content: center; /* Botones centrados */
-            }
-
-            /* Ajuste visual para los botones en móvil para que sean más fáciles de tocar */
-            .admin-btn {
-                flex: 1; /* Que se estiren */
-                text-align: center;
-                padding: 10px;
-                background: var(--bg-body);
-                border: 1px solid var(--border);
-            }
+        .act-table tr:last-child td { border-bottom: none; }
         }
     </style>
 </head>
@@ -446,13 +438,23 @@
                         <h3 style="margin:0; font-size:1rem; color:var(--text-main)">Actividad Reciente</h3>
                         <span id="crmStatusBadge" class="status-badge closed">● OFFLINE</span>
                     </div>
-                    <div style="overflow-x:auto;">
+
+                    <!-- CONTENEDOR CON SCROLL LATERAL -->
+                    <!-- La clase table-responsive o el estilo inline aseguran el scroll -->
+                    <div style="overflow-x:auto; -webkit-overflow-scrolling: touch;">
                         <table class="act-table">
-                            <thead><tr><th>Cliente</th><th>Datos</th><th>Acciones</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Datos</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
                             <tbody id="activityBody"></tbody>
                         </table>
                     </div>
                 </div>
+
                 <button onclick="loadActivity(); showToast('Actualizando...')" style="width:100%; padding:12px; background:transparent; color:var(--text-muted); border:1px solid var(--border); border-radius:6px; font-weight:500; cursor:pointer; font-size:0.8rem; transition:0.2s;">
                     <i class="fas fa-sync-alt"></i> Forzar Actualización
                 </button>
@@ -501,7 +503,7 @@
                 </div>
             </div>
 
-            <!-- VISTA: SETTINGS -->
+            <!-- VISTA: HORARIO -->
             <div id="view-settings" class="view view-padding">
                 <div class="card" style="max-width: 500px; margin: 0 auto;">
                     <h3 style="margin-top:0; font-size:1rem; margin-bottom:20px;">Configuración Global</h3>
