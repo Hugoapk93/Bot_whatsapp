@@ -114,11 +114,17 @@ const enviarAlFrontend = (jid, contenido, tipo = 'text') => {
 
     // --- CORRECCIÓN AQUÍ: Usamos global.io para enviar el evento ---
     if (global.io) {
+        // Extraemos el texto puro
+        const rawText = typeof contenido === 'string' ? contenido : (contenido.caption || '');
+        
+        // CORRECCIÓN FORMATO: Reemplazamos saltos de línea \n por <br> HTML
+        const formattedText = rawText.replace(/\n/g, '<br>');
+
         const payload = {
             to: jid,
             message: contenido,
             // Estructuramos datos para que el index.html los entienda fácil
-            text: typeof contenido === 'string' ? contenido : (contenido.caption || ''),
+            text: formattedText,
             mediaUrl: typeof contenido === 'object' ? contenido.url : null,
             type: tipo,
             fromMe: true
@@ -389,7 +395,7 @@ const handleMessage = async (sock, msg) => {
             nextStepId = match.next_step;
         } else {
             console.log(`❓ Opción no reconocida en menú.`);
-            let helpText = "⚠️ No entendí tu respuesta.\n\nPor favor, selecciona una de estas opciones:\n";
+            let helpText = "⚠️ No entendí tu respuesta.\n\nPor favor, escribe una de estas opciones:\n\n";
             currentConfig.options.forEach(opt => {
                 helpText += `👉 *${opt.trigger}* o *${opt.label}*\n`;
             });
@@ -418,7 +424,7 @@ const handleMessage = async (sock, msg) => {
              
              if (nextStepConfig.next_step) { 
                  if (!fecha) { 
-                    const txt = `⚠️ La fecha ingresada no es válida.`;
+                    const txt = `⚠️ Fecha inválida. Usa formato: DD/MM/AAA (Día/Mes/Año).`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                     return; 
                  }
@@ -473,8 +479,6 @@ const handleMessage = async (sock, msg) => {
                          db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
                          saveAgenda(db);
                          
-                         const txt = `✅ Cita Confirmada: ${fecha} a las ${hora}`;
-                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                          if (pathSuccess) nextStepId = pathSuccess.next_step;
                      }
                  }
