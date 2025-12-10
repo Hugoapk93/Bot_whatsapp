@@ -87,7 +87,6 @@ const isBusinessClosed = () => {
     const nowServer = new Date();
 
     // 2. Convertir explícitamente a Hora CDMX/Reynosa
-    // Esto crea un objeto Date "engañado" que tiene la hora local correcta en .getHours()
     const mxDate = new Date(nowServer.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
 
     const currentMins = (mxDate.getHours() * 60) + mxDate.getMinutes();
@@ -108,19 +107,29 @@ const isBusinessClosed = () => {
     return (currentMins < startMins || currentMins >= endMins);
 };
 
-// --- INTERCEPTOR PARA EL SIMULADOR ---
+// --- INTERCEPTOR PARA EL SIMULADOR (CORREGIDO) ---
 const enviarAlFrontend = (jid, contenido, tipo = 'text') => {
-    // AQUÍ ES DONDE CONECTAS CON TU WEB/SOCKET
-    // Si tienes socket.io global, sería algo como: global.io.emit('mensaje_bot', { ... })
-    
-    console.log(`\n🤖 [SIMULADOR DETECTADO] 🤖`);
-    console.log(`   Destino: ${jid}`);
+    console.log(`\n🤖 [SIMULADOR] Respuesta generada:`);
     console.log(`   Tipo: ${tipo}`);
-    console.log(`   Contenido: ${JSON.stringify(contenido)}`);
-    console.log(`   --> Mensaje interceptado. NO enviado a WhatsApp Real.\n`);
-    
-    // Si usas sockets, descomenta y ajusta esta línea:
-    // if (global.io) global.io.emit('bot-reply', { phone: SIMULATOR_PHONE, message: contenido, type: tipo });
+
+    // --- CORRECCIÓN AQUÍ: Usamos global.io para enviar el evento ---
+    if (global.io) {
+        const payload = {
+            to: jid,
+            message: contenido,
+            // Estructuramos datos para que el index.html los entienda fácil
+            text: typeof contenido === 'string' ? contenido : (contenido.caption || ''),
+            mediaUrl: typeof contenido === 'object' ? contenido.url : null,
+            type: tipo,
+            fromMe: true
+        };
+
+        // Enviamos el evento 'message' al navegador
+        global.io.emit('message', payload);
+        console.log(`✅ [SOCKET] Enviado al navegador exitosamente.`);
+    } else {
+        console.error(`❌ [ERROR] No existe 'global.io'. El simulador se quedará cargando.`);
+    }
 };
 
 const esSimulador = (jid) => {
