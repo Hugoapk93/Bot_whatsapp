@@ -705,12 +705,14 @@
         function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
         async function resetSession() { if(!confirm("¿Reiniciar conexión?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
 
+	// Variables
+	let simPhone = '5218991234567';
+	let simState = { step: 'BIENVENIDA', history: {} };
         let flow={}, users=[];
-        let simPhone = '5218991234567'; 
-        let simState={ step:'BIENVENIDA', history:{} };
         let cy = null;
         let currentRefDate = new Date();
         let wakeLock = null;
+	const socket = io(API_BASE);
         const delayedFilter = debounce(filterContacts, 300);
 
         function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
@@ -1185,7 +1187,6 @@
             }
         }
 
-        // --- SIMULADOR ---
         function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
         async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
         
@@ -1200,14 +1201,7 @@
             renderContacts();
         }
 
-	// 1. INICIALIZAR CONEXIÓN SOCKET
-	const socket = io(); 
-
-	// Variables
-	let simPhone = '5218991234567'; // Mismo número que en flow.js
-	let simState = { step: 'BIENVENIDA', history: {} };
-
-	// 2. ESCUCHAR RESPUESTAS (Esto quita el "Procesando...")
+        // --- SIMULADOR ---
 	socket.on('message', (data) => {
 	    // Verificar si el mensaje es para nosotros
 	    const destino = data.to.replace(/\D/g, '');
