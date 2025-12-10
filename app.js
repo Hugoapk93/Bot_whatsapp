@@ -1,6 +1,8 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
+const http = require('http'); // <--- 1. IMPORTAR HTTP
+const { Server } = require('socket.io'); // <--- 2. IMPORTAR SOCKET.IO
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -15,16 +17,38 @@ const app = express();
 app.use(cors());
 
 // =================================================================
-// 1. CONFIGURACIÓN DINÁMICA DE PUERTO (MODIFICADO)
+// CONFIGURACIÓN DE SOCKET.IO Y SERVIDOR HTTP
 // =================================================================
-// Buscamos si la Torre nos mandó el puerto (ej: --port 3005)
+const server = http.createServer(app); // Creamos servidor HTTP envolviendo Express
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Permite conexiones desde cualquier simulador
+        methods: ["GET", "POST"]
+    }
+});
+
+// HACEMOS IO GLOBAL PARA QUE FLOW.JS PUEDA USARLO
+global.io = io; 
+
+io.on('connection', (socket) => {
+    console.log('🔌 Simulador Web conectado:', socket.id);
+    
+    // Opcional: Si el simulador envía mensajes por socket en vez de API
+    socket.on('message', (data) => {
+        console.log('Mensaje desde simulador:', data);
+    });
+});
+
+// =================================================================
+// 1. CONFIGURACIÓN DINÁMICA DE PUERTO
+// =================================================================
 const args = process.argv.slice(2);
 const portArgIndex = args.indexOf('--port');
-const PORT = portArgIndex !== -1 ? parseInt(args[portArgIndex + 1]) : 3000; // Si no, usa 3000 por defecto
+const PORT = portArgIndex !== -1 ? parseInt(args[portArgIndex + 1]) : 3000;
 
 // CONFIG DE LA TORRE
-const TOWER_URL = 'http://localhost:8888/api/instances/report'; // Dirección de la Torre
-const INSTANCE_ID = 'bot_' + PORT; // ID único para la torre
+const TOWER_URL = 'http://localhost:8888/api/instances/report';
+const INSTANCE_ID = 'bot_' + PORT;
 
 // --- CONFIGURACIÓN DE CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
@@ -40,11 +64,10 @@ let globalQR = null;
 let connectionStatus = 'disconnected'; 
 
 // =================================================================
-// 2. FUNCIÓN DE REPORTE A LA TORRE (NUEVO)
+// 2. FUNCIÓN DE REPORTE A LA TORRE
 // =================================================================
 async function reportToTower() {
     try {
-        // En Node 18+ fetch es nativo. Si usas Node viejo, ignora el error.
         await fetch(TOWER_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -57,7 +80,7 @@ async function reportToTower() {
             })
         });
     } catch (e) {
-        // Silencioso: Si la torre está apagada, el bot sigue funcionando normal.
+        // Silencioso
     }
 }
 
@@ -105,7 +128,7 @@ async function connectToWhatsApp() {
     }
 
     connectionStatus = 'connecting';
-    reportToTower(); // <--- AVISAR TORRE
+    reportToTower(); 
     console.log("🔄 Iniciando conexión a WhatsApp...");
 
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
@@ -117,9 +140,9 @@ async function connectToWhatsApp() {
         printQRInTerminal: false, 
         logger: pino({ level: 'silent' }),
         keepAliveIntervalMs: 10000, 
-        retryRequestDelayMs: 2000,   
+        retryRequestDelayMs: 2000,    
         connectTimeoutMs: 60000,      
-        syncFullHistory: false,       
+        syncFullHistory: false,        
         browser: ["CRM Monitor", "Chrome", "1.0.0"],
     });
     
@@ -134,7 +157,9 @@ async function connectToWhatsApp() {
             console.log("📡 QR Generado");
             globalQR = qr; 
             connectionStatus = 'qr_ready';
-            reportToTower(); // <--- AVISAR TORRE (Nuevo QR)
+            reportToTower(); 
+            // También enviamos el QR al simulador/web si está conectado
+            if(global.io) global.io.emit('qr', { qr });
         }
 
         if (connection === 'close') {
@@ -144,7 +169,8 @@ async function connectToWhatsApp() {
             
             if (connectionStatus !== 'rebooting') connectionStatus = 'disconnected';
             globalQR = null;
-            reportToTower(); // <--- AVISAR TORRE (Desconectado)
+            reportToTower(); 
+            if(global.io) global.io.emit('status', { status: 'disconnected' });
 
             if (shouldReconnect && connectionStatus !== 'rebooting') {
                 setTimeout(() => {
@@ -156,7 +182,8 @@ async function connectToWhatsApp() {
             console.log('✅ Bot CONECTADO');
             connectionStatus = 'connected';
             globalQR = null; 
-            reportToTower(); // <--- AVISAR TORRE (Conectado)
+            reportToTower(); 
+            if(global.io) global.io.emit('status', { status: 'connected' });
         }
     });
 
@@ -168,17 +195,16 @@ async function connectToWhatsApp() {
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
 
-        // 1. REVISAR VIGENCIA DE LA LICENCIA (NUEVO)
+        // 1. REVISAR VIGENCIA DE LA LICENCIA
         const settings = getSettings();
         if (settings.license && settings.license.end) {
             const today = new Date().toISOString().split('T')[0];
             if (today > settings.license.end) {
                 console.log("🔒 LICENCIA VENCIDA. Bot en pausa.");
-                return; // Detener ejecución si la licencia expiró
+                return;
             }
         }
 
-        // 2. FILTRO DE CONTACTOS Y NOMBRES
         const allContacts = getAllContacts(); 
 
         for (const msg of messages) {
@@ -240,7 +266,7 @@ app.post('/api/logout', async (req, res) => {
     try {
         console.log("🛑 Solicitud de REINICIO recibida.");
         connectionStatus = 'rebooting'; 
-        reportToTower(); // <--- AVISAR TORRE
+        reportToTower(); 
         globalQR = null;
 
         if (globalSock) {
@@ -263,7 +289,7 @@ app.post('/api/logout', async (req, res) => {
     } catch (e) {
         console.error(e);
         connectionStatus = 'disconnected';
-        reportToTower(); // <--- AVISAR TORRE
+        reportToTower(); 
         res.status(500).json({ error: 'Error al reiniciar' });
     }
 });
@@ -295,7 +321,15 @@ app.post('/api/crm/execute', async (req, res) => {
     if (!stepId) return res.status(400).json({ error: "Sin destino." });
     try {
         await updateUser(phone, { current_step: stepId });
-        if (phone === 'TEST_SIMULADOR') return res.json({ success: true });
+        
+        // CORRECCIÓN: Si es el simulador, mandamos OK aunque el bot esté offline
+        // Pero idealmente debería pasar por sendStepMessage para que el simulador reciba la respuesta
+        if (phone === 'TEST_SIMULADOR' || phone === '5218991234567') {
+             // Simulamos el objeto socket si no existe, pero sendStepMessage ya lo maneja
+             await sendStepMessage(globalSock || {}, phone, stepId, getUser(phone));
+             return res.json({ success: true });
+        }
+
         if (!globalSock) return res.status(500).json({ error: "Bot offline" });
         
         const user = getUser(phone);
@@ -361,19 +395,18 @@ app.get('/api/admin/clear-monitor', (req, res) => {
 app.get('/api/settings', (req, res) => res.json(getSettings()));
 
 // =================================================================
-// 3. GUARDAR AJUSTES + LICENCIAS (MODIFICADO)
+// 3. GUARDAR AJUSTES + LICENCIAS
 // =================================================================
 app.post('/api/settings', async (req, res) => { 
     const current = getSettings();
-    // Ahora hacemos MERGE de todo lo que llegue (schedule, license, etc)
     const newSettings = { ...current, ...req.body };
     await saveSettings(newSettings); 
     res.json({ success: true }); 
 });
 
-// ARRANCAR EL BOT
-app.listen(PORT, () => {
-    console.log(`🚀 Torre de Control Local en puerto: ${PORT}`);
+// ARRANCAR EL BOT (USANDO server.listen EN LUGAR DE app.listen)
+server.listen(PORT, () => {
+    console.log(`🚀 Torre de Control Local + Sockets en puerto: ${PORT}`);
     // Intentar conexión inicial y reporte a la Torre Maestra
     connectToWhatsApp();
     reportToTower();
