@@ -298,6 +298,70 @@
             .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.8); z-index: 200; } 
             .sidebar.active { transform: translateX(0); }
             .sheet { height: 100%; max-height: 100%; border-radius: 0; }
+
+        @media (max-width: 768px) {
+            /* 1. Ocultar los encabezados de la tabla */
+            .act-table thead { display: none; }
+
+            /* 2. Convertir la tabla y filas en bloques flexibles */
+            .act-table, .act-table tbody, .act-table tr, .act-table td {
+                display: block;
+                width: 100%;
+                border: none; /* Quitamos bordes de tabla por defecto */
+            }
+
+            /* 3. Estilo de "Tarjeta" para cada fila (TR) */
+            .act-table tr {
+                background: var(--bg-hover); /* Fondo ligeramente más claro que la base */
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                margin-bottom: 15px; /* Separación entre tarjetas */
+                padding: 15px;
+                
+                /* AQUÍ ESTÁ LA MAGIA: GRID DE 2 COLUMNAS */
+                display: grid;
+                grid-template-columns: 1fr 1fr; /* Dos columnas iguales */
+                gap: 10px;
+            }
+
+            /* 4. Celda 1: Cliente (Arriba Izquierda) */
+            .act-table td:nth-child(1) {
+                grid-column: 1 / 2; /* Ocupa columna 1 */
+                padding: 0;
+                border-bottom: none;
+            }
+
+            /* 5. Celda 2: Datos (Arriba Derecha) */
+            .act-table td:nth-child(2) {
+                grid-column: 2 / 3; /* Ocupa columna 2 */
+                padding: 0;
+                border-bottom: none;
+                font-size: 0.8rem;
+                text-align: right; /* Alineamos datos a la derecha para equilibrio */
+                opacity: 0.9;
+                overflow: hidden; 
+            }
+
+            /* 6. Celda 3: Botones (Abajo Completo) */
+            .act-table td:nth-child(3) {
+                grid-column: 1 / -1; /* Ocupa todo el ancho (de 1 al final) */
+                border-top: 1px solid var(--border); /* Línea separadora */
+                padding-top: 10px;
+                margin-top: 5px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 5px;
+                justify-content: center; /* Botones centrados */
+            }
+
+            /* Ajuste visual para los botones en móvil para que sean más fáciles de tocar */
+            .admin-btn {
+                flex: 1; /* Que se estiren */
+                text-align: center;
+                padding: 10px;
+                background: var(--bg-body);
+                border: 1px solid var(--border);
+            }
         }
     </style>
 </head>
