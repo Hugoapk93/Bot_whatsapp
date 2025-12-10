@@ -3,6 +3,9 @@ const { isBotDisabled } = require('./contacts');
 const fs = require('fs');
 const path = require('path');
 
+// --- CONFIGURACIÓN DEL SIMULADOR ---
+const SIMULATOR_PHONE = '5218991234567'; // <--- TU NÚMERO DE SIMULADOR
+
 const INITIAL_STEP = 'BIENVENIDA'; 
 const agendaPath = path.join(__dirname, '../data/agenda.json');
 const publicFolder = path.join(__dirname, '../public'); 
@@ -105,8 +108,30 @@ const isBusinessClosed = () => {
     return (currentMins < startMins || currentMins >= endMins);
 };
 
+// --- INTERCEPTOR PARA EL SIMULADOR ---
+const enviarAlFrontend = (jid, contenido, tipo = 'text') => {
+    // AQUÍ ES DONDE CONECTAS CON TU WEB/SOCKET
+    // Si tienes socket.io global, sería algo como: global.io.emit('mensaje_bot', { ... })
+    
+    console.log(`\n🤖 [SIMULADOR DETECTADO] 🤖`);
+    console.log(`   Destino: ${jid}`);
+    console.log(`   Tipo: ${tipo}`);
+    console.log(`   Contenido: ${JSON.stringify(contenido)}`);
+    console.log(`   --> Mensaje interceptado. NO enviado a WhatsApp Real.\n`);
+    
+    // Si usas sockets, descomenta y ajusta esta línea:
+    // if (global.io) global.io.emit('bot-reply', { phone: SIMULATOR_PHONE, message: contenido, type: tipo });
+};
+
+const esSimulador = (jid) => {
+    return jid.includes(SIMULATOR_PHONE);
+};
+
 // --- SIMULACIÓN DE TYPING ---
 const typing = async (sock, jid, length) => {
+    // Si es simulador, no enviamos presencia real porque puede dar error si el número no existe
+    if (esSimulador(jid)) return; 
+
     const ms = Math.min(Math.max(length * 50, 1000), 5000); 
     await sock.sendPresenceUpdate('composing', jid);
     await new Promise(resolve => setTimeout(resolve, ms));
@@ -152,6 +177,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         step.options.forEach(opt => messageText += `\n${opt.trigger} ${opt.label}`);
     }
 
+    // Typing (Ya tiene el filtro interno)
     try { await typing(sock, jid, messageText.length); } catch (e) {}
 
     let mediaList = [];
@@ -163,6 +189,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     let sent = false;
 
+    // --- LOGICA DE IMÁGENES ---
     if (mediaList.length > 0) {
         for (let i = 0; i < mediaList.length; i++) {
             const url = mediaList[i];
@@ -175,8 +202,15 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             if (imageToSend) {
                 const caption = (i === 0) ? messageText : ""; 
                 try {
-                    await sock.sendMessage(jid, { image: { url: imageToSend }, caption: caption });
-                    sent = true; 
+                    // INTERCEPCIÓN SIMULADOR (IMÁGENES)
+                    if (esSimulador(jid)) {
+                        enviarAlFrontend(jid, { url: url, caption: caption }, 'image');
+                        sent = true;
+                    } else {
+                        // ENVÍO REAL
+                        await sock.sendMessage(jid, { image: { url: imageToSend }, caption: caption });
+                        sent = true; 
+                    }
                     if(mediaList.length > 1) await new Promise(r => setTimeout(r, 500)); 
                 } catch (e) {
                     console.error(`❌ Error enviando imagen ${i}:`, e.message);
@@ -187,10 +221,17 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
+    // --- LÓGICA DE TEXTO ---
     if (!sent && messageText) {
         try { 
-            await sock.sendMessage(jid, { text: messageText }); 
-            console.log(`✅ Texto enviado correctamente.`);
+            // INTERCEPCIÓN SIMULADOR (TEXTO)
+            if (esSimulador(jid)) {
+                enviarAlFrontend(jid, messageText, 'text');
+            } else {
+                // ENVÍO REAL
+                await sock.sendMessage(jid, { text: messageText }); 
+                console.log(`✅ Texto enviado correctamente.`);
+            }
         } catch (e) {
             console.error(`❌ Error al enviar texto:`, e);
         }
@@ -321,7 +362,7 @@ const handleMessage = async (sock, msg) => {
     else if (currentConfig.type === 'menu') {
         const match = currentConfig.options?.find(opt => {
             const t = opt.trigger.toLowerCase(); 
-            const l = opt.label.toLowerCase();    
+            const l = opt.label.toLowerCase();     
             const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, ''); 
 
             if (cleanText === t) return true;        
@@ -343,7 +384,12 @@ const handleMessage = async (sock, msg) => {
             currentConfig.options.forEach(opt => {
                 helpText += `👉 *${opt.trigger}* o *${opt.label}*\n`;
             });
-            await sock.sendMessage(remoteJid, { text: helpText });
+            // INTERCEPCIÓN ERROR MENU
+            if (esSimulador(remoteJid)) {
+                enviarAlFrontend(remoteJid, helpText);
+            } else {
+                await sock.sendMessage(remoteJid, { text: helpText });
+            }
             return; 
         }
     }
@@ -362,9 +408,17 @@ const handleMessage = async (sock, msg) => {
              let fecha = normalizeDate(rawDate);
              
              if (nextStepConfig.next_step) { 
-                 if (!fecha) { await sock.sendMessage(remoteJid, { text: `⚠️ La fecha ingresada no es válida.` }); return; }
+                 if (!fecha) { 
+                    const txt = `⚠️ La fecha ingresada no es válida.`;
+                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    return; 
+                 }
                  const today = new Date().toISOString().split('T')[0];
-                 if (fecha < today) { await sock.sendMessage(remoteJid, { text: `⚠️ No podemos viajar al pasado. Elige una fecha futura.` }); return; }
+                 if (fecha < today) { 
+                    const txt = `⚠️ No podemos viajar al pasado. Elige una fecha futura.`;
+                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    return; 
+                 }
                  
                  nextStepId = nextStepConfig.next_step; 
              } else { 
@@ -372,14 +426,21 @@ const handleMessage = async (sock, msg) => {
                      const possibleCorrection = normalizeDate(rawTime);
                      if (possibleCorrection) {
                          await updateUser(dbKey, { history: { ...user.history, fecha: rawTime, hora: '' } });
-                         await sock.sendMessage(remoteJid, { text: `🗓️ Entendido, fecha: ${possibleCorrection}. ¿A qué hora te gustaría?` });
+                         const txt = `🗓️ Entendido, fecha: ${possibleCorrection}. ¿A qué hora te gustaría?`;
+                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                          return;
                      } 
-                     await sock.sendMessage(remoteJid, { text: `⚠️ No pude reconocer la fecha. Usa formato Día Mes (ej: 5 Octubre).` }); return;
+                     const txt = `⚠️ No pude reconocer la fecha. Usa formato Día Mes (ej: 5 Octubre).`;
+                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                     return;
                  }
  
                  const hora = normalizeTime(rawTime);
-                 if (!hora) { await sock.sendMessage(remoteJid, { text: `⚠️ Hora inválida. Usa formato 24h o AM/PM (ej: 4:00 PM).` }); return; }
+                 if (!hora) { 
+                    const txt = `⚠️ Hora inválida. Usa formato 24h o AM/PM (ej: 4:00 PM).`;
+                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    return; 
+                 }
                  
                  const settings = getSettings();
                  const rules = validateBusinessRules(hora, settings);
@@ -388,12 +449,14 @@ const handleMessage = async (sock, msg) => {
                  const pathFail = nextStepConfig.options?.find(o => o.internal_label === 'NO_DISPONIBLE');
  
                  if (!rules.valid) {
-                     await sock.sendMessage(remoteJid, { text: `⚠️ ${rules.reason}` });
+                     const txt = `⚠️ ${rules.reason}`;
+                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                      if (pathFail) nextStepId = pathFail.next_step; else return;
                  } else {
                      const db = getAgenda();
                      if (db[fecha] && db[fecha].some(c => c.time === hora)) {
-                         await sock.sendMessage(remoteJid, { text: `❌ Ese horario ya está ocupado.` });
+                         const txt = `❌ Ese horario ya está ocupado.`;
+                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                          if (pathFail) nextStepId = pathFail.next_step; else return;
                      } else {
                          if (!db[fecha]) db[fecha] = [];
@@ -401,7 +464,8 @@ const handleMessage = async (sock, msg) => {
                          db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
                          saveAgenda(db);
                          
-                         await sock.sendMessage(remoteJid, { text: `✅ Cita Confirmada: ${fecha} a las ${hora}` });
+                         const txt = `✅ Cita Confirmada: ${fecha} a las ${hora}`;
+                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                          if (pathSuccess) nextStepId = pathSuccess.next_step;
                      }
                  }
