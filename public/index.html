@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
+    <script src="/socket.io/socket.io.js"></script>
     <!-- 1. Cytoscape Core -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>  
     <!-- 2. Dagre Core (Motor Matemático) -->
@@ -1183,6 +1184,8 @@
                 console.error("Error cargando contactos:", e);
             }
         }
+
+        // --- SIMULADOR ---
         function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
         async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
         
@@ -1197,26 +1200,75 @@
             renderContacts();
         }
 
-        // --- SIMULADOR ---
-        function scrollToBottomSim() { const c = document.getElementById('simMsgs'); if(c) c.scrollTop = c.scrollHeight; }
-        function sendSim() {
-            const t = document.getElementById('simInput'); const txt = t.value; if(!txt) return;
-            addMsg(txt, true); t.value=''; 
-            simState.history['last_input'] = txt; 
-            fetch(`${API_BASE}/api/crm/execute`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:simPhone, stepId:simState.step})}); 
-            
-            setTimeout(() => {
-                const step = flow[simState.step] || {};
-                if(step.type === 'menu' || step.type === 'input') {
-                    addMsg("Procesando...", false); 
-                }
-            }, 600);
-        }
-        function addMsg(txt, usr) {
-            const d=document.createElement('div'); d.className=`msg ${usr?'user':'bot'}`; 
-            d.innerHTML=txt; document.getElementById('simMsgs').appendChild(d); scrollToBottomSim();
-        }
-        function restartSim() { document.getElementById('simMsgs').innerHTML=''; simState={step:'BIENVENIDA', history:{}}; showToast('Terminal Limpia'); }
+	// 1. INICIALIZAR CONEXIÓN SOCKET
+	const socket = io(); 
+
+	// Variables
+	let simPhone = '5218991234567'; // Mismo número que en flow.js
+	let simState = { step: 'BIENVENIDA', history: {} };
+
+	// 2. ESCUCHAR RESPUESTAS (Esto quita el "Procesando...")
+	socket.on('message', (data) => {
+	    // Verificar si el mensaje es para nosotros
+	    const destino = data.to.replace(/\D/g, '');
+	    if (!destino.includes(simPhone)) return;
+
+	    // Quitar mensaje de carga
+	    const loading = document.getElementById('msg-loading');
+	    if (loading) loading.remove();
+
+	    // Mostrar respuesta del bot
+	    if (data.type === 'image') {
+	        addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false);
+	    } else {
+	        addMsg(data.text, false);
+	    }
+	});
+
+	// --- FUNCIONES ---
+
+	function scrollToBottomSim() { 
+	    const c = document.getElementById('simMsgs'); 
+	    if(c) c.scrollTop = c.scrollHeight; 
+	}
+
+	function sendSim() {
+	    const t = document.getElementById('simInput'); 
+	    const txt = t.value.trim(); 
+	    if(!txt) return;
+
+	    // Mostrar mensaje del usuario
+   	    addMsg(txt, true); 
+  	    t.value=''; 
+    
+	    // Mostrar "Escribiendo..." temporal
+	    const d = document.createElement('div'); 
+	    d.id = 'msg-loading'; d.className = 'msg bot'; 
+	    d.innerHTML = '<em>Escribiendo...</em>'; 
+	    document.getElementById('simMsgs').appendChild(d); 
+	    scrollToBottomSim();
+
+	    // ENVIAR AL NUEVO ENDPOINT DE TEXTO
+	    fetch(`${API_BASE}/api/simulate/text`, {
+	        method: 'POST',
+	        headers: {'Content-Type':'application/json'}, 
+	        body: JSON.stringify({ phone: simPhone, text: txt })
+	    });
+	}
+
+	function addMsg(txt, usr) {
+	    const d = document.createElement('div'); 
+  	    d.className = `msg ${usr?'user':'bot'}`; 
+	    d.innerHTML = txt; 
+	    document.getElementById('simMsgs').appendChild(d); 
+	    scrollToBottomSim();
+	}
+
+	function restartSim() { 
+	    document.getElementById('simMsgs').innerHTML=''; 
+	    simState={step:'BIENVENIDA', history:{}}; 
+	    showToast('Terminal Limpia'); 
+	}
 
         // --- SETTINGS ---
         async function saveSettings() {
