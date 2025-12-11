@@ -596,6 +596,7 @@
                     <option value="input">Solicitar Dato</option>
                     <option value="message">Enviar Mensaje</option>
                     <option value="cita">Módulo Citas</option>
+                    <option value="fin_bot">Fin / Pasar a Agente</option>
                 </select>
                 
                 <div id="wrapper-msg" style="margin-top:15px;">
@@ -705,14 +706,14 @@
         function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
         async function resetSession() { if(!confirm("¿Reiniciar conexión?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
 
-	// Variables
-	let simPhone = '5218991234567';
-	let simState = { step: 'BIENVENIDA', history: {} };
+        // Variables
+        let simPhone = '5218991234567';
+        let simState = { step: 'BIENVENIDA', history: {} };
         let flow={}, users=[];
         let cy = null;
         let currentRefDate = new Date();
         let wakeLock = null;
-	const socket = io(API_BASE);
+        const socket = io(API_BASE);
         const delayedFilter = debounce(filterContacts, 300);
 
         function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
@@ -815,7 +816,7 @@
 
         async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-	function renderFlow() {
+        function renderFlow() {
             // 1. Limpieza segura
             let savedZoom = null;
             let savedPan = null;
@@ -1202,67 +1203,67 @@
         }
 
         // --- SIMULADOR ---
-	socket.on('message', (data) => {
-	    // Verificar si el mensaje es para nosotros
-	    const destino = data.to.replace(/\D/g, '');
-	    if (!destino.includes(simPhone)) return;
+        socket.on('message', (data) => {
+            // Verificar si el mensaje es para nosotros
+            const destino = data.to.replace(/\D/g, '');
+            if (!destino.includes(simPhone)) return;
 
-	    // Quitar mensaje de carga
-	    const loading = document.getElementById('msg-loading');
-	    if (loading) loading.remove();
+            // Quitar mensaje de carga
+            const loading = document.getElementById('msg-loading');
+            if (loading) loading.remove();
 
-	    // Mostrar respuesta del bot
-	    if (data.type === 'image') {
-	        addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false);
-	    } else {
-	        addMsg(data.text, false);
-	    }
-	});
+            // Mostrar respuesta del bot
+            if (data.type === 'image') {
+                addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false);
+            } else {
+                addMsg(data.text, false);
+            }
+        });
 
-	// --- FUNCIONES ---
+        // --- FUNCIONES ---
 
-	function scrollToBottomSim() { 
-	    const c = document.getElementById('simMsgs'); 
-	    if(c) c.scrollTop = c.scrollHeight; 
-	}
+        function scrollToBottomSim() { 
+            const c = document.getElementById('simMsgs'); 
+            if(c) c.scrollTop = c.scrollHeight; 
+        }
 
-	function sendSim() {
-	    const t = document.getElementById('simInput'); 
-	    const txt = t.value.trim(); 
-	    if(!txt) return;
+        function sendSim() {
+            const t = document.getElementById('simInput'); 
+            const txt = t.value.trim(); 
+            if(!txt) return;
 
-	    // Mostrar mensaje del usuario
-   	    addMsg(txt, true); 
-  	    t.value=''; 
+            // Mostrar mensaje del usuario
+            addMsg(txt, true); 
+            t.value=''; 
     
-	    // Mostrar "Escribiendo..." temporal
-	    const d = document.createElement('div'); 
-	    d.id = 'msg-loading'; d.className = 'msg bot'; 
-	    d.innerHTML = '<em>Escribiendo...</em>'; 
-	    document.getElementById('simMsgs').appendChild(d); 
-	    scrollToBottomSim();
+            // Mostrar "Escribiendo..." temporal
+            const d = document.createElement('div'); 
+            d.id = 'msg-loading'; d.className = 'msg bot'; 
+            d.innerHTML = '<em>Escribiendo...</em>'; 
+            document.getElementById('simMsgs').appendChild(d); 
+            scrollToBottomSim();
 
-	    // ENVIAR AL NUEVO ENDPOINT DE TEXTO
-	    fetch(`${API_BASE}/api/simulate/text`, {
-	        method: 'POST',
-	        headers: {'Content-Type':'application/json'}, 
-	        body: JSON.stringify({ phone: simPhone, text: txt })
-	    });
-	}
+            // ENVIAR AL NUEVO ENDPOINT DE TEXTO
+            fetch(`${API_BASE}/api/simulate/text`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'}, 
+                body: JSON.stringify({ phone: simPhone, text: txt })
+            });
+        }
 
-	function addMsg(txt, usr) {
-	    const d = document.createElement('div'); 
-  	    d.className = `msg ${usr?'user':'bot'}`; 
-	    d.innerHTML = txt; 
-	    document.getElementById('simMsgs').appendChild(d); 
-	    scrollToBottomSim();
-	}
+        function addMsg(txt, usr) {
+            const d = document.createElement('div'); 
+            d.className = `msg ${usr?'user':'bot'}`; 
+            d.innerHTML = txt; 
+            document.getElementById('simMsgs').appendChild(d); 
+            scrollToBottomSim();
+        }
 
-	function restartSim() { 
-	    document.getElementById('simMsgs').innerHTML=''; 
-	    simState={step:'BIENVENIDA', history:{}}; 
-	    showToast('Terminal Limpia'); 
-	}
+        function restartSim() { 
+            document.getElementById('simMsgs').innerHTML=''; 
+            simState={step:'BIENVENIDA', history:{}}; 
+            showToast('Terminal Limpia'); 
+        }
 
         // --- SETTINGS ---
         async function saveSettings() {

@@ -1,5 +1,5 @@
 const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow } = require('./database');
-const { isBotDisabled } = require('./contacts');
+const { isBotDisabled, addManualContact } = require('./contacts');
 const fs = require('fs');
 const path = require('path');
 
@@ -157,8 +157,7 @@ const typing = async (sock, jid, length) => {
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId} a ${jid}`);
     let step = getFlowStep(stepId);
-    
-    // Auto-reparación paso inicial
+
     if (!step && stepId === INITIAL_STEP) {
         console.log("🔧 Auto-reparando paso INICIAL...");
         step = { type: 'menu', message: '¡Hola! Bienvenido al sistema.', options: [] };
@@ -172,6 +171,15 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     let messageText = step.message || "";
     const settings = getSettings();
+
+    // --- LÓGICA NUEVA: FIN DEL BOT (AGENTE) ---
+    if (step.type === 'fin_bot') {
+        const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
+        
+        addManualContact(cleanPhone, contactName, false);
+        console.log(`🛑 Bot desactivado automáticamente para: ${cleanPhone}`);
+    }
 
     // Verificar si está cerrado
     if (step.type === 'filtro' && isBusinessClosed()) {
@@ -282,7 +290,6 @@ const handleMessage = async (sock, msg) => {
     }
     console.log(`💬 Texto: "${text}"`);
 
-    // --- 1. IDENTIFICACIÓN ---
     let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, ''); 
     let user = getUser(incomingPhone); 
     let dbKey = incomingPhone;
@@ -417,7 +424,6 @@ const handleMessage = async (sock, msg) => {
         const nextStepConfig = getFlowStep(nextStepId);
         
         if (nextStepConfig && nextStepConfig.type === 'cita') {
-             // Intentamos recuperar fecha/hora del historial
              let rawDate = user.history['fecha_cita'] || user.history['fecha']; 
              let rawTime = user.history['hora_cita'] || user.history['hora'];    
              let fecha = normalizeDate(rawDate);
