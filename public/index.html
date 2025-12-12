@@ -1001,31 +1001,53 @@
         }
         function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
         
-        function renderFields() {
-            const type = document.getElementById('stType').value;
-            const con = document.getElementById('dynFields');
-            const id = document.getElementById('stId').value;
-            const d = flow[id] || {};
-            let html = '';
-            
-            const keywordsVal = (d.keywords || []).join(', ');
-            html += `<label>Palabras Clave</label><input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu, inicio">`;
+	function renderFields() {
+	    const type = document.getElementById('stType').value;
+	    const con = document.getElementById('dynFields');
+	    const id = document.getElementById('stId').value;
+	    const d = flow[id] || {};
+	    let html = '';
 
-            const getOpts = (sel) => { let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); return s; };
-            
-            if(type==='menu' || type==='filtro') {
-                html += `<div id="optList" style="margin-top:10px;"><label>Opciones</label>`;
-                (d.options||[]).forEach(o => {
-                    html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}" placeholder="Texto Botón"><select class="o-nxt">${getOpts(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button></div>`;
-                });
-                html += `</div><button onclick="addOpt()" style="width:100%; padding:8px; background:var(--bg-hover); border:1px dashed var(--border); color:var(--text-muted); cursor:pointer; margin-top:5px; border-radius:4px; font-size:0.8rem;">+ Agregar Opción</button>`;
-                if(type==='filtro') html += `<label style="margin-top:10px">Guardar Estado en Variable</label><input id="stVar" value="${d.save_var||'status'}" placeholder="ej: status">`;
-            } else {
-                html += `<label>Siguiente Paso</label><select id="stNxt">${getOpts(d.next_step)}</select>`;
-                if(type==='input') html += `<label style="margin-top:10px">Guardar Respuesta en Variable</label><input id="stVar" value="${d.save_var||''}" placeholder="ej: nombreCliente">`;
-            }
-            con.innerHTML = html;
-        }
+	    const getOpts = (sel) => { let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); return s; };
+
+	    // 1. MENÚ (Palabras Clave + Opciones)
+	    if (type === 'menu') {
+	        const keywordsVal = (d.keywords || []).join(', ');
+	        html += `<label>Palabras Clave</label><input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu">`;
+
+	        html += `<div id="optList" style="margin-top:10px;"><label>Opciones</label>`;
+	        (d.options||[]).forEach(o => {
+	            html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}" placeholder="Texto Botón"><select class="o-nxt">${getOpts(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button></div>`;
+	        });
+	        html += `</div><button onclick="addOpt()" style="width:100%; padding:8px; background:var(--bg-hover); border:1px dashed var(--border); color:var(--text-muted); cursor:pointer; margin-top:5px; border-radius:4px; font-size:0.8rem;">+ Agregar Opción</button>`;
+	    }
+
+	    // 2. FILTRO (Admin + Opciones + Variable)
+	    else if (type === 'filtro') {
+	        // Nuevo campo Admin
+	        html += `<label>Teléfono Admin</label><input type="text" id="stAdmin" value="${d.admin_number||''}" placeholder="521..." style="width:100%; margin-bottom:10px;">`;
+
+	        html += `<div id="optList" style="margin-top:10px;"><label>Opciones</label>`;
+	        (d.options||[]).forEach(o => {
+ 	           html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}" placeholder="Texto Botón"><select class="o-nxt">${getOpts(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button></div>`;
+	        });
+	        html += `</div><button onclick="addOpt()" style="width:100%; padding:8px; background:var(--bg-hover); border:1px dashed var(--border); color:var(--text-muted); cursor:pointer; margin-top:5px; border-radius:4px; font-size:0.8rem;">+ Agregar Opción</button>`;
+	        html += `<label style="margin-top:10px">Guardar Estado en Variable</label><input id="stVar" value="${d.save_var||'status'}" placeholder="ej: status">`;
+	    }
+
+	    // 3. CITA (Solo Siguiente Paso)
+	    else if (type === 'cita') {
+	        html += `<label>Siguiente Paso</label><select id="stNxt">${getOpts(d.next_step)}</select>`;
+	    }
+
+	    // 4. OTROS (Input, Message, etc - Sin keywords)
+	    else {
+	        html += `<label>Siguiente Paso</label><select id="stNxt">${getOpts(d.next_step)}</select>`;
+	        if(type==='input') html += `<label style="margin-top:10px">Guardar Respuesta en Variable</label><input id="stVar" value="${d.save_var||''}" placeholder="ej: nombreCliente">`;
+	    }
+
+	    con.innerHTML = html;
+	}
 
         function addOpt() {
             const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:5px; margin-bottom:5px;";

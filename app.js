@@ -1,8 +1,8 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
-const http = require('http'); // <--- 1. IMPORTAR HTTP
-const { Server } = require('socket.io'); // <--- 2. IMPORTAR SOCKET.IO
+const http = require('http'); 
+const { Server } = require('socket.io'); 
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -17,30 +17,32 @@ const app = express();
 app.use(cors());
 
 // =================================================================
-// CONFIGURACIÓN DE SOCKET.IO Y SERVIDOR HTTP
+// 🛡️ MEJORA 1: ESCUDO ANTI-CAÍDAS (ANTI-CRASH)
 // =================================================================
-const server = http.createServer(app); // Creamos servidor HTTP envolviendo Express
-const io = new Server(server, {
-    cors: {
-        origin: "*", // Permite conexiones desde cualquier simulador
-        methods: ["GET", "POST"]
-    }
+process.on('uncaughtException', (err) => {
+    console.error('🔥 CRITICAL ERROR (No Apagando):', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('⚠️ PROMISE ERROR (Sin Manejar):', reason);
 });
 
-// HACEMOS IO GLOBAL PARA QUE FLOW.JS PUEDA USARLO
+// =================================================================
+// CONFIGURACIÓN DE SOCKET.IO Y SERVIDOR HTTP
+// =================================================================
+const server = http.createServer(app); 
+const io = new Server(server, {
+    cors: { origin: "*", methods: ["GET", "POST"] }
+});
+
 global.io = io; 
 
 io.on('connection', (socket) => {
     console.log('🔌 Simulador Web conectado:', socket.id);
-    
-    // Opcional: Si el simulador envía mensajes por socket en vez de API
-    socket.on('message', (data) => {
-        console.log('Mensaje desde simulador:', data);
-    });
+    socket.on('message', (data) => console.log('Mensaje desde simulador:', data));
 });
 
 // =================================================================
-// 1. CONFIGURACIÓN DINÁMICA DE PUERTO
+// CONFIGURACIÓN DINÁMICA DE PUERTO
 // =================================================================
 const args = process.argv.slice(2);
 const portArgIndex = args.indexOf('--port');
@@ -64,7 +66,7 @@ let globalQR = null;
 let connectionStatus = 'disconnected'; 
 
 // =================================================================
-// 2. FUNCIÓN DE REPORTE A LA TORRE
+// FUNCIÓN DE REPORTE A LA TORRE
 // =================================================================
 async function reportToTower() {
     try {
@@ -76,12 +78,10 @@ async function reportToTower() {
                 port: PORT,
                 status: connectionStatus,
                 qr: globalQR,
-                version: '2.0.0'
+                version: '2.2.0' // Versión Robusta Contactos
             })
         });
-    } catch (e) {
-        // Silencioso
-    }
+    } catch (e) { /* Silencioso */ }
 }
 
 // --- HELPER PARA LEER JSON SEGURO ---
@@ -137,13 +137,13 @@ async function connectToWhatsApp() {
     const sock = makeWASocket({
         version,
         auth: state,
-        printQRInTerminal: false, 
+        printQRInTerminal: true, 
         logger: pino({ level: 'silent' }),
-        keepAliveIntervalMs: 10000, 
-        retryRequestDelayMs: 2000,    
-        connectTimeoutMs: 60000,      
+        keepAliveIntervalMs: 30000, 
+        retryRequestDelayMs: 2000,      
+        connectTimeoutMs: 60000,       
         syncFullHistory: false,        
-        browser: ["CRM Monitor", "Chrome", "1.0.0"],
+        browser: ["CRM Bot", "Chrome", "2.0.0"],
     });
     
     globalSock = sock;
@@ -158,7 +158,6 @@ async function connectToWhatsApp() {
             globalQR = qr; 
             connectionStatus = 'qr_ready';
             reportToTower(); 
-            // También enviamos el QR al simulador/web si está conectado
             if(global.io) global.io.emit('qr', { qr });
         }
 
@@ -189,13 +188,11 @@ async function connectToWhatsApp() {
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
-    // =================================================================
-    // >>> LOGICA DE MENSAJES (FILTROS + LICENCIA) <<<
-    // =================================================================
+    // >>> LOGICA DE MENSAJES <<<
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
 
-        // 1. REVISAR VIGENCIA DE LA LICENCIA
+        // 1. REVISAR LICENCIA
         const settings = getSettings();
         if (settings.license && settings.license.end) {
             const today = new Date().toISOString().split('T')[0];
@@ -216,29 +213,79 @@ async function connectToWhatsApp() {
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, ''); 
             const incomingName = msg.pushName || ''; 
 
+            // === LÓGICA DE BLOQUEO ROBUSTA (TRIPLE VERIFICACIÓN + LIMPIEZA) ===
             const isBlocked = allContacts.some(contact => {
+                // Solo revisamos contactos que estén explícitamente APAGADOS (false)
                 if (contact.bot_enabled !== false) return false; 
-                const dbPhoneRaw = (contact.phone || '').replace(/[^0-9]/g, '');
-                const phoneMatch = dbPhoneRaw.slice(-10) === incomingPhoneRaw.slice(-10);
-                let nameMatch = false;
-                if (contact.name && incomingName) {
-                    nameMatch = contact.name.trim().toLowerCase() === incomingName.trim().toLowerCase();
+                
+                // --- HELPER: NORMALIZAR CADENAS (Quitar acentos, emojis, espacios) ---
+                const normalizeString = (str) => {
+                    if (!str) return '';
+                    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita acentos
+                              .replace(/[^a-zA-Z0-9]/g, "") // Quita emojis y símbolos
+                              .toLowerCase();
+                };
+
+                // --- HELPER: NORMALIZAR TELÉFONOS (MX 10 Dígitos) ---
+                const normalizePhone = (ph) => {
+                    if (!ph) return '';
+                    let clean = ph.replace(/[^0-9]/g, '');
+                    if (clean.startsWith('52') && clean.length >= 12) return clean.slice(-10);
+                    return clean;
+                };
+
+                // 1️⃣ CHECK POR TELÉFONO (Principal)
+                const dbPhoneNorm = normalizePhone(contact.phone || contact.id);
+                const incPhoneNorm = normalizePhone(incomingPhoneRaw);
+                if (dbPhoneNorm && incPhoneNorm && dbPhoneNorm === incPhoneNorm) return true;
+
+                // 2️⃣ CHECK POR TELÉFONO CRUDO (LIDs numéricos)
+                const rawDB = (contact.phone || '').replace(/[^0-9]/g, '');
+                if (rawDB.length > 5 && rawDB === incomingPhoneRaw) return true;
+
+                // 3️⃣ CHECK POR NOMBRE (Respaldo para LIDs y Contactos Descargados)
+                // Comparamos el nombre que llega (PushName) contra:
+                // A) El nombre que tú guardaste en la agenda (contact.name)
+                // B) El nombre de perfil que WhatsApp sincronizó antes (contact.notify)
+                
+                const incNameClean = normalizeString(incomingName);
+                const dbNameClean = normalizeString(contact.name);
+                const dbNotifyClean = normalizeString(contact.notify); // A veces se guarda aquí
+
+                // Regla de seguridad: El nombre debe tener al menos 3 letras para evitar falsos positivos
+                if (incNameClean.length < 3) return false;
+
+                // Comparación A: Nombre Guardado
+                if (dbNameClean && dbNameClean === incNameClean) {
+                    console.log(`⛔ Bloqueo por Nombre Guardado: "${contact.name}"`);
+                    return true;
                 }
-                return phoneMatch || nameMatch;
+
+                // Comparación B: Nombre Notify (Sincronizado)
+                if (dbNotifyClean && dbNotifyClean === incNameClean) {
+                    console.log(`⛔ Bloqueo por Nombre Sincronizado: "${contact.notify}"`);
+                    return true;
+                }
+
+                return false;
             });
 
             if (isBlocked) {
-                console.log(`⛔ Bot SILENCIADO para: ${incomingName} (${incomingPhoneRaw})`);
+                // Contacto bloqueado detectado. Ignoramos.
                 continue; 
             }
 
-            await handleMessage(sock, msg);
+            try {
+                await handleMessage(sock, msg);
+            } catch (err) {
+                console.error("Error procesando mensaje:", err);
+            }
         }
     });
 }
 
 // ==========================================
-//              RUTAS API
+//             RUTAS API
 // ==========================================
 
 app.get('/api/status', (req, res) => {
@@ -262,6 +309,7 @@ app.post('/api/auth/init', (req, res) => {
     }
 });
 
+// LOGOUT / REINICIO SEGURO
 app.post('/api/logout', async (req, res) => {
     try {
         console.log("🛑 Solicitud de REINICIO recibida.");
@@ -391,9 +439,6 @@ app.get('/api/admin/clear-monitor', (req, res) => {
 
 app.get('/api/settings', (req, res) => res.json(getSettings()));
 
-// =================================================================
-// 3. GUARDAR AJUSTES + LICENCIAS
-// =================================================================
 app.post('/api/settings', async (req, res) => { 
     const current = getSettings();
     const newSettings = { ...current, ...req.body };
@@ -401,14 +446,10 @@ app.post('/api/settings', async (req, res) => {
     res.json({ success: true }); 
 });
 
-// =================================================================
-// 4. NUEVA RUTA PARA SIMULACIÓN DE TEXTO
-// =================================================================
 app.post('/api/simulate/text', async (req, res) => {
     const { phone, text } = req.body;
     if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
 
-    // Mensaje falso imitando a Baileys
     const fakeMsg = {
         key: {
             remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
@@ -422,7 +463,6 @@ app.post('/api/simulate/text', async (req, res) => {
     console.log(`🤖 Simulador: ${text}`);
 
     try {
-        // Pasamos un sock vacío, flow.js ya sabe que no debe usarlo si es el número del simulador
         await handleMessage(globalSock || {}, fakeMsg);
         res.json({ success: true });
     } catch (e) {
@@ -430,6 +470,21 @@ app.post('/api/simulate/text', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// =================================================================
+// 🔌 MEJORA 3: CIERRE ELEGANTE (GRACEFUL SHUTDOWN)
+// =================================================================
+const gracefulShutdown = () => {
+    console.log('🛑 Cerrando bot (Signal recibida)...');
+    reportToTower().then(() => {
+        if (globalSock) {
+            try { globalSock.end(undefined); } catch (e) {}
+        }
+        process.exit(0);
+    });
+};
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
 
 // ARRANCAR EL BOT
 server.listen(PORT, () => {
