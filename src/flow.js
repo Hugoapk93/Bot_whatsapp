@@ -1,4 +1,4 @@
-const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow } = require('./database');
+const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow, getAllUsers } = require('./database');
 const { isBotDisabled, addManualContact } = require('./contacts');
 const fs = require('fs');
 const path = require('path');
@@ -167,6 +167,30 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         console.log(`🛑 Bot desactivado automáticamente para: ${cleanPhone}`);
     }
 
+    // --- NOTIFICACIÓN AL ADMIN (FILTRO) ---
+    if (step.type === 'filtro' && step.admin_number) {
+        const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
+        
+        // Contexto para el admin
+        const lastInputKey = Object.keys(userData.history || {}).pop();
+        const lastInput = lastInputKey ? userData.history[lastInputKey] : '(Sin datos previos)';
+        const cleanClientPhone = jid.replace(/[^0-9]/g, '');
+
+        let adminMsg = `🔔 *Solicitud de Aprobación*\n\n`;
+        adminMsg += `👤 *Cliente:* ${cleanClientPhone}\n`;
+        adminMsg += `📄 *Dato:* ${lastInput}\n`;
+        adminMsg += `🤖 *Mensaje enviado al cliente:* "${messageText}"\n\n`;
+        adminMsg += `👇 *Responder:* Escribe el número del cliente y la opción.\n`;
+        adminMsg += `Ej: *${cleanClientPhone} Aprobar*`;
+
+        try {
+            await sock.sendMessage(adminJid, { text: adminMsg });
+            console.log(`👮 Notificación enviada al Admin: ${step.admin_number}`);
+        } catch (e) {
+            console.error("❌ Error notificando admin:", e);
+        }
+    }
+
     if (step.type === 'filtro' && isBusinessClosed()) {
         messageText = settings.schedule.offline_message || "⛔ Horario de atención terminado.";
     }
@@ -288,7 +312,6 @@ const handleMessage = async (sock, msg) => {
     }
 
     if (user.blocked) return;
-
     const cleanText = text.toLowerCase();
 
     // ⏳ REINICIO POR INACTIVIDAD (Session Timeout)
@@ -304,45 +327,67 @@ const handleMessage = async (sock, msg) => {
         }
     }
 
-    // =========================================================================
-    // 🧠 LÓGICA DE SALTO GLOBAL (EL CEREBRO DINÁMICO)
-    // =========================================================================
-    // Aquí es donde el bot decide si lo que escribiste (ej: "moto") corresponde 
-    // a algun paso del flujo, sin importar en qué paso estés actualmente.
-    // YA NO HAY PALABRAS FIJAS, TODO DEPENDE DE TU DB.
-    
+    // --- LÓGICA RESPUESTA ADMIN (Comandos remotos) ---
+    const words = cleanText.split(' ');
+    if (words.length >= 2) {
+        const potentialPhone = words[0].replace(/[^0-9]/g, '');
+        const potentialOption = words.slice(1).join(' '); // "Aprobar" o "Si"
+        
+        if (potentialPhone.length >= 10) {
+            let targetUser = getUser(potentialPhone);
+            if (!targetUser && potentialPhone.startsWith('52') && potentialPhone.length === 12) targetUser = getUser('521' + potentialPhone.slice(2));
+
+            if (targetUser) {
+                const targetStepConfig = getFlowStep(targetUser.current_step);
+                const senderPhone = remoteJid.replace(/[^0-9]/g, '');
+                
+                // Verificamos si quien escribe es el admin de ese paso
+                if (targetStepConfig && targetStepConfig.type === 'filtro' && targetStepConfig.admin_number) {
+                    if (senderPhone.includes(targetStepConfig.admin_number)) {
+                        console.log(`👮 Admin tomando decisión para ${potentialPhone}: ${potentialOption}`);
+                        
+                        const match = targetStepConfig.options?.find(opt => {
+                            const t = opt.trigger.toLowerCase(); 
+                            const l = opt.label.toLowerCase(); 
+                            return isSimilar(potentialOption, t) || isSimilar(potentialOption, l);
+                        });
+
+                        if (match) {
+                            await sock.sendMessage(remoteJid, { text: `✅ Enviando usuario a: ${match.next_step}` });
+                            await updateUser(potentialPhone, { current_step: match.next_step });
+                            const targetJid = targetUser.jid || potentialPhone + '@s.whatsapp.net';
+                            await sendStepMessage(sock, targetJid, match.next_step, targetUser);
+                            return; 
+                        } else {
+                            await sock.sendMessage(remoteJid, { text: `❌ Opción '${potentialOption}' no válida.` });
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Keywords Globales
     const fullFlow = getFullFlow();
     let jumpToStep = null;
-
     Object.keys(fullFlow).forEach(stepName => {
         const stepData = fullFlow[stepName];
-        
-        // Buscamos si el texto coincide con alguna palabra clave de ESTE paso
         if (stepData.keywords && Array.isArray(stepData.keywords)) {
-            if (stepData.keywords.some(k => isSimilar(cleanText, k))) {
-                jumpToStep = stepName;
-            }
+            if (stepData.keywords.some(k => isSimilar(cleanText, k))) jumpToStep = stepName;
         }
     });
 
-    // Si encontramos una palabra clave global (ej: "moto" -> SALTA AL PASO DE MOTO)
     if (jumpToStep) {
         console.log(`🔀 Keyword detectada en Flujo. Saltando a: ${jumpToStep}`);
         await updateUser(dbKey, { current_step: jumpToStep });
         await sendStepMessage(sock, remoteJid, jumpToStep, user);
-        return; // Respondemos y terminamos.
+        return; 
     }
 
-    // =========================================================================
-    // 🤐 FILTRO DE SILENCIO (Si no hubo salto global)
-    // =========================================================================
-    // Si estamos en el inicio, y no dijo ninguna palabra clave global,
-    // verificamos si está intentando usar el menú. Si no, IGNORAMOS.
-    
+    // Filtro Silencio en Inicio
     if (user.current_step === INITIAL_STEP) {
         const stepData = getFlowStep(INITIAL_STEP);
-        
-        // Si el paso inicial es un menú, validamos si escribió una opción correcta
         if (stepData && stepData.type === 'menu' && stepData.options) {
             const esOpcionValida = stepData.options.some(opt => {
                 const trigger = opt.trigger.toLowerCase();
@@ -362,12 +407,9 @@ const handleMessage = async (sock, msg) => {
         }
     }
 
-    // =========================================================================
-    // 3. PROCESAR PASO ACTUAL (Flujo Normal)
-    // =========================================================================
+    // Procesar Paso
     const currentConfig = getFlowStep(user.current_step);
     if (!currentConfig) {
-        // Fallback seguridad
         await updateUser(dbKey, { current_step: INITIAL_STEP });
         await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
         return;
@@ -383,16 +425,12 @@ const handleMessage = async (sock, msg) => {
         nextStepId = currentConfig.next_step;
     }
     
-    else if (currentConfig.type === 'menu') {
+    else if (currentConfig.type === 'menu' || currentConfig.type === 'filtro') {
         const match = currentConfig.options?.find(opt => {
             const t = opt.trigger.toLowerCase(); 
-            const l = opt.label.toLowerCase();     
+            const l = opt.label.toLowerCase(); 
             const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, ''); 
-
-            if (isSimilar(cleanText, t)) return true;
-            if (isSimilar(cleanText, tLimpio)) return true;
-            if (isSimilar(cleanText, l)) return true;
-            return false;
+            return isSimilar(cleanText, t) || isSimilar(cleanText, tLimpio) || isSimilar(cleanText, l);
         });
 
         if (match) {
@@ -449,8 +487,11 @@ const handleMessage = async (sock, msg) => {
                  }
                  const settings = getSettings();
                  const rules = validateBusinessRules(hora, settings);
-                 const pathSuccess = nextStepConfig.options?.find(o => o.internal_label === 'DISPONIBLE');
+                 
+                 let pathSuccess = nextStepConfig.options?.find(o => o.internal_label === 'DISPONIBLE');
+                 if (!pathSuccess && nextStepConfig.next_step) pathSuccess = { next_step: nextStepConfig.next_step };
                  const pathFail = nextStepConfig.options?.find(o => o.internal_label === 'NO_DISPONIBLE');
+
                  if (!rules.valid) {
                      const txt = `⚠️ ${rules.reason}`;
                      if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
