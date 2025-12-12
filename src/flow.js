@@ -148,7 +148,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId} a ${jid}`);
     let step = getFlowStep(stepId);
     
-    // Auto-reparación paso inicial (Solo si no existe en DB)
+    // Auto-reparación paso inicial
     if (!step && stepId === INITIAL_STEP) {
         console.log("🔧 Creando paso INICIAL por defecto.");
         step = { type: 'menu', message: '¡Hola! Bienvenido.', options: [] };
@@ -167,21 +167,45 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         console.log(`🛑 Bot desactivado automáticamente para: ${cleanPhone}`);
     }
 
-    // --- NOTIFICACIÓN AL ADMIN (FILTRO) ---
+    // --- NOTIFICACIÓN AL ADMIN (FILTRO) DINÁMICA ---
     if (step.type === 'filtro' && step.admin_number) {
         const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
-        
-        // Contexto para el admin
-        const lastInputKey = Object.keys(userData.history || {}).pop();
-        const lastInput = lastInputKey ? userData.history[lastInputKey] : '(Sin datos previos)';
         const cleanClientPhone = jid.replace(/[^0-9]/g, '');
+        const hist = userData.history || {};
 
+        // Construcción de la Ficha Técnica Dinámica
         let adminMsg = `🔔 *Solicitud de Aprobación*\n\n`;
-        adminMsg += `👤 *Cliente:* ${cleanClientPhone}\n`;
-        adminMsg += `📄 *Dato:* ${lastInput}\n`;
-        adminMsg += `🤖 *Mensaje enviado al cliente:* "${messageText}"\n\n`;
-        adminMsg += `👇 *Responder:* Escribe el número del cliente y la opción.\n`;
-        adminMsg += `Ej: *${cleanClientPhone} Aprobar*`;
+        adminMsg += `🆔 *ID/Teléfono:* ${cleanClientPhone}\n`;
+        adminMsg += `------------------------------\n`;
+
+        // Iterar sobre TODAS las variables guardadas (igual que en el monitor)
+        const keys = Object.keys(hist);
+        if (keys.length > 0) {
+            keys.forEach(key => {
+                const val = hist[key];
+                // Formatear la clave: "nombre_cliente" -> "Nombre Cliente"
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                adminMsg += `📄 *${label}:* ${val}\n`;
+            });
+        } else {
+            adminMsg += `(Sin datos capturados aún)\n`;
+        }
+        
+        adminMsg += `------------------------------\n`;
+        adminMsg += `🤖 *Bot dice:* "${messageText}"\n\n`;
+        adminMsg += `👇 *Escribe una opción:*\n`;
+
+        // Generar lista de opciones dinámica con número del cliente integrado
+        const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+        if(step.options && Array.isArray(step.options)){
+            step.options.forEach((opt, idx) => {
+                const icon = emojis[idx] || '👉';
+                // Formato: 1️⃣ Aprobar 8991234567
+                adminMsg += `${icon} ${opt.trigger} ${cleanClientPhone}\n`;
+            });
+        } else {
+            adminMsg += `👉 Aprobar ${cleanClientPhone}\n👉 Rechazar ${cleanClientPhone}`;
+        }
 
         try {
             await sock.sendMessage(adminJid, { text: adminMsg });
@@ -213,18 +237,16 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         });
     }
 
-    // --- CORRECCIÓN: VISUALIZACIÓN DE MENÚ INTELIGENTE ---
+    // --- VISUALIZACIÓN DE MENÚ INTELIGENTE ---
     if (step.type === 'menu' && step.options) {
         messageText += '\n'; 
         const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
         step.options.forEach((opt, index) => {
-            // Si el trigger es igual al label (duplicado), mostramos solo uno con un emoji
             if (opt.trigger === opt.label) {
                 const bullet = emojis[index] || '👉';
                 messageText += `\n${bullet} ${opt.label}`;
             } else {
-                // Si son diferentes (ej: "1" y "Ventas"), los mostramos normal
                 messageText += `\n${opt.trigger} ${opt.label}`;
             }
         });
@@ -307,7 +329,7 @@ const handleMessage = async (sock, msg) => {
 
     const timestamp = new Date().toISOString();
 
-    // Registro Silencioso (Si es nuevo, NO contesta aún, solo registra)
+    // Registro Silencioso
     if (!user?.phone) {
         console.log(`✨ Nuevo Cliente Detectado: ${dbKey}. Registro silencioso.`);
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
@@ -325,7 +347,7 @@ const handleMessage = async (sock, msg) => {
     if (user.blocked) return;
     const cleanText = text.toLowerCase();
 
-    // ⏳ REINICIO POR INACTIVIDAD (Session Timeout)
+    // ⏳ REINICIO POR INACTIVIDAD
     if (user.last_active && user.current_step !== INITIAL_STEP) {
         const lastMsgTime = new Date(user.last_active).getTime();
         const nowTime = new Date().getTime();
@@ -334,47 +356,70 @@ const handleMessage = async (sock, msg) => {
         if (diffMinutes > MAX_INACTIVE_MINUTES) {
             console.log(`⏱️ Sesión expirada (${Math.round(diffMinutes)} min). Reiniciando contexto.`);
             await updateUser(dbKey, { current_step: INITIAL_STEP, history: {} });
-            user = getUser(dbKey); // Refrescamos usuario
+            user = getUser(dbKey);
         }
     }
 
-    // --- LÓGICA RESPUESTA ADMIN (Comandos remotos) ---
-    const words = cleanText.split(' ');
-    if (words.length >= 2) {
-        const potentialPhone = words[0].replace(/[^0-9]/g, '');
-        const potentialOption = words.slice(1).join(' '); // "Aprobar" o "Si"
-        
-        if (potentialPhone.length >= 10) {
-            let targetUser = getUser(potentialPhone);
-            if (!targetUser && potentialPhone.startsWith('52') && potentialPhone.length === 12) targetUser = getUser('521' + potentialPhone.slice(2));
+    // --- LÓGICA RESPUESTA ADMIN (COMANDOS REMOTOS MEJORADA) ---
+    // Buscar si hay un número de teléfono en el mensaje para identificar al cliente objetivo
+    const words = cleanText.split(/\s+/);
+    let targetClientPhone = null;
+    let commandOption = "";
 
-            if (targetUser) {
-                const targetStepConfig = getFlowStep(targetUser.current_step);
-                const senderPhone = remoteJid.replace(/[^0-9]/g, '');
+    // 1. Extraer posible teléfono del mensaje (ej: "Aprobar 899..." o "899... Aprobar")
+    for (const word of words) {
+        const potentialNum = word.replace(/[^0-9]/g, '');
+        // Validamos longitud (10-13) y que no sea el admin hablándose a sí mismo
+        if (potentialNum.length >= 10 && potentialNum.length <= 13 && potentialNum !== incomingPhone) {
+            // Verificamos que este usuario exista en DB
+            let checkUser = getUser(potentialNum);
+            if(!checkUser && potentialNum.startsWith('52') && potentialNum.length===12) checkUser = getUser('521'+potentialNum.slice(2));
+            
+            if (checkUser) {
+                targetClientPhone = checkUser.phone; // Usamos la key real de la DB
+                // Eliminamos el número del texto para obtener la opción limpia (ej: "Aprobar")
+                commandOption = cleanText.replace(word, '').trim(); 
+                break;
+            }
+        }
+    }
+
+    // 2. Si encontramos un cliente objetivo, verificamos permisos
+    if (targetClientPhone) {
+        const targetUser = getUser(targetClientPhone);
+        const targetStepConfig = getFlowStep(targetUser.current_step);
+        const senderPhone = incomingPhone; // Quien envía el mensaje
+
+        // Seguridad estricta: Solo procesar si el paso actual tiene un admin configurado
+        if (targetStepConfig && targetStepConfig.type === 'filtro' && targetStepConfig.admin_number) {
+            
+            // Validar que el REMITENTE sea el ADMIN configurado
+            // Usamos includes para tolerar diferencias 521/52, pero aseguramos que admin_number no esté vacío
+            if (targetStepConfig.admin_number && senderPhone.includes(targetStepConfig.admin_number)) {
                 
-                // Verificamos si quien escribe es el admin de ese paso
-                if (targetStepConfig && targetStepConfig.type === 'filtro' && targetStepConfig.admin_number) {
-                    if (senderPhone.includes(targetStepConfig.admin_number)) {
-                        console.log(`👮 Admin tomando decisión para ${potentialPhone}: ${potentialOption}`);
-                        
-                        const match = targetStepConfig.options?.find(opt => {
-                            const t = opt.trigger.toLowerCase(); 
-                            const l = opt.label.toLowerCase(); 
-                            return isSimilar(potentialOption, t) || isSimilar(potentialOption, l);
-                        });
+                console.log(`👮 Admin (${senderPhone}) ejecutando acción sobre ${targetClientPhone}: ${commandOption}`);
+                
+                // Buscar la opción en el paso del cliente
+                const match = targetStepConfig.options?.find(opt => {
+                    const t = opt.trigger.toLowerCase(); 
+                    const l = opt.label.toLowerCase(); 
+                    return isSimilar(commandOption, t) || isSimilar(commandOption, l);
+                });
 
-                        if (match) {
-                            await sock.sendMessage(remoteJid, { text: `✅ Enviando usuario a: ${match.next_step}` });
-                            await updateUser(potentialPhone, { current_step: match.next_step });
-                            const targetJid = targetUser.jid || potentialPhone + '@s.whatsapp.net';
-                            await sendStepMessage(sock, targetJid, match.next_step, targetUser);
-                            return; 
-                        } else {
-                            await sock.sendMessage(remoteJid, { text: `❌ Opción '${potentialOption}' no válida.` });
-                            return;
-                        }
-                    }
+                if (match) {
+                    await sock.sendMessage(remoteJid, { text: `✅ Acción ejecutada: ${match.label}` });
+                    await updateUser(targetClientPhone, { current_step: match.next_step });
+                    
+                    const targetJid = targetUser.jid || targetClientPhone + '@s.whatsapp.net';
+                    await sendStepMessage(sock, targetJid, match.next_step, targetUser);
+                    return; // Detenemos aquí, es comando de admin
+                } else {
+                    await sock.sendMessage(remoteJid, { text: `❌ Opción '${commandOption}' no válida para el estado actual de este cliente.` });
+                    return;
                 }
+            } else {
+                // Si el remitente NO es el admin, ignoramos (para que el cliente no se "hackee" a sí mismo)
+                // Opcional: console.log("Intento de comando no autorizado");
             }
         }
     }
@@ -399,7 +444,6 @@ const handleMessage = async (sock, msg) => {
     // Procesar Paso Actual
     const currentConfig = getFlowStep(user.current_step);
     if (!currentConfig) {
-        // Si no hay configuración válida, reiniciamos silenciosamente al inicio
         await updateUser(dbKey, { current_step: INITIAL_STEP });
         return;
     }
@@ -417,17 +461,16 @@ const handleMessage = async (sock, msg) => {
     else if (currentConfig.type === 'menu' || currentConfig.type === 'filtro') {
         let match = null;
 
-        // 1. Detección Numérica (Indice Array)
-        // Permite "1", "1.", "1)", "(1)"
+        // 1. Detección Numérica
         const numberMatches = cleanText.match(/^(\d+)[\s.)]*$/); 
         if (numberMatches) {
-             const index = parseInt(numberMatches[1]) - 1; // El usuario ve 1..N, el array es 0..N-1
+             const index = parseInt(numberMatches[1]) - 1;
              if (index >= 0 && index < (currentConfig.options?.length || 0)) {
                  match = currentConfig.options[index];
              }
         }
 
-        // 2. Si no es número válido, búsqueda por texto (Fuzzy)
+        // 2. Búsqueda por texto (Fuzzy)
         if (!match) {
             match = currentConfig.options?.find(opt => {
                 const t = opt.trigger.toLowerCase(); 
@@ -441,16 +484,11 @@ const handleMessage = async (sock, msg) => {
             console.log(`✅ Opción detectada: ${match.label} -> ${match.next_step}`);
             nextStepId = match.next_step;
         } else {
-            // === LÓGICA DE SILENCIO VS ERROR ===
-            
-            // Si estamos en el paso inicial (BIENVENIDA) y el usuario dice algo que NO es una opción:
-            // IGNORAR Y MANTENER SILENCIO.
+            // Silencio en inicio vs Error en flujo avanzado
             if (user.current_step === INITIAL_STEP) {
                 console.log(`😶 Mensaje ignorado en inicio: "${cleanText}"`);
                 return;
             }
-
-            // Si estamos en medio de una conversación (ya pasamos el inicio), enviamos ayuda.
             let helpText = "⚠️ No entendí tu respuesta.\n\nElige una opción:\n";
             currentConfig.options.forEach(opt => helpText += `👉 *${opt.trigger}* o *${opt.label}*\n`);
             
@@ -464,10 +502,12 @@ const handleMessage = async (sock, msg) => {
         nextStepId = currentConfig.next_step;
     }
     
-    // Logica Citas
+    // Logica Citas (Simplificada para mantener consistencia)
     if (nextStepId) {
         const nextStepConfig = getFlowStep(nextStepId);
         if (nextStepConfig && nextStepConfig.type === 'cita') {
+             // ... Lógica de citas existente ...
+             // (Se mantiene igual que la versión anterior para no romper funcionalidad)
              let rawDate = user.history['fecha_cita'] || user.history['fecha']; 
              let rawTime = user.history['hora_cita'] || user.history['hora'];    
              let fecha = normalizeDate(rawDate);
@@ -520,7 +560,6 @@ const handleMessage = async (sock, msg) => {
                          const finalName = user.history['nombre'] || user.history['cliente'] || msg.pushName || 'Cliente';
                          db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
                          saveAgenda(db);
-                         // SIN CONFIRMACIÓN AUTOMÁTICA
                          if (pathSuccess) nextStepId = pathSuccess.next_step;
                      }
                  }
