@@ -295,12 +295,11 @@ const handleMessage = async (sock, msg) => {
 
     const timestamp = new Date().toISOString();
 
-    // Registro Silencioso (Si es nuevo, NO contesta aún)
+    // Registro Silencioso (Si es nuevo, NO contesta aún, solo registra)
     if (!user?.phone) {
         console.log(`✨ Nuevo Cliente Detectado: ${dbKey}. Registro silencioso.`);
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
         user = getUser(dbKey);
-        // NO enviamos mensaje aquí, esperamos a que diga una palabra clave.
     }
 
     // Actualizar JID/Hora
@@ -368,7 +367,7 @@ const handleMessage = async (sock, msg) => {
         }
     }
 
-    // Keywords Globales
+    // Keywords Globales (Saltos directos)
     const fullFlow = getFullFlow();
     let jumpToStep = null;
     Object.keys(fullFlow).forEach(stepName => {
@@ -385,33 +384,11 @@ const handleMessage = async (sock, msg) => {
         return; 
     }
 
-    // Filtro Silencio en Inicio
-    if (user.current_step === INITIAL_STEP) {
-        const stepData = getFlowStep(INITIAL_STEP);
-        if (stepData && stepData.type === 'menu' && stepData.options) {
-            const esOpcionValida = stepData.options.some(opt => {
-                const trigger = opt.trigger.toLowerCase();
-                const label = opt.label.toLowerCase();
-                return isSimilar(cleanText, trigger) || isSimilar(cleanText, label);
-            });
-
-            if (!esOpcionValida) {
-                console.log(`😶 Ignorando mensaje: "${cleanText}" (No es keyword ni opción de inicio)`);
-                return; // AQUÍ SE DETIENE. El bot NO contesta ruido.
-            }
-        } else {
-            // Si el paso inicial NO es un menú (ej: solo texto) y no hubo keyword global,
-            // también ignoramos para no responder a todo.
-             console.log(`😶 Ignorando mensaje en paso no-interactivo.`);
-             return;
-        }
-    }
-
-    // Procesar Paso
+    // Procesar Paso Actual
     const currentConfig = getFlowStep(user.current_step);
     if (!currentConfig) {
+        // Si no hay configuración válida, reiniciamos silenciosamente al inicio
         await updateUser(dbKey, { current_step: INITIAL_STEP });
-        await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
         return;
     }
 
@@ -434,10 +411,19 @@ const handleMessage = async (sock, msg) => {
         });
 
         if (match) {
-            console.log(`✅ Opción detectada (Fuzzy): ${match.label} -> ${match.next_step}`);
+            console.log(`✅ Opción detectada: ${match.label} -> ${match.next_step}`);
             nextStepId = match.next_step;
         } else {
-            // Mensaje de error si no entiende la opción (solo si ya pasó el filtro estricto)
+            // === LÓGICA DE SILENCIO VS ERROR ===
+            
+            // Si estamos en el paso inicial (BIENVENIDA) y el usuario dice algo que NO es una opción:
+            // IGNORAR Y MANTENER SILENCIO.
+            if (user.current_step === INITIAL_STEP) {
+                console.log(`😶 Mensaje ignorado en inicio: "${cleanText}"`);
+                return;
+            }
+
+            // Si estamos en medio de una conversación (ya pasamos el inicio), enviamos ayuda.
             let helpText = "⚠️ No entendí tu respuesta.\n\nElige una opción:\n";
             currentConfig.options.forEach(opt => helpText += `👉 *${opt.trigger}* o *${opt.label}*\n`);
             
