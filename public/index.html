@@ -12,7 +12,7 @@
     <!-- 1. Cytoscape Core -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>  
     <!-- 2. Dagre Core (Motor Matemático) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>     
     <!-- 3. Cytoscape Dagre (El Puente) -->
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
     <!-- Librería para QR -->
@@ -616,19 +616,19 @@
                     </label>
                 </div>
 
-            <div id="dynFields" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;"></div>
-        </div>
-        
-        <!-- CORRECCIÓN BOTONES: Flex row forzado -->
-        <div style="margin-top:20px; display:flex; flex-direction: row; gap:10px; align-items: stretch;">
-            <button onclick="saveStep()" style="flex:1; padding:12px; background:var(--primary); color:black; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Guardar</button>
+                <div id="dynFields" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;"></div>
+            </div>
             
-            <button onclick="delStep()" style="width: 50px; padding:12px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-                <i class="fas fa-trash"></i>
-            </button>
+            <!-- CORRECCIÓN BOTONES: Flex row forzado -->
+            <div style="margin-top:20px; display:flex; flex-direction: row; gap:10px; align-items: stretch;">
+                <button onclick="saveStep()" style="flex:1; padding:12px; background:var(--primary); color:black; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Guardar</button>
+                
+                <button onclick="delStep()" style="width: 50px; padding:12px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
 <!-- SCRIPT LÓGICO -->
 <script>
@@ -797,7 +797,7 @@
                             actionsHtml += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${opt.next_step}')">${opt.label}</button>`;
                         });
                     }
-                     
+                      
                     let dataHtml = '';
                     if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.75rem; color:var(--text-muted);">${k}: <span style="color:var(--text-main)">${v}</span></div>`);
 
@@ -869,7 +869,7 @@
             cy = cytoscape({ 
                 container: document.getElementById('cy'), 
                 elements: elements, 
-                autoungrabify: true,       
+                autoungrabify: true,        
                 boxSelectionEnabled: false,
                 wheelSensitivity: 0.2,
                     
@@ -998,13 +998,13 @@
 
     // --- EDITOR (Lógica intacta) ---
     let currentMediaList = [];
-    function edit(id) 
+    function edit(id) { // <-- AQUÍ FALTABA LA LLAVE DE APERTURA
         const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type; document.getElementById('stMsg').value = d.message || '';
         currentMediaList = Array.isArray(d.media) ? d.media : (d.media ? [d.media] : []);
         renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
     }
     function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
-       
+        
     function renderFields() {
         const type = document.getElementById('stType').value;
         const container = document.getElementById('dynFields'); // ID Correcto
@@ -1105,9 +1105,9 @@
     const emojis = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
     async function saveStep() {
-	const id = document.getElementById('stId').value;
-	const type = document.getElementById('stType').value;
-	const stepData = { type };
+    const id = document.getElementById('stId').value;
+    const type = document.getElementById('stType').value;
+    const stepData = { type };
 
         // Helper para obtener valor si el elemento existe
         const getVal = (eid) => document.getElementById(eid) ? document.getElementById(eid).value : null;
@@ -1118,45 +1118,45 @@
         if(getVal('stNextStep') !== null) stepData.next_step = getVal('stNextStep');
         if(getVal('stSaveVar') !== null) stepData.save_var = getVal('stSaveVar');
     
-	// --- IMPORTANTE: Guardar Admin Number ---
-	if(getVal('stAdminNumber') !== null) stepData.admin_number = getVal('stAdminNumber');
+    // --- IMPORTANTE: Guardar Admin Number ---
+    if(getVal('stAdminNumber') !== null) stepData.admin_number = getVal('stAdminNumber');
 
         // Guardar Opciones
         const optsContainer = document.getElementById('optList');
-	if (optsContainer) {
-	    stepData.options = [];
-	    // Iteramos sobre los divs hijos directos que tienen inputs
-	    optsContainer.querySelectorAll('div').forEach(row => {
-	        const lbl = row.querySelector('.o-lbl')?.value;
-	        const nxt = row.querySelector('.o-nxt')?.value;
-	        if (lbl) {
-	            stepData.options.push({ 
-	                trigger: lbl, // Usamos el label como trigger por defecto
-	                label: lbl, 
-	                next_step: nxt 
-	            });
-	        }
-	    });
-	} else if (type === 'cita') {
+    if (optsContainer) {
+        stepData.options = [];
+        // Iteramos sobre los divs hijos directos que tienen inputs
+        optsContainer.querySelectorAll('div').forEach(row => {
+            const lbl = row.querySelector('.o-lbl')?.value;
+            const nxt = row.querySelector('.o-nxt')?.value;
+            if (lbl) {
+                stepData.options.push({ 
+                    trigger: lbl, // Usamos el label como trigger por defecto
+                    label: lbl, 
+                    next_step: nxt 
+                });
+            }
+        });
+    } else if (type === 'cita') {
               // Lógica interna invisible para citas simplificadas
-	    const next = getVal('stNextStep');
-	    if(next) {
-	        stepData.options = [
-	            { internal_label: 'DISPONIBLE', next_step: next },
-	            { internal_label: 'NO_DISPONIBLE', next_step: next } 
-	        ];
-	    }
-	}
+        const next = getVal('stNextStep');
+        if(next) {
+            stepData.options = [
+                { internal_label: 'DISPONIBLE', next_step: next },
+                { internal_label: 'NO_DISPONIBLE', next_step: next } 
+            ];
+        }
+    }
 
-	try {
-	    await fetch('/api/flow/step', {
-	        method: 'POST',
-	        headers: {'Content-Type': 'application/json'},
-	        body: JSON.stringify({ stepId: id, stepData })
-	    });
-            refreshFlow(); // Recargar para actualizar la variable global
-	    // alert("Guardado"); // Opcional
-	} catch (e) { alert("Error al guardar"); }
+    try {
+        await fetch('/api/flow/step', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ stepId: id, stepData })
+        });
+            renderFlow(); // Recargar para actualizar la variable global
+        // alert("Guardado"); // Opcional
+    } catch (e) { alert("Error al guardar"); }
     }
 
     function newStep() { const id = prompt("Nombre del Nuevo Paso (ej: MENU_VENTAS):"); if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlow(); setTimeout(()=>edit(id.toUpperCase()),200); } }
@@ -1283,7 +1283,7 @@
 
     function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
     async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
-       
+        
     function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
     async function saveNewContact() {
         const name = document.getElementById('newContName').value;
@@ -1328,7 +1328,7 @@
         // Mostrar mensaje del usuario
         addMsg(txt, true); 
         t.value=''; 
-    
+     
         // Mostrar "Escribiendo..." temporal
         const d = document.createElement('div'); 
         d.id = 'msg-loading'; d.className = 'msg bot'; 
