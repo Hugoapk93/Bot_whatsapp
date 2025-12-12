@@ -415,12 +415,27 @@ const handleMessage = async (sock, msg) => {
     }
     
     else if (currentConfig.type === 'menu' || currentConfig.type === 'filtro') {
-        const match = currentConfig.options?.find(opt => {
-            const t = opt.trigger.toLowerCase(); 
-            const l = opt.label.toLowerCase(); 
-            const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, ''); 
-            return isSimilar(cleanText, t) || isSimilar(cleanText, tLimpio) || isSimilar(cleanText, l);
-        });
+        let match = null;
+
+        // 1. Detección Numérica (Indice Array)
+        // Permite "1", "1.", "1)", "(1)"
+        const numberMatches = cleanText.match(/^(\d+)[\s.)]*$/); 
+        if (numberMatches) {
+             const index = parseInt(numberMatches[1]) - 1; // El usuario ve 1..N, el array es 0..N-1
+             if (index >= 0 && index < (currentConfig.options?.length || 0)) {
+                 match = currentConfig.options[index];
+             }
+        }
+
+        // 2. Si no es número válido, búsqueda por texto (Fuzzy)
+        if (!match) {
+            match = currentConfig.options?.find(opt => {
+                const t = opt.trigger.toLowerCase(); 
+                const l = opt.label.toLowerCase(); 
+                const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, ''); 
+                return isSimilar(cleanText, t) || isSimilar(cleanText, tLimpio) || isSimilar(cleanText, l);
+            });
+        }
 
         if (match) {
             console.log(`✅ Opción detectada: ${match.label} -> ${match.next_step}`);
