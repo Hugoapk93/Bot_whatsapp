@@ -615,7 +615,7 @@
                         <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
                     </label>
                 </div>
-            
+
             <div id="dynFields" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;"></div>
         </div>
         
@@ -628,9 +628,10 @@
             </button>
         </div>
     </div>
+</div>
 
-    <!-- SCRIPT LÓGICO -->
-    <script>
+<!-- SCRIPT LÓGICO -->
+<script>
         const API_BASE = (() => {
             const { protocol } = window.location;
             if (protocol === 'file:' || protocol === 'blob:' || protocol === 'data:') {
