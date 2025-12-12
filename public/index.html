@@ -998,7 +998,7 @@
 
     // --- EDITOR (Lógica intacta) ---
     let currentMediaList = [];
-    function edit(id) { // <-- AQUÍ FALTABA LA LLAVE DE APERTURA
+    function edit(id) { 
         const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type; document.getElementById('stMsg').value = d.message || '';
         currentMediaList = Array.isArray(d.media) ? d.media : (d.media ? [d.media] : []);
         renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
@@ -1105,58 +1105,74 @@
     const emojis = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
     async function saveStep() {
-    const id = document.getElementById('stId').value;
-    const type = document.getElementById('stType').value;
-    const stepData = { type };
+        const id = document.getElementById('stId').value;
+        const type = document.getElementById('stType').value;
+        const stepData = { type };
 
-        // Helper para obtener valor si el elemento existe
-        const getVal = (eid) => document.getElementById(eid) ? document.getElementById(eid).value : null;
+        // Helper seguro para obtener valores
+        const getVal = (eid) => {
+            const el = document.getElementById(eid);
+            return el ? el.value : null;
+        };
 
-        if(getVal('stMessage') !== null) stepData.message = getVal('stMessage');
-        if(getVal('stKeywords') !== null) stepData.keywords = getVal('stKeywords').split(',').map(s=>s.trim()).filter(Boolean);
-        if(getVal('stMedia') !== null) stepData.media = getVal('stMedia') ? [getVal('stMedia')] : [];
-        if(getVal('stNextStep') !== null) stepData.next_step = getVal('stNextStep');
-        if(getVal('stSaveVar') !== null) stepData.save_var = getVal('stSaveVar');
-    
-    // --- IMPORTANTE: Guardar Admin Number ---
-    if(getVal('stAdminNumber') !== null) stepData.admin_number = getVal('stAdminNumber');
+        // 1. Mensaje (Corregido ID de stMessage a stMsg)
+        const msg = getVal('stMsg');
+        if(msg !== null) stepData.message = msg;
 
-        // Guardar Opciones
-        const optsContainer = document.getElementById('optList');
-    if (optsContainer) {
-        stepData.options = [];
-        // Iteramos sobre los divs hijos directos que tienen inputs
-        optsContainer.querySelectorAll('div').forEach(row => {
-            const lbl = row.querySelector('.o-lbl')?.value;
-            const nxt = row.querySelector('.o-nxt')?.value;
-            if (lbl) {
-                stepData.options.push({ 
-                    trigger: lbl, // Usamos el label como trigger por defecto
-                    label: lbl, 
-                    next_step: nxt 
-                });
-            }
-        });
-    } else if (type === 'cita') {
-              // Lógica interna invisible para citas simplificadas
+        // 2. Media (Usar lista global, no un input fantasma)
+        stepData.media = currentMediaList;
+
+        // 3. Otros campos dinámicos
+        const kw = getVal('stKeywords');
+        if(kw !== null) stepData.keywords = kw.split(',').map(s=>s.trim()).filter(Boolean);
+        
         const next = getVal('stNextStep');
-        if(next) {
-            stepData.options = [
-                { internal_label: 'DISPONIBLE', next_step: next },
-                { internal_label: 'NO_DISPONIBLE', next_step: next } 
-            ];
-        }
-    }
+        if(next !== null) stepData.next_step = next;
+        
+        const saveVar = getVal('stSaveVar');
+        if(saveVar !== null) stepData.save_var = saveVar;
 
-    try {
-        await fetch('/api/flow/step', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ stepId: id, stepData })
-        });
-            renderFlow(); // Recargar para actualizar la variable global
-        // alert("Guardado"); // Opcional
-    } catch (e) { alert("Error al guardar"); }
+        const adminNum = getVal('stAdminNumber');
+        if(adminNum !== null) stepData.admin_number = adminNum;
+
+        // 4. Opciones del Menú / Filtro
+        const optsContainer = document.getElementById('optList');
+        if (optsContainer) {
+            stepData.options = [];
+            optsContainer.querySelectorAll('div.row').forEach(row => {
+                const lbl = row.querySelector('.o-lbl')?.value;
+                const nxt = row.querySelector('.o-nxt')?.value;
+                if (lbl) {
+                    stepData.options.push({ 
+                        trigger: lbl, 
+                        label: lbl, 
+                        next_step: nxt 
+                    });
+                }
+            });
+        } else if (type === 'cita') {
+            // Lógica para citas (interna)
+            if(next) {
+                stepData.options = [
+                    { internal_label: 'DISPONIBLE', next_step: next },
+                    { internal_label: 'NO_DISPONIBLE', next_step: next } 
+                ];
+            }
+        }
+
+        try {
+            await fetch('/api/flow/step', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ stepId: id, stepData })
+            });
+            renderFlow(); // Recargar visualmente
+            closeEditor(); // Cerrar modal al guardar
+            showToast('Guardado correctamente');
+        } catch (e) { 
+            console.error(e);
+            showToast('Error al guardar', 'error');
+        }
     }
 
     function newStep() { const id = prompt("Nombre del Nuevo Paso (ej: MENU_VENTAS):"); if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlow(); setTimeout(()=>edit(id.toUpperCase()),200); } }
