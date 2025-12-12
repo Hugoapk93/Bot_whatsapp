@@ -1003,16 +1003,16 @@
         
 	function renderFields() {
 	    const type = document.getElementById('stType').value;
-	    const container = document.getElementById('dynamicFields');
+	    const container = document.getElementById('dynFields');     
 	    const id = document.getElementById('stId').value;
 
-	    const d = Flow[id] || {}; 
-    
+	    const d = flow[id] || {}; 
+
 	    let html = '';
 
 	    const getOpts = (sel) => { 
 	        let s='<option value="">-- Seleccionar --</option>'; 
-	        Object.keys(currentFlow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); 
+	        Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); 
 	        return s; 
 	    };
 
