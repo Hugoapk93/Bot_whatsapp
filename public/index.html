@@ -615,16 +615,20 @@
                         <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
                     </label>
                 </div>
-                
-                <div id="dynFields" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;"></div>
-            </div>
             
-            <div style="margin-top:20px; display:flex; gap:10px;">
-                <button onclick="saveStep()" style="flex:1; padding:12px; background:var(--primary); color:black; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Guardar</button>
-                <button onclick="delStep()" style="padding:12px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:4px; cursor:pointer;"><i class="fas fa-trash"></i></button>
-            </div>
+            <div id="dynFields" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;"></div>
+        </div>
+        
+        <!-- CORRECCIÓN BOTONES: Flex row forzado -->
+        <div style="margin-top:20px; display:flex; flex-direction: row; gap:10px; align-items: stretch;">
+            <button onclick="saveStep()" style="flex:1; padding:12px; background:var(--primary); color:black; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Guardar</button>
+            
+            <button onclick="delStep()" style="width: 50px; padding:12px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     </div>
+</div>
 
     <!-- SCRIPT LÓGICO -->
     <script>
@@ -994,7 +998,7 @@
 
         // --- EDITOR (Lógica intacta) ---
         let currentMediaList = [];
-        function edit(id) {
+        function edit(id) 
             const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type; document.getElementById('stMsg').value = d.message || '';
             currentMediaList = Array.isArray(d.media) ? d.media : (d.media ? [d.media] : []);
             renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
@@ -1002,92 +1006,94 @@
         function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
         
 	function renderFields() {
-	    const type = document.getElementById('stType').value;
-	    const container = document.getElementById('dynFields');     
-	    const id = document.getElementById('stId').value;
+            const type = document.getElementById('stType').value;
+            const container = document.getElementById('dynFields'); // ID Correcto
+            const id = document.getElementById('stId').value;
+            const d = flow[id] || {}; 
 
-	    const d = flow[id] || {}; 
-
-	    let html = '';
-
-	    const getOpts = (sel) => { 
-	        let s='<option value="">-- Seleccionar --</option>'; 
-	        Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); 
-	        return s; 
-	    };
-
-	    // --- MENÚ ---
-	    if (type === 'menu') {
-	        const keywordsVal = (d.keywords || []).join(', ');
-	        html += `<label class="block text-sm font-bold text-gray-700 mb-2">🔑 Palabras Clave</label>
-	                 <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu" class="w-full border rounded px-3 py-2 mb-4">`;
-
-	        html += `<div class="mb-4"><label class="block text-sm font-bold text-gray-700 mb-2">💬 Mensaje</label>
-	                 <textarea id="stMessage" rows="3" class="w-full border rounded px-3 py-2">${d.message||''}</textarea></div>`;
-
-	        html += `<div class="mb-4"><label class="block text-sm font-bold text-gray-700 mb-2">🖼️ Imagen (URL)</label>
-	                 <input type="text" id="stMedia" value="${(d.media && d.media[0]) || ''}" class="w-full border rounded px-3 py-2"></div>`;
-
-	        html += `<div id="optList" class="bg-gray-50 p-3 rounded border"><label class="block text-sm font-bold text-gray-700 mb-2">Opciones</label>`;
-	        (d.options||[]).forEach(o => {
-	            html += `<div class="flex gap-2 mb-2">
-	                        <input class="o-lbl border rounded px-2 py-1 w-1/2" value="${o.label}" placeholder="Texto Botón">
-	                        <select class="o-nxt border rounded px-2 py-1 w-1/2">${getOpts(o.next_step)}</select>
-	                        <button onclick="this.parentElement.remove()" class="text-red-500 font-bold px-2">✕</button>
-	                     </div>`;
-	        });
-	        html += `</div><button onclick="addOpt()" class="mt-2 text-sm text-green-600 font-bold">+ Agregar Opción</button>`;
-	    }
-
-	    // --- FILTRO / DECISIÓN (Aquí estaba el error visual) ---
-	    else if (type === 'filtro') {
-	        html += `<div class="mb-4"><label class="block text-sm font-bold text-gray-700 mb-2">💬 Mensaje al Usuario</label>
-	                 <textarea id="stMessage" rows="3" class="w-full border rounded px-3 py-2">${d.message||''}</textarea></div>`;
-
-	        // CORRECCIÓN: Agregado value="${d.admin_number||''}" para que se vea el número guardado
-	        html += `<div class="mb-4 p-3 bg-purple-50 border border-purple-200 rounded">
-	                    <label class="block text-sm font-bold text-purple-800 mb-2">👮 Teléfono Administrador</label>
-	                    <input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." class="w-full border border-purple-300 rounded px-3 py-2 font-mono text-purple-900">
-	                 </div>`;
-
-	        html += `<div id="optList" class="bg-gray-50 p-3 rounded border"><label class="block text-sm font-bold text-gray-700 mb-2">Opciones de Decisión</label>`;
-	        (d.options||[]).forEach(o => {
-	            html += `<div class="flex gap-2 mb-2">
-	                        <input class="o-lbl border rounded px-2 py-1 w-1/2" value="${o.label}" placeholder="Opción (ej: Aprobar)">
-	                        <select class="o-nxt border rounded px-2 py-1 w-1/2">${getOpts(o.next_step)}</select>
-	                        <button onclick="this.parentElement.remove()" class="text-red-500 font-bold px-2">✕</button>
-	                     </div>`;
-	        });
-	        html += `</div><button onclick="addOpt()" class="mt-2 text-sm text-green-600 font-bold">+ Agregar Opción</button>`;
+            // 1. CONTROL DE VISIBILIDAD DE CAMPOS FIJOS (HTML)
+            // Ocultamos media/mensaje si es tipo 'cita' o 'filtro' (opcional, ajusta a tu gusto)
+            const wrapMsg = document.getElementById('wrapper-msg');
+            const wrapMedia = document.getElementById('wrapper-media');
         
-	        html += `<div class="mt-4"><label class="block text-sm font-bold text-gray-700">Guardar Estado en Variable</label>
-	                 <input id="stSaveVar" value="${d.save_var||'status'}" class="w-full border rounded px-3 py-2"></div>`;
-	    }
+            // Por defecto mostramos todo
+            wrapMsg.style.display = 'block';
+            wrapMedia.style.display = 'block';
 
-	    // --- CITA ---
-	    else if (type === 'cita') {
-	        html += `<div class="mb-4"><label class="block text-sm font-bold text-gray-700 mb-2">➡️ Siguiente Paso (Éxito)</label>
-	                 <select id="stNextStep" class="w-full border rounded px-3 py-2">${getOpts(d.next_step)}</select></div>`;
-	    }
+            if(type === 'cita') {
+                wrapMsg.style.display = 'none'; // Citas usualmente no llevan mensaje libre aquí
+                wrapMedia.style.display = 'none';
+            }
 
-	    // --- OTROS (Input, Message, Fin) ---
-	    else {
-	        html += `<div class="mb-4"><label class="block text-sm font-bold text-gray-700 mb-2">💬 Mensaje</label>
-	                 <textarea id="stMessage" rows="3" class="w-full border rounded px-3 py-2">${d.message||''}</textarea></div>`;
-        
-	        if (type !== 'fin_bot') {
-	             html += `<div class="mb-4"><label class="block text-sm font-bold text-gray-700 mb-2">➡️ Siguiente Paso</label>
-	                      <select id="stNextStep" class="w-full border rounded px-3 py-2">${getOpts(d.next_step)}</select></div>`;
-	        }
-        
-	        if(type === 'input') {
-	            html += `<div class="mt-4"><label class="block text-sm font-bold text-gray-700">💾 Guardar Respuesta en Variable</label>
-	                     <input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente" class="w-full border rounded px-3 py-2"></div>`;
-	        }
-	    }
+            // 2. GENERACIÓN DE CAMPOS DINÁMICOS (Solo lo extra)
+            let html = '';
 
-	    container.innerHTML = html;
-	}
+            const getOpts = (sel) => { 
+                let s='<option value="">-- Seleccionar --</option>'; 
+                Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); 
+                return s; 
+            };
+
+            // --- MENU ---
+            if (type === 'menu') {
+                const keywordsVal = (d.keywords || []).join(', ');
+                html += `<label style="display:block; margin-bottom:5px; font-size:0.8rem; font-weight:600;">🔑 Palabras Clave</label>
+                         <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu" style="margin-bottom:15px;">`;
+
+                html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Opciones del Menú</label>`;
+                (d.options||[]).forEach(o => {
+                    html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
+                                <input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;">
+                                <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
+                                <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
+                             </div>`;
+                });
+                html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Opción</button>`;
+            }
+
+            // --- FILTRO ---
+            else if (type === 'filtro') {
+                 html += `<div style="background:rgba(168, 85, 247, 0.1); padding:10px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:6px; margin-bottom:15px;">
+                            <label style="color:#a855f7; font-weight:bold; font-size:0.8rem;">👮 Teléfono Administrador</label>
+                            <input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3);">
+                         </div>`;
+
+                 html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Rutas de Decisión</label>`;
+                (d.options||[]).forEach(o => {
+                    html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
+                                <input class="o-lbl" value="${o.label}" placeholder="Acción (ej: Aprobar)" style="flex:1;">
+                                <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
+                                <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
+                             </div>`;
+                });
+                html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Ruta</button>`;
+            }
+
+            // --- INPUT ---
+            else if (type === 'input') {
+                html += `<label style="display:block; margin-bottom:5px; margin-top:10px;">💾 Nombre Variable (donde guardar el dato)</label>
+                         <input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente">`;
+            
+                html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
+                         <select id="stNextStep">${getOpts(d.next_step)}</select>`;
+            }
+
+            // --- CITA ---
+            else if (type === 'cita') {
+                 html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso (Al agendar)</label>
+                          <select id="stNextStep">${getOpts(d.next_step)}</select>`;
+            }
+
+            // --- GENÉRICO (Message, Fin, etc) ---
+            else {
+                 if (type !== 'fin_bot') {
+                     html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
+                              <select id="stNextStep">${getOpts(d.next_step)}</select>`;
+                 }
+            }
+
+            container.innerHTML = html;
+        }
 
         function addOpt() {
             const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:5px; margin-bottom:5px;";
