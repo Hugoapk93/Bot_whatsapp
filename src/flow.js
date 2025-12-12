@@ -213,9 +213,21 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         });
     }
 
+    // --- CORRECCIÓN: VISUALIZACIÓN DE MENÚ INTELIGENTE ---
     if (step.type === 'menu' && step.options) {
         messageText += '\n'; 
-        step.options.forEach(opt => messageText += `\n${opt.trigger} ${opt.label}`);
+        const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+
+        step.options.forEach((opt, index) => {
+            // Si el trigger es igual al label (duplicado), mostramos solo uno con un emoji
+            if (opt.trigger === opt.label) {
+                const bullet = emojis[index] || '👉';
+                messageText += `\n${bullet} ${opt.label}`;
+            } else {
+                // Si son diferentes (ej: "1" y "Ventas"), los mostramos normal
+                messageText += `\n${opt.trigger} ${opt.label}`;
+            }
+        });
     }
 
     try { await typing(sock, jid, messageText.length); } catch (e) {}
