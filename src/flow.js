@@ -145,12 +145,13 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         addManualContact(cleanPhone, contactName, false); 
     }
 
-    // --- NOTIFICACIÓN AL ADMIN (FILTRO) DINÁMICA ---
+    // --- NOTIFICACIÓN AL ADMIN (FILTRO) DINÁMICA & MULTI-MENSAJE ---
     if (step.type === 'filtro' && step.admin_number) {
         const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
         const cleanClientPhone = jid.replace(/[^0-9]/g, '');
         const hist = userData.history || {};
 
+        // 1. Enviar Ficha Principal
         let adminMsg = `🔔 *Solicitud de Aprobación*\n\n`;
         adminMsg += `🆔 *ID:* ${cleanClientPhone}\n`;
         adminMsg += `------------------------------\n`;
@@ -168,17 +169,34 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         
         adminMsg += `------------------------------\n`;
         adminMsg += `🤖 *Bot:* "${messageText}"\n\n`;
-        adminMsg += `👇 *Escribe una opción:*\n`;
-
-        const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
-        if(step.options && Array.isArray(step.options)){
-            step.options.forEach((opt, idx) => {
-                const icon = emojis[idx] || '👉';
-                adminMsg += `${icon} ${opt.trigger} ${cleanClientPhone}\n`;
-            });
-        }
+        adminMsg += `👇 *Escribe una opción (copia y pega):*`;
 
         try { await sock.sendMessage(adminJid, { text: adminMsg }); } catch (e) {}
+
+        // 2. Enviar Botones Individuales (Mensajes Separados)
+        const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+        
+        if(step.options && Array.isArray(step.options)){
+            for (let idx = 0; idx < step.options.length; idx++) {
+                const opt = step.options[idx];
+                const icon = emojis[idx] || '👉';
+                // El mensaje será SOLO el texto para copiar: "1️⃣ Aprobar 281..."
+                const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
+                
+                // Pequeña pausa para asegurar orden de llegada
+                await new Promise(r => setTimeout(r, 200));
+                
+                try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
+            }
+        } else {
+            // Opciones por defecto si no están configuradas
+             await new Promise(r => setTimeout(r, 200));
+             try { await sock.sendMessage(adminJid, { text: `👉 Aprobar ${cleanClientPhone}` }); } catch (e) {}
+             await new Promise(r => setTimeout(r, 200));
+             try { await sock.sendMessage(adminJid, { text: `👉 Rechazar ${cleanClientPhone}` }); } catch (e) {}
+        }
+
+        console.log(`👮 Notificación enviada al Admin: ${step.admin_number}`);
     }
 
     if (step.type === 'filtro' && isBusinessClosed()) {
