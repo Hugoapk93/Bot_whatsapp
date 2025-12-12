@@ -632,739 +632,739 @@
 
 <!-- SCRIPT LÓGICO -->
 <script>
-        const API_BASE = (() => {
-            const { protocol } = window.location;
-            if (protocol === 'file:' || protocol === 'blob:' || protocol === 'data:') {
-                return 'http://localhost:3000';
-            }
-            return ''; 
-        })();
-
-        let pollingInterval = null;
-        let activityInterval = null;
-        let lastQr = '';
-        let isConnected = false;
-        let isPollingActive = false;
-
-        function cleanupAllIntervals() {
-            if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
-            if (activityInterval) { clearInterval(activityInterval); activityInterval = null; }
-            isPollingActive = false;
+    const API_BASE = (() => {
+        const { protocol } = window.location;
+        if (protocol === 'file:' || protocol === 'blob:' || protocol === 'data:') {
+            return 'http://localhost:3000';
         }
+        return ''; 
+    })();
+ 
+    let pollingInterval = null;
+    let activityInterval = null;
+    let lastQr = '';
+    let isConnected = false;
+    let isPollingActive = false;
 
-        window.onload = async () => {
-            document.getElementById('setupWizard').classList.remove('step-hidden');
-            startPolling();
-            loadAll();
-            
-            activityInterval = setInterval(() => {
-                if (document.getElementById('view-activity').classList.contains('active')) {
-                    loadActivity();
-                }
-            }, 8000);
-        };
+     function cleanupAllIntervals() {
+        if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+        if (activityInterval) { clearInterval(activityInterval); activityInterval = null; }
+        isPollingActive = false;
+    }
 
-        function startPolling() {
-            cleanupAllIntervals();
-            isPollingActive = true;
-            
-            pollingInterval = setInterval(async () => {
-                if (!isPollingActive) { clearInterval(pollingInterval); return; }
-                
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000);
-                    
-                    const res = await fetch(`${API_BASE}/api/status`, { signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    
-                    const data = await res.json();
-                    
-                    if (data.status === 'connected') {
-                        isConnected = true;
-                        cleanupAllIntervals(); 
-                        document.getElementById('setupWizard').classList.add('step-hidden');
-                        showToast('Conectado exitosamente');
-                        updateStatusUI();
-                    } else if (data.qr) {
-                        document.getElementById('stepLoading').classList.add('step-hidden');
-                        document.getElementById('stepQR').classList.remove('step-hidden');
-                        
-                        if (data.qr !== lastQr) { 
-                            lastQr = data.qr; 
-                            renderQR(data.qr); 
-                            document.getElementById('qrStatus').innerText = "Escanea ahora"; 
-                        }
-                    } else {
-                        if (data.status === 'disconnected') {
-                            fetch(`${API_BASE}/api/auth/init`, { method: 'POST' }).catch(e => console.warn("Init error:", e));
-                        }
-                        document.getElementById('stepLoading').classList.remove('step-hidden');
-                        document.getElementById('stepQR').classList.add('step-hidden');
-                    }
-                } catch (e) { 
-                    if (e.name !== 'AbortError') console.warn("Polling error (no crítico):", e);
-                }
-            }, 2000);
-        }
-        function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
-        async function resetSession() { if(!confirm("¿Reiniciar conexión?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
-
-        // Variables
-        let simPhone = '5218991234567';
-        let simState = { step: 'BIENVENIDA', history: {} };
-        let flow={}, users=[];
-        let cy = null;
-        let currentRefDate = new Date();
-        let wakeLock = null;
-        const socket = io(API_BASE);
-        const delayedFilter = debounce(filterContacts, 300);
-
-        function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
-        function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
+    window.onload = async () => {
+        document.getElementById('setupWizard').classList.remove('step-hidden');
+        startPolling();
+        loadAll();
         
-        function nav(v, btn) {
-            document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
-            document.getElementById('view-' + v).classList.add('active');
-            if (btn) btn.classList.add('active');
-            
-            const titles = { flow: 'FLUJO VISUAL', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'TEST BOT' };
-            document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
-            document.getElementById('sidebar').classList.remove('active');
-            
-            if (v !== 'flow' && cy) {
-                try { cy.destroy(); cy = null; } catch(e){}
+        activityInterval = setInterval(() => {
+            if (document.getElementById('view-activity').classList.contains('active')) {
+                loadActivity();
             }
+        }, 8000);
+    };
+
+    function startPolling() {
+        cleanupAllIntervals();
+        isPollingActive = true;
             
-            if (v === 'flow') setTimeout(renderFlow, 100); 
-            if (v === 'activity') loadActivity();
-            if (v === 'agenda') renderCalendar();
-            if (v === 'sim') scrollToBottomSim(); 
-            if (v === 'contacts') renderContacts();
-        }
-
-        document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); });
-
-        function showToast(msg, type='success') {
-            const c = document.getElementById('toast-container');
-            const t = document.createElement('div');
-            t.className = `toast ${type}`;
-            t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> <span>${msg}</span>`;
-            c.appendChild(t);
-            setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
-        }
-
-        async function loadAll() {
-            try {
-                // Intentamos cargar
-                const res = await fetch(`${API_BASE}/api/flow`);
-                flow = await res.json();
-                renderFlow();
-            } catch(e) {
-                // SI FALLA LA CARGA, MOSTRAMOS UN MENSAJE EN EL CONTAINER
-                console.error("No se pudo cargar el flujo");
-                const c = document.getElementById('cy');
-                if(c) c.innerHTML = '<div style="color:white; text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
-            }
-
-            try {
-                const set = await (await fetch(`${API_BASE}/api/settings`)).json();
-                if(set.schedule) {
-                    document.getElementById('schedActive').checked = set.schedule.active;
-                    document.getElementById('schedStart').value = set.schedule.start;
-                    document.getElementById('schedEnd').value = set.schedule.end;
-                    document.getElementById('schedMsg').value = set.schedule.offline_message;
-                }
-            } catch(e) {}
-        }
-
-        async function loadActivity() {
-            try {
-                flow = await (await fetch(`${API_BASE}/api/flow`)).json();
-                users = await (await fetch(`${API_BASE}/api/users`)).json();
-                updateStatusUI();
-                const tb = document.getElementById('activityBody'); tb.innerHTML = ''; 
-                let allToShow = users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a, b) => new Date(b.last_active||0) - new Date(a.last_active||0));
+        pollingInterval = setInterval(async () => {
+            if (!isPollingActive) { clearInterval(pollingInterval); return; }
                 
-                if (allToShow.length === 0) tb.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px; color:var(--text-muted); font-size:0.85rem;">Esperando actividad...</td></tr>';
-                else {
-                    allToShow.forEach(u => {
-                        const s = flow[u.current_step] || { type: 'unknown' };
-                        let actionsHtml = `<div style="margin-bottom:5px;"><span style="font-size:0.7rem; background:var(--bg-body); padding:2px 6px; border:1px solid var(--border); border-radius:4px; color:var(--text-muted);">${u.current_step}</span></div>`;
-                        if (s.type === 'filtro' && s.options) {
-                            s.options.forEach(opt => {
-                                actionsHtml += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${opt.next_step}')">${opt.label}</button>`;
-                            });
-                        }
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                    
+                const res = await fetch(`${API_BASE}/api/status`, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                    
+                const data = await res.json();
+                    
+                if (data.status === 'connected') {
+                    isConnected = true;
+                    cleanupAllIntervals(); 
+                    document.getElementById('setupWizard').classList.add('step-hidden');
+                    showToast('Conectado exitosamente');
+                    updateStatusUI();
+                } else if (data.qr) {
+                    document.getElementById('stepLoading').classList.add('step-hidden');
+                    document.getElementById('stepQR').classList.remove('step-hidden');
                         
-                        let dataHtml = '';
-                        if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.75rem; color:var(--text-muted);">${k}: <span style="color:var(--text-main)">${v}</span></div>`);
-
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                        <td><div style="font-weight:500;">${u.phone}</div><small style="color:var(--text-muted); font-size:0.7rem;">${new Date(u.last_active).toLocaleTimeString()}</small></td>
-                        <td>${dataHtml || '<span style="color:var(--text-muted)">-</span>'}</td>
-                        <td>${actionsHtml}</td>`;
-                        tb.appendChild(row);
-                    });
+                    if (data.qr !== lastQr) { 
+                        lastQr = data.qr; 
+                        renderQR(data.qr); 
+                        document.getElementById('qrStatus').innerText = "Escanea ahora"; 
+                    }
+                } else {
+                    if (data.status === 'disconnected') {
+                        fetch(`${API_BASE}/api/auth/init`, { method: 'POST' }).catch(e => console.warn("Init error:", e));
+                    }
+                    document.getElementById('stepLoading').classList.remove('step-hidden');
+                    document.getElementById('stepQR').classList.add('step-hidden');
                 }
-            } catch(e) { console.error(e); }
-        }
-
-        function updateStatusUI() {
-            const badge = document.getElementById('crmStatusBadge');
-            badge.className = 'status-badge open'; 
-            badge.innerHTML = '● ONLINE';
-        }
-
-        async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
-
-        function renderFlow() {
-            // 1. Limpieza segura
-            let savedZoom = null;
-            let savedPan = null;
-            if (cy && typeof cy.zoom === 'function') {
-                try {
-                    savedZoom = cy.zoom();
-                    savedPan = cy.pan();
-                } catch(e) {}
-                cy.destroy();
+            } catch (e) { 
+                if (e.name !== 'AbortError') console.warn("Polling error (no crítico):", e);
             }
+        }, 2000);
+    }
+    function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
+    async function resetSession() { if(!confirm("¿Reiniciar conexión?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
 
-            // 2. Construcción de Datos
-            let elements = [];
-            if (!flow || Object.keys(flow).length === 0) return;
+    // Variables
+    let simPhone = '5218991234567';
+    let simState = { step: 'BIENVENIDA', history: {} };
+    let flow={}, users=[];
+    let cy = null;
+    let currentRefDate = new Date();
+    let wakeLock = null;
+    const socket = io(API_BASE);
+    const delayedFilter = debounce(filterContacts, 300);
+
+    function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
+    function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
+        
+    function nav(v, btn) {
+        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
+        document.getElementById('view-' + v).classList.add('active');
+        if (btn) btn.classList.add('active');
+            
+        const titles = { flow: 'FLUJO VISUAL', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'TEST BOT' };
+        document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
+        document.getElementById('sidebar').classList.remove('active');
+          
+        if (v !== 'flow' && cy) {
+            try { cy.destroy(); cy = null; } catch(e){}
+        }
+        
+        if (v === 'flow') setTimeout(renderFlow, 100); 
+        if (v === 'activity') loadActivity();
+        if (v === 'agenda') renderCalendar();
+        if (v === 'sim') scrollToBottomSim(); 
+        if (v === 'contacts') renderContacts();
+    }
+
+    document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); });
+
+    function showToast(msg, type='success') {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> <span>${msg}</span>`;
+        c.appendChild(t);
+        setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
+    }
+
+    async function loadAll() {
+        try {
+            // Intentamos cargar
+            const res = await fetch(`${API_BASE}/api/flow`);
+            flow = await res.json();
+            renderFlow();
+        } catch(e) {
+            // SI FALLA LA CARGA, MOSTRAMOS UN MENSAJE EN EL CONTAINER
+            console.error("No se pudo cargar el flujo");
+            const c = document.getElementById('cy');
+            if(c) c.innerHTML = '<div style="color:white; text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
+        }
+
+            try {
+            const set = await (await fetch(`${API_BASE}/api/settings`)).json();
+            if(set.schedule) {
+                document.getElementById('schedActive').checked = set.schedule.active;
+                document.getElementById('schedStart').value = set.schedule.start;
+                document.getElementById('schedEnd').value = set.schedule.end;
+                document.getElementById('schedMsg').value = set.schedule.offline_message;
+            }
+        } catch(e) {}
+    }
+
+    async function loadActivity() {
+        try {
+            flow = await (await fetch(`${API_BASE}/api/flow`)).json();
+            users = await (await fetch(`${API_BASE}/api/users`)).json();
+            updateStatusUI();
+            const tb = document.getElementById('activityBody'); tb.innerHTML = ''; 
+            let allToShow = users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a, b) => new Date(b.last_active||0) - new Date(a.last_active||0));
+                
+            if (allToShow.length === 0) tb.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px; color:var(--text-muted); font-size:0.85rem;">Esperando actividad...</td></tr>';
+            else {
+                allToShow.forEach(u => {
+                    const s = flow[u.current_step] || { type: 'unknown' };
+                    let actionsHtml = `<div style="margin-bottom:5px;"><span style="font-size:0.7rem; background:var(--bg-body); padding:2px 6px; border:1px solid var(--border); border-radius:4px; color:var(--text-muted);">${u.current_step}</span></div>`;
+                    if (s.type === 'filtro' && s.options) {
+                        s.options.forEach(opt => {
+                            actionsHtml += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${opt.next_step}')">${opt.label}</button>`;
+                        });
+                    }
+                     
+                    let dataHtml = '';
+                    if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.75rem; color:var(--text-muted);">${k}: <span style="color:var(--text-main)">${v}</span></div>`);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                    <td><div style="font-weight:500;">${u.phone}</div><small style="color:var(--text-muted); font-size:0.7rem;">${new Date(u.last_active).toLocaleTimeString()}</small></td>
+                    <td>${dataHtml || '<span style="color:var(--text-muted)">-</span>'}</td>
+                    <td>${actionsHtml}</td>`;
+                    tb.appendChild(row);
+                });
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    function updateStatusUI() {
+        const badge = document.getElementById('crmStatusBadge');
+        badge.className = 'status-badge open'; 
+        badge.innerHTML = '● ONLINE';
+    }
+
+    async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
+
+    function renderFlow() {
+        // 1. Limpieza segura
+        let savedZoom = null;
+        let savedPan = null;
+        if (cy && typeof cy.zoom === 'function') {
+            try {
+                savedZoom = cy.zoom();
+                savedPan = cy.pan();
+            } catch(e) {}
+             cy.destroy();
+        }
+
+        // 2. Construcción de Datos
+        let elements = [];
+        if (!flow || Object.keys(flow).length === 0) return;
 
             Object.keys(flow).forEach(k => {
-                const s = flow[k];
-                if (!s) return;
+            const s = flow[k];
+            if (!s) return;
 
-                // --- PALETA DE COLORES INTENSOS (BRILLANTES) ---
-                let color = '#94a3b8'; // Default: Gris Acero
+            // --- PALETA DE COLORES INTENSOS (BRILLANTES) ---
+            let color = '#94a3b8'; // Default: Gris Acero
                 
-                // Estos colores se usarán para el BORDE y el RESPLANDOR
-                if(s.type === 'menu') color = '#3b82f6';      // Azul Eléctrico
-                else if(s.type === 'filtro') color = '#a855f7'; // Violeta Neón
-                else if(s.type === 'input') color = '#f97316';  // Naranja Intenso
-                else if(s.type === 'message') color = '#10b981';// Verde Esmeralda
-                else if(s.type === 'cita') color = '#ec4899';   // Rosa Hot Pink
-                else if(s.type === 'fin') color = '#ef4444';    // Rojo Intenso
+            // Estos colores se usarán para el BORDE y el RESPLANDOR
+            if(s.type === 'menu') color = '#3b82f6';      // Azul Eléctrico
+            else if(s.type === 'filtro') color = '#a855f7'; // Violeta Neón
+            else if(s.type === 'input') color = '#f97316';  // Naranja Intenso
+            else if(s.type === 'message') color = '#10b981';// Verde Esmeralda
+            else if(s.type === 'cita') color = '#ec4899';   // Rosa Hot Pink
+            else if(s.type === 'fin') color = '#ef4444';    // Rojo Intenso
                 
-                elements.push({ data: { id: k, label: k, color: color } });
+            elements.push({ data: { id: k, label: k, color: color } });
                 
-                if(s.options && Array.isArray(s.options)) { 
-                    s.options.forEach(o => { 
-                        if(o.next_step && flow[o.next_step]) {
-                            elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } }); 
-                        }
-                    }); 
-                } else if(s.next_step && flow[s.next_step]) {
-                    elements.push({ data: { source: k, target: s.next_step } }); 
-                }
-            });
-
-            try {
-                // 3. Inicializar Cytoscape
-                cy = cytoscape({ 
-                    container: document.getElementById('cy'), 
-                    elements: elements, 
-                    autoungrabify: true,       
-                    boxSelectionEnabled: false,
-                    wheelSensitivity: 0.2,
-                    
-                    style: [ 
-                        // --- ESTILO DE TARJETAS (NODOS) ---
-                        { selector: 'node', style: { 
-                            'background-color': '#ffffff', // FONDO BLANCO
-                            'label': 'data(label)', 
-                            'color': '#0f172a', // TEXTO OSCURO (Casi negro) para contraste
-                            'text-margin-y': 0,
-                            
-                            // Forma y Tamaño
-                            'shape': 'round-rectangle', 
-                            'width': 'label', 
-                            'height': 'label', // Se adapta al contenido
-                            'padding': '16px 24px', // Tarjetas más grandes y espaciosas
-                            
-                            // Tipografía
-                            'font-family': 'Inter, sans-serif', 
-                            'font-size': '14px', // Letra más grande
-                            'font-weight': '700', 
-                            'text-valign': 'center', 
-                            'text-halign': 'center', 
-                            'text-transform': 'uppercase', 
-                            'text-wrap': 'wrap', 
-                            'text-max-width': '140px', 
-                            
-                            // BORDE DE COLOR INTENSO
-                            'border-width': 3, 
-                            'border-color': 'data(color)', 
-                            
-                            // EFECTO RESPLANDOR (Sombra del color del borde)
-                            'shadow-blur': 20, 
-                            'shadow-color': 'data(color)', 
-                            'shadow-opacity': 0.25,
-                            'shadow-offset-y': 4
-                        }}, 
-                        
-                        // --- LÍNEAS (EDGES) ---
-                        { selector: 'edge', style: { 
-                            'width': 2, 
-                            'line-color': '#cbd5e1', // Gris suave para no distraer
-                            'curve-style': 'taxi', 
-                            'taxi-direction': 'rightward', 
-                            'target-arrow-shape': 'triangle', 
-                            'target-arrow-color': '#cbd5e1', 
-                            'opacity': 1, 
-                            
-                            // Etiquetas de líneas
-                            'label': 'data(label)', 
-                            'font-size': '11px', 
-                            'font-weight': '600',
-                            'color': '#ffffff', 
-                            'text-background-color': '#1e293b', // Etiqueta oscura
-                            'text-background-opacity': 1, 
-                            'text-background-padding': '4px', 
-                            'text-background-shape': 'roundrectangle',
-                            'text-border-width': 1,
-                            'text-border-color': '#475569',
-                            'text-rotation': 'autorotate' 
-                        }},
-                        
-                        // LÍNEAS PUNTEADAS (REUTILIZACIÓN)
-                        { selector: 'edge.cross-edge', style: {
-                            'line-style': 'dashed', 
-                            'line-dash-pattern': [6, 3],
-                            'line-color': '#64748b', 
-                            'target-arrow-color': '#64748b',
-                            'opacity': 0.6
-                        }},
-                        
-                        // ESTADOS ACTIVOS
-                        { selector: 'node:selected', style: { 
-                            'border-width': 4, 
-                            'shadow-blur': 30, 
-                            'shadow-opacity': 0.6,
-                            'background-color': '#f8fafc' // Un blanco un poco más brillante al seleccionar
-                        }},
-                        { selector: '.highlighted', style: { 'opacity': 1, 'z-index': 999 } },
-                        { selector: '.faded', style: { 'opacity': 0.15, 'label': '' } }
-                    ],
-                    layout: { name: 'preset' } 
-                });
-
-                // 4. LÓGICA DE ÁRBOL Y LÍNEAS (BFS) - Igual que antes
-                let roots = cy.nodes().roots();
-                if(roots.length === 0) roots = cy.nodes().first(); 
-                cy.edges().addClass('cross-edge');
-
-                cy.elements().bfs({
-                    roots: roots,
-                    visit: function(v, e, u, i, depth) {
-                        if (e) { e.removeClass('cross-edge'); }
-                    },
-                    directed: true
-                });
-
-                const layoutElements = cy.elements().not('edge.cross-edge');
-                
-                layoutElements.layout({ 
-                    name: 'dagre', 
-                    rankDir: 'LR', 
-                    nodeSep: 60,  // Separación horizontal
-                    rankSep: 120, // Separación vertical (niveles)
-                    ranker: 'network-simplex', 
-                    align: 'UL',
-                    animate: false,
-                    fit: !savedZoom
-                }).run();
-
-                if (savedZoom && savedPan) cy.viewport({ zoom: savedZoom, pan: savedPan });
-
-                cy.on('tap', 'node', function(evt){ 
-                    const node = evt.target;
-                    cy.elements().removeClass('highlighted faded');
-                    const neighborhood = node.predecessors().union(node.successors()).union(node);
-                    cy.elements().not(neighborhood).addClass('faded');
-                    neighborhood.addClass('highlighted');
-                });
-                
-                cy.on('tap', function(evt){ if(evt.target === cy) cy.elements().removeClass('highlighted faded'); });
-                cy.on('dbltap', 'node', function(evt){ edit(evt.target.id()); });
-
-            } catch(e) { console.error(e); }
-        }
-
-        // --- EDITOR (Lógica intacta) ---
-        let currentMediaList = [];
-        function edit(id) 
-            const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type; document.getElementById('stMsg').value = d.message || '';
-            currentMediaList = Array.isArray(d.media) ? d.media : (d.media ? [d.media] : []);
-            renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
-        }
-        function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
-        
-	function renderFields() {
-            const type = document.getElementById('stType').value;
-            const container = document.getElementById('dynFields'); // ID Correcto
-            const id = document.getElementById('stId').value;
-            const d = flow[id] || {}; 
-
-            // 1. CONTROL DE VISIBILIDAD DE CAMPOS FIJOS (HTML)
-            // Ocultamos media/mensaje si es tipo 'cita' o 'filtro' (opcional, ajusta a tu gusto)
-            const wrapMsg = document.getElementById('wrapper-msg');
-            const wrapMedia = document.getElementById('wrapper-media');
-        
-            // Por defecto mostramos todo
-            wrapMsg.style.display = 'block';
-            wrapMedia.style.display = 'block';
-
-            if(type === 'cita') {
-                wrapMsg.style.display = 'none'; // Citas usualmente no llevan mensaje libre aquí
-                wrapMedia.style.display = 'none';
-            }
-
-            // 2. GENERACIÓN DE CAMPOS DINÁMICOS (Solo lo extra)
-            let html = '';
-
-            const getOpts = (sel) => { 
-                let s='<option value="">-- Seleccionar --</option>'; 
-                Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); 
-                return s; 
-            };
-
-            // --- MENU ---
-            if (type === 'menu') {
-                const keywordsVal = (d.keywords || []).join(', ');
-                html += `<label style="display:block; margin-bottom:5px; font-size:0.8rem; font-weight:600;">🔑 Palabras Clave</label>
-                         <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu" style="margin-bottom:15px;">`;
-
-                html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Opciones del Menú</label>`;
-                (d.options||[]).forEach(o => {
-                    html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
-                                <input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;">
-                                <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
-                                <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
-                             </div>`;
-                });
-                html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Opción</button>`;
-            }
-
-            // --- FILTRO ---
-            else if (type === 'filtro') {
-                 html += `<div style="background:rgba(168, 85, 247, 0.1); padding:10px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:6px; margin-bottom:15px;">
-                            <label style="color:#a855f7; font-weight:bold; font-size:0.8rem;">👮 Teléfono Administrador</label>
-                            <input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3);">
-                         </div>`;
-
-                 html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Rutas de Decisión</label>`;
-                (d.options||[]).forEach(o => {
-                    html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
-                                <input class="o-lbl" value="${o.label}" placeholder="Acción (ej: Aprobar)" style="flex:1;">
-                                <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
-                                <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
-                             </div>`;
-                });
-                html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Ruta</button>`;
-            }
-
-            // --- INPUT ---
-            else if (type === 'input') {
-                html += `<label style="display:block; margin-bottom:5px; margin-top:10px;">💾 Nombre Variable (donde guardar el dato)</label>
-                         <input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente">`;
-            
-                html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
-                         <select id="stNextStep">${getOpts(d.next_step)}</select>`;
-            }
-
-            // --- CITA ---
-            else if (type === 'cita') {
-                 html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso (Al agendar)</label>
-                          <select id="stNextStep">${getOpts(d.next_step)}</select>`;
-            }
-
-            // --- GENÉRICO (Message, Fin, etc) ---
-            else {
-                 if (type !== 'fin_bot') {
-                     html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
-                              <select id="stNextStep">${getOpts(d.next_step)}</select>`;
-                 }
-            }
-
-            container.innerHTML = html;
-        }
-
-        function addOpt() {
-            const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:5px; margin-bottom:5px;";
-            let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}">${k}</option>`);
-            div.innerHTML=`<input class="o-lbl" placeholder="Texto Botón"><select class="o-nxt">${s}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>`;
-            document.getElementById('optList').appendChild(div);
-        }
-        
-        const emojis = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
-
-	async function saveStep() {
-	    const id = document.getElementById('stId').value;
-	    const type = document.getElementById('stType').value;
-	    const stepData = { type };
-
-	    // Helper para obtener valor si el elemento existe
-	    const getVal = (eid) => document.getElementById(eid) ? document.getElementById(eid).value : null;
-
-	    if(getVal('stMessage') !== null) stepData.message = getVal('stMessage');
-	    if(getVal('stKeywords') !== null) stepData.keywords = getVal('stKeywords').split(',').map(s=>s.trim()).filter(Boolean);
-	    if(getVal('stMedia') !== null) stepData.media = getVal('stMedia') ? [getVal('stMedia')] : [];
-	    if(getVal('stNextStep') !== null) stepData.next_step = getVal('stNextStep');
-	    if(getVal('stSaveVar') !== null) stepData.save_var = getVal('stSaveVar');
-    
-	    // --- IMPORTANTE: Guardar Admin Number ---
-	    if(getVal('stAdminNumber') !== null) stepData.admin_number = getVal('stAdminNumber');
-
-	    // Guardar Opciones
-	    const optsContainer = document.getElementById('optList');
-	    if (optsContainer) {
-	        stepData.options = [];
-	        // Iteramos sobre los divs hijos directos que tienen inputs
-	        optsContainer.querySelectorAll('div').forEach(row => {
-	            const lbl = row.querySelector('.o-lbl')?.value;
-	            const nxt = row.querySelector('.o-nxt')?.value;
-	            if (lbl) {
-	                stepData.options.push({ 
-	                    trigger: lbl, // Usamos el label como trigger por defecto
-	                    label: lbl, 
-	                    next_step: nxt 
-	                });
-	            }
-	        });
-	    } else if (type === 'cita') {
-        	// Lógica interna invisible para citas simplificadas
-	        const next = getVal('stNextStep');
-	        if(next) {
-	            stepData.options = [
-	                { internal_label: 'DISPONIBLE', next_step: next },
-	                { internal_label: 'NO_DISPONIBLE', next_step: next } 
-	            ];
-	        }
-	    }
-
-	    try {
-	        await fetch('/api/flow/step', {
-	            method: 'POST',
-	            headers: {'Content-Type': 'application/json'},
-	            body: JSON.stringify({ stepId: id, stepData })
-	        });
-	        refreshFlow(); // Recargar para actualizar la variable global
-	        // alert("Guardado"); // Opcional
-	    } catch (e) { alert("Error al guardar"); }
-	}
-
-        function newStep() { const id = prompt("Nombre del Nuevo Paso (ej: MENU_VENTAS):"); if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlow(); setTimeout(()=>edit(id.toUpperCase()),200); } }
-        async function delStep() { const id=document.getElementById('stId').value; if(confirm('¿Eliminar este paso?')) { await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); loadAll(); closeEditor(); showToast('Eliminado'); } }
-
-        function renderGallery() {
-            const c = document.getElementById('galleryContainer'); c.innerHTML='';
-            currentMediaList.forEach((u,i) => c.innerHTML += `<div style="position:relative; width:60px; height:60px;"><img src="${u}" style="width:100%; height:100%; border-radius:4px; object-fit:cover; border:1px solid var(--border);"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; border-radius:50%; width:18px; height:18px; font-size:10px; border:none; cursor:pointer;">✕</button></div>`);
-            document.getElementById('imgCount').innerText = currentMediaList.length + " archivos";
-        }
-        async function uploadImages(inp) {
-            if(!inp.files.length) return;
-            const fd = new FormData(); for(let f of inp.files) fd.append('images', f);
-            const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json();
-            if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
-        }
-
-        // --- AGENDA & CALENDARIO ---
-        async function renderCalendar() {
-            const now = currentRefDate;
-            const m = now.getMonth(), y = now.getFullYear();
-            const firstDay = new Date(y, m, 1).getDay();
-            const daysInMonth = new Date(y, m+1, 0).getDate();
-            const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
-            document.getElementById('monthDisplay').innerText = `${months[m]} ${y}`;
-            const g = document.getElementById('calendarDays'); g.innerHTML = '';
-            
-            let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
-
-            for(let i=0; i<firstDay; i++) g.innerHTML += `<div class="day empty"></div>`;
-            for(let i=1; i<=daysInMonth; i++) {
-                const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
-                const count = (appts[k]||[]).length;
-                const isToday = new Date().toDateString() === new Date(y,m,i).toDateString();
-                g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}', [])">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`;
-            }
-        }
-        function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
-        
-        function openDayModal(dateStr, _) {
-            document.getElementById('modalDateTitle').innerText = dateStr;
-            renderEventList(dateStr);
-            document.getElementById('dayModal').classList.add('active');
-        }
-        function closeDayModal() { document.getElementById('dayModal').classList.remove('active'); renderCalendar(); }
-
-        async function renderEventList(dateKey) {
-            const list = document.getElementById('modalApptList'); list.innerHTML = 'Cargando...';
-            const allAppts = await (await fetch(`${API_BASE}/api/agenda`)).json();
-            const appts = allAppts[dateKey] || [];
-            list.innerHTML = '';
-            if(!appts.length) list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic; font-size:0.85rem;">No hay eventos para este día.</div>';
-            
-            appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
-                const row = document.createElement('div');
-                row.style.cssText = "background:var(--bg-body); border:1px solid var(--border); border-radius:6px; padding:10px; display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;";
-                row.innerHTML = `
-                    <div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span style="font-family:monospace; color:var(--primary); background:var(--bg-card); padding:2px 4px; border-radius:4px; font-size:0.8rem;">${c.time}</span>
-                            <span style="font-weight:600; font-size:0.9rem;">${c.name}</span>
-                        </div>
-                        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">${c.phone||''}</div>
-                        ${c.note ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; font-style:italic;">"${c.note}"</div>` : ''}
-                    </div>
-                    <button onclick="deleteAppt('${dateKey}', '${c.time}')" style="background:transparent; border:none; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>
-                `;
-                list.appendChild(row);
-            });
-            document.getElementById('evtOldTime').dataset.date = dateKey; 
-        }
-
-        function showEventForm() { document.getElementById('eventForm').style.display='block'; document.getElementById('btnAddEvent').style.display='none'; }
-        function hideEventForm() { document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block'; }
-
-        async function saveEvent() {
-            const date = document.getElementById('evtOldTime').dataset.date;
-            const time = document.getElementById('evtTime').value;
-            const name = document.getElementById('evtName').value;
-            const phone = document.getElementById('evtPhone').value;
-            const note = document.getElementById('evtNote').value;
-            if(!time || !name) return showToast('Falta hora o nombre', 'error');
-            
-            await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time, name, phone, note}) });
-            hideEventForm(); renderEventList(date); showToast('Evento Guardado');
-        }
-        async function deleteAppt(date, time) {
-            if(!confirm('¿Eliminar?')) return;
-            await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) });
-            renderEventList(date);
-        }
-
-        // --- CONTACTOS ---
-        async function renderContacts() {
-            try {
-                const list = await (await fetch(`${API_BASE}/api/contacts`)).json();
-                const c = document.getElementById('contactsList');
-                let htmlBuffer = '';
-                list.forEach(u => {
-                    htmlBuffer += `
-                    <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
-                        <div>
-                            <b style="color:var(--text-main); font-size:0.9rem;">${u.name||u.phone}</b>
-                            <div style="color:var(--text-muted); font-size:0.75rem;">${u.phone}</div>
-                        </div>
-                        <label class="switch" style="position:relative; display:inline-block; width:36px; height:20px;">
-                            <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)" style="opacity:0; width:0; height:0;">
-                            <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:var(--bg-hover); transition:.4s; border-radius:34px;"></span>
-                            <span class="slider-ball" style="position:absolute; content:''; height:14px; width:14px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;"></span>
-                        </label>
-                    </div>`;
-                });
-                c.innerHTML = htmlBuffer;
-                if (!document.getElementById('toggle-style')) {
-                    const style = document.createElement('style');
-                    style.id = 'toggle-style';
-                    style.innerHTML = `input:checked + .slider { background-color: var(--success); } input:checked + .slider + .slider-ball { transform: translateX(16px); }`;
-                    document.head.appendChild(style);
-                }
-            } catch (e) {
-                console.error("Error cargando contactos:", e);
-            }
-        }
-
-        function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
-        async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
-        
-        function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
-        async function saveNewContact() {
-            const name = document.getElementById('newContName').value;
-            const phone = document.getElementById('newContPhone').value;
-            const enable = document.getElementById('newContEnable').checked;
-            if(!phone) return;
-            await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})});
-            document.getElementById('contactModal').classList.remove('active');
-            renderContacts();
-        }
-
-        // --- SIMULADOR ---
-        socket.on('message', (data) => {
-            // Verificar si el mensaje es para nosotros
-            const destino = data.to.replace(/\D/g, '');
-            if (!destino.includes(simPhone)) return;
-
-            // Quitar mensaje de carga
-            const loading = document.getElementById('msg-loading');
-            if (loading) loading.remove();
-
-            // Mostrar respuesta del bot
-            if (data.type === 'image') {
-                addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false);
-            } else {
-                addMsg(data.text, false);
+            if(s.options && Array.isArray(s.options)) { 
+                s.options.forEach(o => { 
+                    if(o.next_step && flow[o.next_step]) {
+                        elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } }); 
+                    }
+                }); 
+            } else if(s.next_step && flow[s.next_step]) {
+                elements.push({ data: { source: k, target: s.next_step } }); 
             }
         });
 
-        // --- FUNCIONES ---
-
-        function scrollToBottomSim() { 
-            const c = document.getElementById('simMsgs'); 
-            if(c) c.scrollTop = c.scrollHeight; 
-        }
-
-        function sendSim() {
-            const t = document.getElementById('simInput'); 
-            const txt = t.value.trim(); 
-            if(!txt) return;
-
-            // Mostrar mensaje del usuario
-            addMsg(txt, true); 
-            t.value=''; 
-    
-            // Mostrar "Escribiendo..." temporal
-            const d = document.createElement('div'); 
-            d.id = 'msg-loading'; d.className = 'msg bot'; 
-            d.innerHTML = '<em>Escribiendo...</em>'; 
-            document.getElementById('simMsgs').appendChild(d); 
-            scrollToBottomSim();
-
-            // ENVIAR AL NUEVO ENDPOINT DE TEXTO
-            fetch(`${API_BASE}/api/simulate/text`, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ phone: simPhone, text: txt })
+        try {
+            // 3. Inicializar Cytoscape
+            cy = cytoscape({ 
+                container: document.getElementById('cy'), 
+                elements: elements, 
+                autoungrabify: true,       
+                boxSelectionEnabled: false,
+                wheelSensitivity: 0.2,
+                    
+                style: [ 
+                    // --- ESTILO DE TARJETAS (NODOS) ---
+                    { selector: 'node', style: { 
+                        'background-color': '#ffffff', // FONDO BLANCO
+                        'label': 'data(label)', 
+                        'color': '#0f172a', // TEXTO OSCURO (Casi negro) para contraste
+                        'text-margin-y': 0,
+                            
+                        // Forma y Tamaño
+                        'shape': 'round-rectangle', 
+                        'width': 'label', 
+                        'height': 'label', // Se adapta al contenido
+                        'padding': '16px 24px', // Tarjetas más grandes y espaciosas
+                        
+                        // Tipografía
+                        'font-family': 'Inter, sans-serif', 
+                        'font-size': '14px', // Letra más grande
+                        'font-weight': '700', 
+                        'text-valign': 'center', 
+                        'text-halign': 'center', 
+                        'text-transform': 'uppercase', 
+                        'text-wrap': 'wrap', 
+                        'text-max-width': '140px', 
+                        
+                        // BORDE DE COLOR INTENSO
+                        'border-width': 3, 
+                        'border-color': 'data(color)', 
+                        
+                        // EFECTO RESPLANDOR (Sombra del color del borde)
+                        'shadow-blur': 20, 
+                        'shadow-color': 'data(color)', 
+                        'shadow-opacity': 0.25,
+                        'shadow-offset-y': 4
+                    }}, 
+                        
+                    // --- LÍNEAS (EDGES) ---
+                    { selector: 'edge', style: { 
+                        'width': 2, 
+                        'line-color': '#cbd5e1', // Gris suave para no distraer
+                        'curve-style': 'taxi', 
+                        'taxi-direction': 'rightward', 
+                        'target-arrow-shape': 'triangle', 
+                        'target-arrow-color': '#cbd5e1', 
+                        'opacity': 1, 
+                            
+                        // Etiquetas de líneas
+                        'label': 'data(label)', 
+                        'font-size': '11px', 
+                        'font-weight': '600',
+                        'color': '#ffffff', 
+                        'text-background-color': '#1e293b', // Etiqueta oscura
+                        'text-background-opacity': 1, 
+                        'text-background-padding': '4px', 
+                        'text-background-shape': 'roundrectangle',
+                        'text-border-width': 1,
+                        'text-border-color': '#475569',
+                        'text-rotation': 'autorotate' 
+                    }},
+                    
+                    // LÍNEAS PUNTEADAS (REUTILIZACIÓN)
+                    { selector: 'edge.cross-edge', style: {
+                        'line-style': 'dashed', 
+                        'line-dash-pattern': [6, 3],
+                        'line-color': '#64748b', 
+                        'target-arrow-color': '#64748b',
+                        'opacity': 0.6
+                    }},
+                    
+                    // ESTADOS ACTIVOS
+                    { selector: 'node:selected', style: { 
+                        'border-width': 4, 
+                        'shadow-blur': 30, 
+                        'shadow-opacity': 0.6,
+                        'background-color': '#f8fafc' // Un blanco un poco más brillante al seleccionar
+                    }},
+                    { selector: '.highlighted', style: { 'opacity': 1, 'z-index': 999 } },
+                    { selector: '.faded', style: { 'opacity': 0.15, 'label': '' } }
+                ],
+                layout: { name: 'preset' } 
             });
+
+            // 4. LÓGICA DE ÁRBOL Y LÍNEAS (BFS) - Igual que antes
+            let roots = cy.nodes().roots();
+            if(roots.length === 0) roots = cy.nodes().first(); 
+            cy.edges().addClass('cross-edge');
+
+            cy.elements().bfs({
+                roots: roots,
+                visit: function(v, e, u, i, depth) {
+                    if (e) { e.removeClass('cross-edge'); }
+                },
+                directed: true
+            });
+
+            const layoutElements = cy.elements().not('edge.cross-edge');
+            
+            layoutElements.layout({ 
+                name: 'dagre', 
+                rankDir: 'LR', 
+                nodeSep: 60,  // Separación horizontal
+                rankSep: 120, // Separación vertical (niveles)
+                ranker: 'network-simplex', 
+                align: 'UL',
+                animate: false,
+                fit: !savedZoom
+            }).run();
+
+            if (savedZoom && savedPan) cy.viewport({ zoom: savedZoom, pan: savedPan });
+
+            cy.on('tap', 'node', function(evt){ 
+                const node = evt.target;
+                cy.elements().removeClass('highlighted faded');
+                const neighborhood = node.predecessors().union(node.successors()).union(node);
+                cy.elements().not(neighborhood).addClass('faded');
+                neighborhood.addClass('highlighted');
+            });
+            
+            cy.on('tap', function(evt){ if(evt.target === cy) cy.elements().removeClass('highlighted faded'); });
+            cy.on('dbltap', 'node', function(evt){ edit(evt.target.id()); });
+
+        } catch(e) { console.error(e); }
+    }
+
+    // --- EDITOR (Lógica intacta) ---
+    let currentMediaList = [];
+    function edit(id) 
+        const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type; document.getElementById('stMsg').value = d.message || '';
+        currentMediaList = Array.isArray(d.media) ? d.media : (d.media ? [d.media] : []);
+        renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
+    }
+    function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
+       
+    function renderFields() {
+        const type = document.getElementById('stType').value;
+        const container = document.getElementById('dynFields'); // ID Correcto
+        const id = document.getElementById('stId').value;
+        const d = flow[id] || {}; 
+
+        // 1. CONTROL DE VISIBILIDAD DE CAMPOS FIJOS (HTML)
+        // Ocultamos media/mensaje si es tipo 'cita' o 'filtro' (opcional, ajusta a tu gusto)
+        const wrapMsg = document.getElementById('wrapper-msg');
+        const wrapMedia = document.getElementById('wrapper-media');
+     
+        // Por defecto mostramos todo
+        wrapMsg.style.display = 'block';
+        wrapMedia.style.display = 'block';
+
+        if(type === 'cita') {
+            wrapMsg.style.display = 'none'; // Citas usualmente no llevan mensaje libre aquí
+            wrapMedia.style.display = 'none';
         }
 
-        function addMsg(txt, usr) {
-            const d = document.createElement('div'); 
-            d.className = `msg ${usr?'user':'bot'}`; 
-            d.innerHTML = txt; 
-            document.getElementById('simMsgs').appendChild(d); 
-            scrollToBottomSim();
+        // 2. GENERACIÓN DE CAMPOS DINÁMICOS (Solo lo extra)
+        let html = '';
+
+        const getOpts = (sel) => { 
+            let s='<option value="">-- Seleccionar --</option>'; 
+            Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); 
+            return s; 
+        };
+
+        // --- MENU ---
+        if (type === 'menu') {
+            const keywordsVal = (d.keywords || []).join(', ');
+            html += `<label style="display:block; margin-bottom:5px; font-size:0.8rem; font-weight:600;">🔑 Palabras Clave</label>
+                     <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu" style="margin-bottom:15px;">`;
+
+            html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Opciones del Menú</label>`;
+            (d.options||[]).forEach(o => {
+                html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
+                            <input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;">
+                            <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
+                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
+                         </div>`;
+            });
+            html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Opción</button>`;
         }
 
-        function restartSim() { 
-            document.getElementById('simMsgs').innerHTML=''; 
-            simState={step:'BIENVENIDA', history:{}}; 
-            showToast('Terminal Limpia'); 
+        // --- FILTRO ---
+        else if (type === 'filtro') {
+             html += `<div style="background:rgba(168, 85, 247, 0.1); padding:10px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:6px; margin-bottom:15px;">
+                        <label style="color:#a855f7; font-weight:bold; font-size:0.8rem;">👮 Teléfono Administrador</label>
+                        <input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3);">
+                     </div>`;
+
+             html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Rutas de Decisión</label>`;
+            (d.options||[]).forEach(o => {
+                html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
+                            <input class="o-lbl" value="${o.label}" placeholder="Acción (ej: Aprobar)" style="flex:1;">
+                            <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
+                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
+                         </div>`;
+            });
+            html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Ruta</button>`;
         }
 
-        // --- SETTINGS ---
-        async function saveSettings() {
-            const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
-            await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
-            showToast('Configuración Guardada');
+        // --- INPUT ---
+        else if (type === 'input') {
+            html += `<label style="display:block; margin-bottom:5px; margin-top:10px;">💾 Nombre Variable (donde guardar el dato)</label>
+                     <input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente">`;
+            
+            html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
+                     <select id="stNextStep">${getOpts(d.next_step)}</select>`;
         }
 
-    </script>
+        // --- CITA ---
+        else if (type === 'cita') {
+             html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso (Al agendar)</label>
+                      <select id="stNextStep">${getOpts(d.next_step)}</select>`;
+        }
+
+        // --- GENÉRICO (Message, Fin, etc) ---
+        else {
+             if (type !== 'fin_bot') {
+                 html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
+                          <select id="stNextStep">${getOpts(d.next_step)}</select>`;
+             }
+        }
+
+        container.innerHTML = html;
+    }
+
+    function addOpt() {
+        const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:5px; margin-bottom:5px;";
+        let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}">${k}</option>`);
+        div.innerHTML=`<input class="o-lbl" placeholder="Texto Botón"><select class="o-nxt">${s}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>`;
+        document.getElementById('optList').appendChild(div);
+    }
+        
+    const emojis = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+
+    async function saveStep() {
+	const id = document.getElementById('stId').value;
+	const type = document.getElementById('stType').value;
+	const stepData = { type };
+
+        // Helper para obtener valor si el elemento existe
+        const getVal = (eid) => document.getElementById(eid) ? document.getElementById(eid).value : null;
+
+        if(getVal('stMessage') !== null) stepData.message = getVal('stMessage');
+        if(getVal('stKeywords') !== null) stepData.keywords = getVal('stKeywords').split(',').map(s=>s.trim()).filter(Boolean);
+        if(getVal('stMedia') !== null) stepData.media = getVal('stMedia') ? [getVal('stMedia')] : [];
+        if(getVal('stNextStep') !== null) stepData.next_step = getVal('stNextStep');
+        if(getVal('stSaveVar') !== null) stepData.save_var = getVal('stSaveVar');
+    
+	// --- IMPORTANTE: Guardar Admin Number ---
+	if(getVal('stAdminNumber') !== null) stepData.admin_number = getVal('stAdminNumber');
+
+        // Guardar Opciones
+        const optsContainer = document.getElementById('optList');
+	if (optsContainer) {
+	    stepData.options = [];
+	    // Iteramos sobre los divs hijos directos que tienen inputs
+	    optsContainer.querySelectorAll('div').forEach(row => {
+	        const lbl = row.querySelector('.o-lbl')?.value;
+	        const nxt = row.querySelector('.o-nxt')?.value;
+	        if (lbl) {
+	            stepData.options.push({ 
+	                trigger: lbl, // Usamos el label como trigger por defecto
+	                label: lbl, 
+	                next_step: nxt 
+	            });
+	        }
+	    });
+	} else if (type === 'cita') {
+              // Lógica interna invisible para citas simplificadas
+	    const next = getVal('stNextStep');
+	    if(next) {
+	        stepData.options = [
+	            { internal_label: 'DISPONIBLE', next_step: next },
+	            { internal_label: 'NO_DISPONIBLE', next_step: next } 
+	        ];
+	    }
+	}
+
+	try {
+	    await fetch('/api/flow/step', {
+	        method: 'POST',
+	        headers: {'Content-Type': 'application/json'},
+	        body: JSON.stringify({ stepId: id, stepData })
+	    });
+            refreshFlow(); // Recargar para actualizar la variable global
+	    // alert("Guardado"); // Opcional
+	} catch (e) { alert("Error al guardar"); }
+    }
+
+    function newStep() { const id = prompt("Nombre del Nuevo Paso (ej: MENU_VENTAS):"); if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlow(); setTimeout(()=>edit(id.toUpperCase()),200); } }
+    async function delStep() { const id=document.getElementById('stId').value; if(confirm('¿Eliminar este paso?')) { await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); loadAll(); closeEditor(); showToast('Eliminado'); } }
+
+    function renderGallery() {
+        const c = document.getElementById('galleryContainer'); c.innerHTML='';
+        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="position:relative; width:60px; height:60px;"><img src="${u}" style="width:100%; height:100%; border-radius:4px; object-fit:cover; border:1px solid var(--border);"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; border-radius:50%; width:18px; height:18px; font-size:10px; border:none; cursor:pointer;">✕</button></div>`);
+        document.getElementById('imgCount').innerText = currentMediaList.length + " archivos";
+    }
+    async function uploadImages(inp) {
+        if(!inp.files.length) return;
+        const fd = new FormData(); for(let f of inp.files) fd.append('images', f);
+        const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json();
+        if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
+    }
+
+    // --- AGENDA & CALENDARIO ---
+    async function renderCalendar() {
+        const now = currentRefDate;
+        const m = now.getMonth(), y = now.getFullYear();
+        const firstDay = new Date(y, m, 1).getDay();
+        const daysInMonth = new Date(y, m+1, 0).getDate();
+        const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+        document.getElementById('monthDisplay').innerText = `${months[m]} ${y}`;
+        const g = document.getElementById('calendarDays'); g.innerHTML = '';
+         
+        let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
+
+        for(let i=0; i<firstDay; i++) g.innerHTML += `<div class="day empty"></div>`;
+        for(let i=1; i<=daysInMonth; i++) {
+            const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
+            const count = (appts[k]||[]).length;
+            const isToday = new Date().toDateString() === new Date(y,m,i).toDateString();
+            g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}', [])">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`;
+        }
+    }
+    function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
+      
+    function openDayModal(dateStr, _) {
+        document.getElementById('modalDateTitle').innerText = dateStr;
+        renderEventList(dateStr);
+        document.getElementById('dayModal').classList.add('active');
+    }
+    function closeDayModal() { document.getElementById('dayModal').classList.remove('active'); renderCalendar(); }
+
+    async function renderEventList(dateKey) {
+        const list = document.getElementById('modalApptList'); list.innerHTML = 'Cargando...';
+        const allAppts = await (await fetch(`${API_BASE}/api/agenda`)).json();
+        const appts = allAppts[dateKey] || [];
+        list.innerHTML = '';
+        if(!appts.length) list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic; font-size:0.85rem;">No hay eventos para este día.</div>';
+            
+        appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
+            const row = document.createElement('div');
+            row.style.cssText = "background:var(--bg-body); border:1px solid var(--border); border-radius:6px; padding:10px; display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;";
+            row.innerHTML = `
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-family:monospace; color:var(--primary); background:var(--bg-card); padding:2px 4px; border-radius:4px; font-size:0.8rem;">${c.time}</span>
+                        <span style="font-weight:600; font-size:0.9rem;">${c.name}</span>
+                    </div>
+                    <div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">${c.phone||''}</div>
+                    ${c.note ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; font-style:italic;">"${c.note}"</div>` : ''}
+                </div>
+                <button onclick="deleteAppt('${dateKey}', '${c.time}')" style="background:transparent; border:none; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>
+            `;
+            list.appendChild(row);
+        });
+        document.getElementById('evtOldTime').dataset.date = dateKey; 
+    }
+
+    function showEventForm() { document.getElementById('eventForm').style.display='block'; document.getElementById('btnAddEvent').style.display='none'; }
+    function hideEventForm() { document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block'; }
+
+    async function saveEvent() {
+        const date = document.getElementById('evtOldTime').dataset.date;
+        const time = document.getElementById('evtTime').value;
+        const name = document.getElementById('evtName').value;
+        const phone = document.getElementById('evtPhone').value;
+        const note = document.getElementById('evtNote').value;
+        if(!time || !name) return showToast('Falta hora o nombre', 'error');
+            
+        await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time, name, phone, note}) });
+        hideEventForm(); renderEventList(date); showToast('Evento Guardado');
+    }
+    async function deleteAppt(date, time) {
+        if(!confirm('¿Eliminar?')) return;
+        await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) });
+        renderEventList(date);
+    }
+
+    // --- CONTACTOS ---
+    async function renderContacts() {
+        try {
+            const list = await (await fetch(`${API_BASE}/api/contacts`)).json();
+            const c = document.getElementById('contactsList');
+            let htmlBuffer = '';
+            list.forEach(u => {
+                htmlBuffer += `
+                <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
+                    <div>
+                        <b style="color:var(--text-main); font-size:0.9rem;">${u.name||u.phone}</b>
+                        <div style="color:var(--text-muted); font-size:0.75rem;">${u.phone}</div>
+                    </div>
+                    <label class="switch" style="position:relative; display:inline-block; width:36px; height:20px;">
+                        <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)" style="opacity:0; width:0; height:0;">
+                        <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:var(--bg-hover); transition:.4s; border-radius:34px;"></span>
+                        <span class="slider-ball" style="position:absolute; content:''; height:14px; width:14px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;"></span>
+                    </label>
+                </div>`;
+            });
+            c.innerHTML = htmlBuffer;
+            if (!document.getElementById('toggle-style')) {
+                const style = document.createElement('style');
+                style.id = 'toggle-style';
+                style.innerHTML = `input:checked + .slider { background-color: var(--success); } input:checked + .slider + .slider-ball { transform: translateX(16px); }`;
+                document.head.appendChild(style);
+            }
+        } catch (e) {
+            console.error("Error cargando contactos:", e);
+        }
+    }
+
+    function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
+    async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
+       
+    function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
+    async function saveNewContact() {
+        const name = document.getElementById('newContName').value;
+        const phone = document.getElementById('newContPhone').value;
+        const enable = document.getElementById('newContEnable').checked;
+        if(!phone) return;
+        await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})});
+        document.getElementById('contactModal').classList.remove('active');
+        renderContacts();
+    }
+
+    // --- SIMULADOR ---
+    socket.on('message', (data) => {
+        // Verificar si el mensaje es para nosotros
+        const destino = data.to.replace(/\D/g, '');
+        if (!destino.includes(simPhone)) return;
+
+        // Quitar mensaje de carga
+        const loading = document.getElementById('msg-loading');
+        if (loading) loading.remove();
+
+        // Mostrar respuesta del bot
+        if (data.type === 'image') {
+            addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false);
+        } else {
+            addMsg(data.text, false);
+        }
+    });
+
+    // --- FUNCIONES ---
+
+    function scrollToBottomSim() { 
+        const c = document.getElementById('simMsgs'); 
+        if(c) c.scrollTop = c.scrollHeight; 
+    }
+
+    function sendSim() {
+        const t = document.getElementById('simInput'); 
+        const txt = t.value.trim(); 
+        if(!txt) return;
+
+        // Mostrar mensaje del usuario
+        addMsg(txt, true); 
+        t.value=''; 
+    
+        // Mostrar "Escribiendo..." temporal
+        const d = document.createElement('div'); 
+        d.id = 'msg-loading'; d.className = 'msg bot'; 
+        d.innerHTML = '<em>Escribiendo...</em>'; 
+        document.getElementById('simMsgs').appendChild(d); 
+        scrollToBottomSim();
+
+        // ENVIAR AL NUEVO ENDPOINT DE TEXTO
+        fetch(`${API_BASE}/api/simulate/text`, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'}, 
+            body: JSON.stringify({ phone: simPhone, text: txt })
+        });
+    }
+
+    function addMsg(txt, usr) {
+        const d = document.createElement('div'); 
+        d.className = `msg ${usr?'user':'bot'}`; 
+        d.innerHTML = txt; 
+        document.getElementById('simMsgs').appendChild(d); 
+        scrollToBottomSim();
+    }
+
+    function restartSim() { 
+        document.getElementById('simMsgs').innerHTML=''; 
+        simState={step:'BIENVENIDA', history:{}}; 
+        showToast('Terminal Limpia'); 
+    }
+
+    // --- SETTINGS ---
+    async function saveSettings() {
+        const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
+        await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
+        showToast('Configuración Guardada');
+    }
+
+</script>
 </body>
 </html>
