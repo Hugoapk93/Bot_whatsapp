@@ -4,17 +4,17 @@ const fs = require('fs');
 const path = require('path');
 
 // --- CONFIGURACIÓN ---
-const SIMULATOR_PHONE = '5218991234567'; 
-const INITIAL_STEP = 'BIENVENIDA'; 
-const MAX_INACTIVE_MINUTES = 30; 
+const SIMULATOR_PHONE = '5218991234567';
+const INITIAL_STEP = 'BIENVENIDA';
+const MAX_INACTIVE_MINUTES = 1440;
 
 const agendaPath = path.join(__dirname, '../data/agenda.json');
-const publicFolder = path.join(__dirname, '../public'); 
+const publicFolder = path.join(__dirname, '../public');
 
 // --- UTILIDADES ---
 function isSimilar(a, b) {
     if(!a || !b) return false;
-    a = a.toLowerCase().trim(); 
+    a = a.toLowerCase().trim();
     b = b.toLowerCase().trim();
     if (a === b) return true;
     if (a.includes(b) && b.length > 3) return true;
@@ -64,10 +64,10 @@ function normalizeTime(input) {
     const match = text.match(/^(\d{1,2})(?::(\d{2}))?([ap]m)?$/);
     if (!match) return null;
     let h = parseInt(match[1]);
-    let m = match[2] ? parseInt(match[2]) : 0; 
-    const period = match[3]; 
+    let m = match[2] ? parseInt(match[2]) : 0;
+    const period = match[3];
     if (h > 23 || m > 59) return null;
-    if (period) { if (period === 'pm' && h < 12) h += 12; if (period === 'am' && h === 12) h = 0; } 
+    if (period) { if (period === 'pm' && h < 12) h += 12; if (period === 'am' && h === 12) h = 0; }
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 }
 
@@ -88,7 +88,7 @@ const isBusinessClosed = () => {
     const nowServer = new Date();
     const mxDate = new Date(nowServer.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
     const currentMins = (mxDate.getHours() * 60) + mxDate.getMinutes();
-    const currentDay = mxDate.getDay(); 
+    const currentDay = mxDate.getDay();
     if (settings.schedule.days && !settings.schedule.days.includes(currentDay)) return true;
     const [sh, sm] = (settings.schedule.start || "09:00").split(':').map(Number);
     const [eh, em] = (settings.schedule.end || "18:00").split(':').map(Number);
@@ -112,14 +112,14 @@ const enviarAlFrontend = (jid, contenido, tipo = 'text') => {
             fromMe: true
         };
         global.io.emit('message', payload);
-    } 
+    }
 };
 
 const esSimulador = (jid) => jid.includes(SIMULATOR_PHONE);
 
 const typing = async (sock, jid, length) => {
-    if (esSimulador(jid)) return; 
-    const ms = Math.min(Math.max(length * 50, 1000), 5000); 
+    if (esSimulador(jid)) return;
+    const ms = Math.min(Math.max(length * 50, 1000), 5000);
     await sock.sendPresenceUpdate('composing', jid);
     await new Promise(resolve => setTimeout(resolve, ms));
     await sock.sendPresenceUpdate('paused', jid);
@@ -129,7 +129,7 @@ const typing = async (sock, jid, length) => {
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId} a ${jid}`);
     let step = getFlowStep(stepId);
-    
+
     if (!step && stepId === INITIAL_STEP) {
         step = { type: 'menu', message: '¡Hola! Bienvenido.', options: [] };
         await saveFlowStep(INITIAL_STEP, step);
@@ -142,7 +142,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     if (step.type === 'fin_bot') {
         const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
         const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
-        addManualContact(cleanPhone, contactName, false); 
+        addManualContact(cleanPhone, contactName, false);
     }
 
     // --- NOTIFICACIÓN AL ADMIN (FILTRO) DINÁMICA & MULTI-MENSAJE ---
@@ -166,7 +166,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         } else {
             adminMsg += `(Sin datos capturados aún)\n`;
         }
-        
+
         adminMsg += `------------------------------\n`;
         adminMsg += `🤖 *Bot:* "${messageText}"\n\n`;
         adminMsg += `👇 *Escribe una opción (copia y pega):*`;
@@ -175,7 +175,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
         // 2. Enviar Botones Individuales (Mensajes Separados)
         const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
-        
+
         if(step.options && Array.isArray(step.options)){
             for (let idx = 0; idx < step.options.length; idx++) {
                 const opt = step.options[idx];
@@ -218,7 +218,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     // MENÚ INTELIGENTE
     if (step.type === 'menu' && step.options) {
-        messageText += '\n'; 
+        messageText += '\n';
         const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
         step.options.forEach((opt, index) => {
             if (opt.trigger === opt.label) {
@@ -241,27 +241,27 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             const url = mediaList[i];
             const relativePath = url.startsWith('/') ? url.slice(1) : url;
             const finalPath = path.join(publicFolder, relativePath);
-            const altPath = path.join(__dirname, '../public', url); 
+            const altPath = path.join(__dirname, '../public', url);
             const imageToSend = fs.existsSync(finalPath) ? finalPath : (fs.existsSync(altPath) ? altPath : null);
 
             if (imageToSend) {
-                const caption = (i === 0) ? messageText : ""; 
+                const caption = (i === 0) ? messageText : "";
                 try {
                     if (esSimulador(jid)) {
                         enviarAlFrontend(jid, { url: url, caption: caption }, 'image');
                         sent = true;
                     } else {
                         await sock.sendMessage(jid, { image: { url: imageToSend }, caption: caption });
-                        sent = true; 
+                        sent = true;
                     }
-                    if(mediaList.length > 1) await new Promise(r => setTimeout(r, 500)); 
+                    if(mediaList.length > 1) await new Promise(r => setTimeout(r, 500));
                 } catch (e) {}
             }
         }
     }
 
     if (!sent && messageText) {
-        try { 
+        try {
             if (esSimulador(jid)) enviarAlFrontend(jid, messageText, 'text');
             else { await sock.sendMessage(jid, { text: messageText }); }
         } catch (e) {}
@@ -273,22 +273,22 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             if (freshUser && freshUser.current_step !== stepId && freshUser.current_step !== step.next_step) return;
             await updateUser(userData.phone, { current_step: step.next_step });
             await sendStepMessage(sock, jid, step.next_step, getUser(userData.phone));
-        }, 1500); 
+        }, 1500);
     }
 };
 
 // --- HANDLER PRINCIPAL ---
 const handleMessage = async (sock, msg) => {
-    const remoteJid = msg.key.remoteJid; 
-    
+    const remoteJid = msg.key.remoteJid;
+
     if (isBotDisabled(remoteJid)) return;
     if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
 
     const text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
     if (!text) return;
 
-    let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, ''); 
-    let user = getUser(incomingPhone); 
+    let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, '');
+    let user = getUser(incomingPhone);
     let dbKey = incomingPhone;
 
     if (!user?.phone) {
@@ -311,7 +311,7 @@ const handleMessage = async (sock, msg) => {
 
     if (user.jid !== remoteJid) {
         await updateUser(dbKey, { jid: remoteJid, last_active: timestamp });
-        user.jid = remoteJid; 
+        user.jid = remoteJid;
     } else {
         await updateUser(dbKey, { last_active: timestamp });
     }
@@ -338,7 +338,7 @@ const handleMessage = async (sock, msg) => {
     for (const word of words) {
         const potentialNum = word.replace(/[^0-9]/g, '');
         if (potentialNum.length >= 10 && potentialNum.length <= 13 && potentialNum !== incomingPhone) {
-            
+
             let checkUser = getUser(potentialNum);
             if (!checkUser && potentialNum.startsWith('52') && potentialNum.length === 12) {
                  checkUser = getUser('521' + potentialNum.slice(2));
@@ -349,7 +349,7 @@ const handleMessage = async (sock, msg) => {
 
             if (checkUser) {
                 targetClientPhone = checkUser.phone;
-                commandOption = cleanText.replace(word, '').trim(); 
+                commandOption = cleanText.replace(word, '').trim();
                 break;
             }
         }
@@ -358,9 +358,9 @@ const handleMessage = async (sock, msg) => {
     if (targetClientPhone) {
         const targetUser = getUser(targetClientPhone);
         const targetStepConfig = getFlowStep(targetUser.current_step);
-        
+
         if (targetStepConfig && targetStepConfig.type === 'filtro' && targetStepConfig.admin_number) {
-            
+
             const senderLast10 = incomingPhone.slice(-10);
             const adminLast10 = targetStepConfig.admin_number.replace(/[^0-9]/g, '').slice(-10);
 
@@ -368,8 +368,8 @@ const handleMessage = async (sock, msg) => {
                 console.log(`👮 Admin autorizado (${incomingPhone}) -> Cliente (${targetClientPhone})`);
 
                 const match = targetStepConfig.options?.find(opt => {
-                    const t = opt.trigger.toLowerCase(); 
-                    const l = opt.label.toLowerCase(); 
+                    const t = opt.trigger.toLowerCase();
+                    const l = opt.label.toLowerCase();
                     return isSimilar(commandOption, t) || isSimilar(commandOption, l) || commandOption.includes(t) || commandOption.includes(l);
                 });
 
@@ -378,7 +378,7 @@ const handleMessage = async (sock, msg) => {
                     await updateUser(targetClientPhone, { current_step: match.next_step });
                     const targetJid = targetUser.jid || targetClientPhone + '@s.whatsapp.net';
                     await sendStepMessage(sock, targetJid, match.next_step, targetUser);
-                    return; 
+                    return;
                 } else {
                     await sock.sendMessage(remoteJid, { text: `⚠️ Opción no válida.` });
                     return;
@@ -404,7 +404,7 @@ const handleMessage = async (sock, msg) => {
         console.log(`🔀 Salto por keyword a: ${jumpToStep}`);
         await updateUser(dbKey, { current_step: jumpToStep });
         await sendStepMessage(sock, remoteJid, jumpToStep, user);
-        return; 
+        return;
     }
 
     const currentConfig = getFlowStep(user.current_step);
@@ -419,14 +419,14 @@ const handleMessage = async (sock, msg) => {
         const varName = currentConfig.save_var || 'temp';
         const newHistory = { ...user.history, [varName]: text };
         await updateUser(dbKey, { history: newHistory });
-        user = getUser(dbKey); 
+        user = getUser(dbKey);
         nextStepId = currentConfig.next_step;
     }
-    
+
     // CORRECCIÓN MENÚ
     else if (currentConfig.type === 'menu') {
         let match = null;
-        const numberMatches = cleanText.match(/^(\d+)[\s.)]*$/); 
+        const numberMatches = cleanText.match(/^(\d+)[\s.)]*$/);
         if (numberMatches) {
              const index = parseInt(numberMatches[1]) - 1;
              if (index >= 0 && index < (currentConfig.options?.length || 0)) match = currentConfig.options[index];
@@ -434,9 +434,9 @@ const handleMessage = async (sock, msg) => {
 
         if (!match) {
             match = currentConfig.options?.find(opt => {
-                const t = opt.trigger.toLowerCase(); 
-                const l = opt.label.toLowerCase(); 
-                const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, ''); 
+                const t = opt.trigger.toLowerCase();
+                const l = opt.label.toLowerCase();
+                const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, '');
                 return isSimilar(cleanText, t) || isSimilar(cleanText, tLimpio) || isSimilar(cleanText, l);
             });
         }
@@ -444,46 +444,46 @@ const handleMessage = async (sock, msg) => {
         if (match) {
             nextStepId = match.next_step;
         } else {
-            if (user.current_step === INITIAL_STEP) return; 
-            
+            if (user.current_step === INITIAL_STEP) return;
+
             // --- CORRECCIÓN SOLICITADA: FORMATO DE ERROR LIMPIO ---
             let helpText = "⚠️ No entendí.\nPor favor escribe las siguientes opciones:\n";
             currentConfig.options.forEach((opt, index) => {
                 // Muestra: 👉 *1* o *Nombre Opción*
                 helpText += `👉 *${index + 1}* o *${opt.label}*\n`;
             });
-            
+
             if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, helpText);
             else await sock.sendMessage(remoteJid, { text: helpText });
-            return; 
+            return;
         }
     }
 
     else if (currentConfig.type === 'filtro') {
         console.log(`🔒 Cliente ${dbKey} intentó escribir en FILTRO. Ignorado.`);
-        return; 
+        return;
     }
 
     else if (currentConfig.type === 'message') {
         nextStepId = currentConfig.next_step;
     }
-    
+
     // Logica Citas
     if (nextStepId) {
         const nextStepConfig = getFlowStep(nextStepId);
         if (nextStepConfig && nextStepConfig.type === 'cita') {
-             let rawDate = user.history['fecha_cita'] || user.history['fecha']; 
-             let rawTime = user.history['hora_cita'] || user.history['hora'];    
+             let rawDate = user.history['fecha_cita'] || user.history['fecha'];
+             let rawTime = user.history['hora_cita'] || user.history['hora'];
              let fecha = normalizeDate(rawDate);
-             
-             if (nextStepConfig.next_step) { 
-                 if (!fecha || fecha < new Date().toISOString().split('T')[0]) { 
+
+             if (nextStepConfig.next_step) {
+                 if (!fecha || fecha < new Date().toISOString().split('T')[0]) {
                     const txt = `⚠️ Fecha inválida.`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    return; 
+                    return;
                  }
-                 nextStepId = nextStepConfig.next_step; 
-             } else { 
+                 nextStepId = nextStepConfig.next_step;
+             } else {
                  if (!fecha) {
                      const possibleCorrection = normalizeDate(rawTime);
                      if (possibleCorrection) {
@@ -491,20 +491,20 @@ const handleMessage = async (sock, msg) => {
                          const txt = `🗓️ Fecha: ${possibleCorrection}. ¿Hora?`;
                          if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                          return;
-                     } 
+                     }
                      const txt = `⚠️ No reconocí la fecha.`;
                      if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                      return;
                  }
                  const hora = normalizeTime(rawTime);
-                 if (!hora) { 
+                 if (!hora) {
                     const txt = `⚠️ Hora inválida.`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    return; 
+                    return;
                  }
                  const settings = getSettings();
                  const rules = validateBusinessRules(hora, settings);
-                 
+
                  let pathSuccess = nextStepConfig.options?.find(o => o.internal_label === 'DISPONIBLE');
                  if (!pathSuccess && nextStepConfig.next_step) pathSuccess = { next_step: nextStepConfig.next_step };
                  const pathFail = nextStepConfig.options?.find(o => o.internal_label === 'NO_DISPONIBLE');
