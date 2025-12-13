@@ -180,16 +180,11 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             for (let idx = 0; idx < step.options.length; idx++) {
                 const opt = step.options[idx];
                 const icon = emojis[idx] || '👉';
-                // El mensaje será SOLO el texto para copiar: "1️⃣ Aprobar 281..."
                 const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
-                
-                // Pequeña pausa para asegurar orden de llegada
                 await new Promise(r => setTimeout(r, 200));
-                
                 try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
             }
         } else {
-            // Opciones por defecto si no están configuradas
              await new Promise(r => setTimeout(r, 200));
              try { await sock.sendMessage(adminJid, { text: `👉 Aprobar ${cleanClientPhone}` }); } catch (e) {}
              await new Promise(r => setTimeout(r, 200));
@@ -334,20 +329,17 @@ const handleMessage = async (sock, msg) => {
     }
 
     // =================================================================
-    // 1. LÓGICA DE ADMINISTRADOR (PRIORIDAD ALTA)
+    // 1. LÓGICA DE ADMINISTRADOR
     // =================================================================
     const words = cleanText.split(/\s+/);
     let targetClientPhone = null;
     let commandOption = "";
 
-    // Buscar posible teléfono objetivo
     for (const word of words) {
         const potentialNum = word.replace(/[^0-9]/g, '');
-        // El número no puede ser el mismo que envía (admin auto-aprobándose)
         if (potentialNum.length >= 10 && potentialNum.length <= 13 && potentialNum !== incomingPhone) {
             
             let checkUser = getUser(potentialNum);
-            // Intentos extra para encontrar al usuario si el formato difiere
             if (!checkUser && potentialNum.startsWith('52') && potentialNum.length === 12) {
                  checkUser = getUser('521' + potentialNum.slice(2));
             }
@@ -367,11 +359,8 @@ const handleMessage = async (sock, msg) => {
         const targetUser = getUser(targetClientPhone);
         const targetStepConfig = getFlowStep(targetUser.current_step);
         
-        // VALIDAR QUE EL CLIENTE ESPERA ADMIN
         if (targetStepConfig && targetStepConfig.type === 'filtro' && targetStepConfig.admin_number) {
             
-            // --- VALIDACIÓN DE IDENTIDAD SEGURA ---
-            // Usamos solo los últimos 10 dígitos para evitar líos de lada (52 vs 521)
             const senderLast10 = incomingPhone.slice(-10);
             const adminLast10 = targetStepConfig.admin_number.replace(/[^0-9]/g, '').slice(-10);
 
@@ -389,7 +378,7 @@ const handleMessage = async (sock, msg) => {
                     await updateUser(targetClientPhone, { current_step: match.next_step });
                     const targetJid = targetUser.jid || targetClientPhone + '@s.whatsapp.net';
                     await sendStepMessage(sock, targetJid, match.next_step, targetUser);
-                    return; // IMPORTANTE: Admin termina aquí.
+                    return; 
                 } else {
                     await sock.sendMessage(remoteJid, { text: `⚠️ Opción no válida.` });
                     return;
@@ -402,7 +391,6 @@ const handleMessage = async (sock, msg) => {
     // 2. LÓGICA DE USUARIO / CLIENTE
     // =================================================================
 
-    // Keywords Globales
     const fullFlow = getFullFlow();
     let jumpToStep = null;
     Object.keys(fullFlow).forEach(stepName => {
@@ -435,8 +423,7 @@ const handleMessage = async (sock, msg) => {
         nextStepId = currentConfig.next_step;
     }
     
-    // --- CORRECCIÓN SEGURIDAD: MENÚ SOLO APLICA A TIPOS 'MENU' ---
-    // Quitamos 'filtro' de aquí para que el cliente no pueda auto-aprobarse
+    // CORRECCIÓN MENÚ
     else if (currentConfig.type === 'menu') {
         let match = null;
         const numberMatches = cleanText.match(/^(\d+)[\s.)]*$/); 
@@ -458,19 +445,21 @@ const handleMessage = async (sock, msg) => {
             nextStepId = match.next_step;
         } else {
             if (user.current_step === INITIAL_STEP) return; 
-            let helpText = "⚠️ No entendí. Opciones:\n";
-            currentConfig.options.forEach(opt => helpText += `👉 *${opt.trigger}* o *${opt.label}*\n`);
+            
+            // --- CORRECCIÓN SOLICITADA: FORMATO DE ERROR LIMPIO ---
+            let helpText = "⚠️ No entendí.\nPor favor escribe las siguientes opciones:\n";
+            currentConfig.options.forEach((opt, index) => {
+                // Muestra: 👉 *1* o *Nombre Opción*
+                helpText += `👉 *${index + 1}* o *${opt.label}*\n`;
+            });
+            
             if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, helpText);
             else await sock.sendMessage(remoteJid, { text: helpText });
             return; 
         }
     }
 
-    // --- CORRECCIÓN SEGURIDAD: FILTRO BLOQUEADO AL CLIENTE ---
     else if (currentConfig.type === 'filtro') {
-        // Si el cliente escribe mientras espera al admin, lo ignoramos o enviamos aviso
-        // Opcional: Avisar que debe esperar.
-        // await sock.sendMessage(remoteJid, { text: "⏳ Por favor espera, estamos validando tus datos..." });
         console.log(`🔒 Cliente ${dbKey} intentó escribir en FILTRO. Ignorado.`);
         return; 
     }
