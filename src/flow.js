@@ -6,7 +6,7 @@ const path = require('path');
 // --- CONFIGURACIÓN ---
 const SIMULATOR_PHONE = '5218991234567';
 const INITIAL_STEP = 'BIENVENIDA';
-const MAX_INACTIVE_MINUTES = 1440;
+const MAX_INACTIVE_MINUTES = 2880;
 
 const agendaPath = path.join(__dirname, '../data/agenda.json');
 const publicFolder = path.join(__dirname, '../public');
