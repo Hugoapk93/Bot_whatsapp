@@ -72,7 +72,7 @@ function normalizeTime(input) {
 }
 
 function validateBusinessRules(timeStr, settings) {
-    if (!/^\d{1,2}:\d{2}$/.test(timeStr)) return { valid: false, reason: "Formato hora incorrecto." };
+    if (!/^\d{1,2}:\d{2}$/.test(timeStr)) return { valid: false, reason: "Formato de hora incorrecto." };
     const reqMins = timeToMinutes(timeStr);
     const startMins = timeToMinutes(settings.schedule?.start || "09:00");
     const endMins = timeToMinutes(settings.schedule?.end || "18:00");
@@ -468,7 +468,7 @@ const handleMessage = async (sock, msg) => {
         nextStepId = currentConfig.next_step;
     }
 
-    // Logica Citas
+    // Logica Citas MEJORADA
     if (nextStepId) {
         const nextStepConfig = getFlowStep(nextStepId);
         if (nextStepConfig && nextStepConfig.type === 'cita') {
@@ -478,7 +478,8 @@ const handleMessage = async (sock, msg) => {
 
              if (nextStepConfig.next_step) {
                  if (!fecha || fecha < new Date().toISOString().split('T')[0]) {
-                    const txt = `⚠️ Fecha inválida.`;
+                    // ERROR DESCRIPTIVO DE FECHA
+                    const txt = `⚠️ Fecha no válida o ya pasó.\n📅 Por favor escribe la fecha con el formato: Día/Mes/Año.\nEjemplo: *25/12/2025* o *01/05/2024*`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                     return;
                  }
@@ -488,17 +489,19 @@ const handleMessage = async (sock, msg) => {
                      const possibleCorrection = normalizeDate(rawTime);
                      if (possibleCorrection) {
                          await updateUser(dbKey, { history: { ...user.history, fecha: rawTime, hora: '' } });
-                         const txt = `🗓️ Fecha: ${possibleCorrection}. ¿Hora?`;
+                         const txt = `🗓️ Fecha entendida: ${possibleCorrection}. ¿A qué hora te gustaría agendar?`;
                          if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                          return;
                      }
-                     const txt = `⚠️ No reconocí la fecha.`;
+                     // ERROR DESCRIPTIVO SI NO ENTIENDE LA FECHA
+                     const txt = `⚠️ No logré reconocer la fecha.\n📅 Por favor intenta escribirla así: *DD/MM/AAAA*\nEjemplo: *15/04/2024*`;
                      if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                      return;
                  }
                  const hora = normalizeTime(rawTime);
                  if (!hora) {
-                    const txt = `⚠️ Hora inválida.`;
+                    // ERROR DESCRIPTIVO DE HORA
+                    const txt = `⚠️ Hora no válida.\n🕒 Por favor usa el formato de 12 o 24 horas.\nEjemplo: *4:00 PM* o *16:00*`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                     return;
                  }
@@ -516,14 +519,17 @@ const handleMessage = async (sock, msg) => {
                  } else {
                      const db = getAgenda();
                      if (db[fecha] && db[fecha].some(c => c.time === hora)) {
-                         const txt = `❌ Horario ocupado.`;
+                         const txt = `❌ Ese horario ya está ocupado. Por favor elige otra hora.`;
                          if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                          if (pathFail) nextStepId = pathFail.next_step; else return;
                      } else {
                          if (!db[fecha]) db[fecha] = [];
-                         const finalName = user.history['nombre'] || user.history['cliente'] || msg.pushName || 'Cliente';
+                         // MEJORA: Búsqueda exhaustiva del nombre del cliente
+                         const finalName = user.history['nombre'] || user.history['nombre_completo'] || user.history['cliente'] || user.history['name'] || msg.pushName || 'Cliente';
+
                          db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
                          saveAgenda(db);
+                         console.log(`📅 Cita agendada automáticamente para: ${finalName} el ${fecha} a las ${hora}`);
                          if (pathSuccess) nextStepId = pathSuccess.next_step;
                      }
                  }
