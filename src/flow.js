@@ -468,72 +468,85 @@ const handleMessage = async (sock, msg) => {
         nextStepId = currentConfig.next_step;
     }
 
-    // Logica Citas MEJORADA
-    if (nextStepId) {
-        const nextStepConfig = getFlowStep(nextStepId);
+    // --- LÓGICA CITAS REPARADA ---
+    if (nextStepId || currentConfig.type === 'cita') {
+        // Usamos nextStepId si está definido (ej: vengo de un input y voy a cita) 
+        // O si ya estoy en un paso tipo 'cita' y estoy procesando la entrada
+        
+        let targetStep = nextStepId || user.current_step;
+        const nextStepConfig = getFlowStep(targetStep);
+        
+        // Si el destino es un módulo de citas
         if (nextStepConfig && nextStepConfig.type === 'cita') {
+             
              let rawDate = user.history['fecha_cita'] || user.history['fecha'];
              let rawTime = user.history['hora_cita'] || user.history['hora'];
              let fecha = normalizeDate(rawDate);
 
-             if (nextStepConfig.next_step) {
-                 if (!fecha || fecha < new Date().toISOString().split('T')[0]) {
-                    // ERROR DESCRIPTIVO DE FECHA
-                    const txt = `⚠️ Fecha no válida o ya pasó.\n📅 Por favor escribe la fecha con el formato: Día/Mes/Año.\nEjemplo: *25/12/2025* o *01/05/2024*`;
-                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    return;
-                 }
-                 nextStepId = nextStepConfig.next_step;
-             } else {
-                 if (!fecha) {
-                     const possibleCorrection = normalizeDate(rawTime);
-                     if (possibleCorrection) {
-                         await updateUser(dbKey, { history: { ...user.history, fecha: rawTime, hora: '' } });
-                         const txt = `🗓️ Fecha entendida: ${possibleCorrection}. ¿A qué hora te gustaría agendar?`;
-                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                         return;
-                     }
-                     // ERROR DESCRIPTIVO SI NO ENTIENDE LA FECHA
-                     const txt = `⚠️ No logré reconocer la fecha.\n📅 Por favor intenta escribirla así: *DD/MM/AAAA*\nEjemplo: *15/04/2024*`;
-                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                     return;
-                 }
-                 const hora = normalizeTime(rawTime);
-                 if (!hora) {
-                    // ERROR DESCRIPTIVO DE HORA
-                    const txt = `⚠️ Hora no válida.\n🕒 Por favor usa el formato de 12 o 24 horas.\nEjemplo: *4:00 PM* o *16:00*`;
-                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    return;
-                 }
-                 const settings = getSettings();
-                 const rules = validateBusinessRules(hora, settings);
-
-                 let pathSuccess = nextStepConfig.options?.find(o => o.internal_label === 'DISPONIBLE');
-                 if (!pathSuccess && nextStepConfig.next_step) pathSuccess = { next_step: nextStepConfig.next_step };
-                 const pathFail = nextStepConfig.options?.find(o => o.internal_label === 'NO_DISPONIBLE');
-
-                 if (!rules.valid) {
-                     const txt = `⚠️ ${rules.reason}`;
-                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                     if (pathFail) nextStepId = pathFail.next_step; else return;
+             // 1. Validar Fecha
+             if (!fecha || fecha < new Date().toISOString().split('T')[0]) {
+                 if (!fecha && !rawDate) {
+                     // Si no hay fecha en el historial, probablemente acabamos de entrar al módulo
+                     // y el bot apenas va a preguntar la fecha (definida en el mensaje del paso).
+                     // Así que dejamos pasar al bot para que mande el mensaje.
                  } else {
+                     // Si hay algo en 'fecha' pero es inválido:
+                     const txt = `⚠️ Fecha no válida o ya pasó.\n📅 Por favor escribe la fecha con el formato: Día/Mes/Año.\nEjemplo: *25/12/2025* o *01/05/2024*`;
+                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                     return; // STOP: No avanzar hasta corregir fecha
+                 }
+             }
+
+             // 2. Validar Hora y Guardar (Solo si hay fecha válida)
+             if (fecha) {
+                 // Intentamos normalizar la hora (si existe en historial)
+                 let hora = normalizeTime(rawTime);
+                 
+                 // SI TENEMOS HORA VÁLIDA -> INTENTAMOS AGENDAR
+                 if (hora) {
+                     const settings = getSettings();
+                     const rules = validateBusinessRules(hora, settings);
+                     
+                     if (!rules.valid) {
+                         const txt = `⚠️ ${rules.reason}\n🕒 Por favor usa el formato de 12 o 24 horas.\nEjemplo: *4:00 PM* o *16:00*`;
+                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                         return; // STOP: Hora inválida por reglas negocio
+                     }
+                     
+                     // Checar disponibilidad
                      const db = getAgenda();
                      if (db[fecha] && db[fecha].some(c => c.time === hora)) {
                          const txt = `❌ Ese horario ya está ocupado. Por favor elige otra hora.`;
                          if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                         if (pathFail) nextStepId = pathFail.next_step; else return;
-                     } else {
-                         if (!db[fecha]) db[fecha] = [];
-                         // MEJORA: Búsqueda exhaustiva del nombre del cliente
-                         const finalName = user.history['nombre'] || user.history['nombre_completo'] || user.history['cliente'] || user.history['name'] || msg.pushName || 'Cliente';
-
-                         db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
-                         saveAgenda(db);
-                         console.log(`📅 Cita agendada automáticamente para: ${finalName} el ${fecha} a las ${hora}`);
-                         if (pathSuccess) nextStepId = pathSuccess.next_step;
+                         return; // STOP: Horario ocupado
                      }
-                 }
+                     
+                     // --- GUARDADO EXITOSO ---
+                     if (!db[fecha]) db[fecha] = [];
+                     const finalName = user.history['nombre'] || user.history['nombre_completo'] || user.history['cliente'] || user.history['name'] || msg.pushName || 'Cliente';
+                     
+                     db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
+                     saveAgenda(db);
+                     console.log(`📅 Cita agendada: ${finalName} -> ${fecha} ${hora}`);
+                     
+                     // Avanzar al paso de éxito (next_step configurado en el editor)
+                     if (nextStepConfig.next_step) {
+                         nextStepId = nextStepConfig.next_step;
+                     }
+
+                 } else if (rawTime && !hora) {
+                     // SI EL USUARIO ESCRIBIÓ ALGO EN 'HORA' PERO NO ES UNA HORA VÁLIDA
+                     const txt = `⚠️ No reconocí la hora.\n🕒 Por favor usa el formato: *4:00 PM* o *16:30*`;
+                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                     return; // STOP: No avanzar
+                 } 
+                 
+                 // Si (fecha válida) Y (no hay hora o es vacía) -> Dejamos avanzar 
+                 // (Asumimos que el flujo va hacia el paso que pide la hora)
              }
+             
+             // Si targetStep era el destino calculado, aseguramos que nextStepId lo refleje
+             if (!nextStepId) nextStepId = targetStep;
         }
     }
 
