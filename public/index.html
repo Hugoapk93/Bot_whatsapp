@@ -9,11 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
-    <!-- Librerías JS -->
+    <!-- Librerías JS (Solo las necesarias, se eliminó Cytoscape) -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>  
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>     
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
@@ -289,101 +286,88 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        /* --- CHAT SIMULATOR (WhatsApp Style) --- */
-        .chat-container-wrapper { 
-            background: #0b101a; 
-            border: 1px solid var(--border); 
-            border-radius: var(--radius); 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100%; 
+        /* --- CHAT SIMULATOR --- */
+        .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        .chat-header { background: var(--bg-sidebar); padding: 16px 20px; color: var(--text-main); border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .chat-msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 20px 20px; background-opacity: 0.1; }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid var(--border); }
+        .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; border-bottom-right-radius: 2px; }
+
+        /* --- NUEVO: EDITOR DE LISTA (STACK VIEW) --- */
+        #view-flow { background: var(--bg-body); padding: 20px; }
+        
+        .flow-list-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-bottom: 80px; /* Space for FAB */
+        }
+
+        .flow-step-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
             overflow: hidden;
         }
-        .chat-header { 
-            background: var(--bg-sidebar); 
-            padding: 16px 20px; 
-            color: var(--text-main); 
-            border-bottom: 1px solid var(--border); 
-            font-weight: 600; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-        }
-        .chat-msgs { 
-            flex: 1; 
-            padding: 20px; 
-            overflow-y: auto; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-            background-image: radial-gradient(var(--border) 1px, transparent 1px);
-            background-size: 20px 20px;
-            background-opacity: 0.1;
-        }
-        .msg { 
-            max-width: 80%; 
-            padding: 12px 16px; 
-            border-radius: 12px; 
-            font-size: 0.95rem; 
-            line-height: 1.5; 
-            position: relative;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-        }
-        .msg.bot { 
-            background: var(--bg-sidebar); 
-            color: var(--text-main);
-            align-self: flex-start; 
-            border-bottom-left-radius: 2px; 
-            border: 1px solid var(--border);
-        }
-        .msg.user { 
-            background: #005c4b; 
-            color: #e9edef; 
-            align-self: flex-end; 
-            border-bottom-right-radius: 2px; 
-        }
-
-        /* --- EDITOR VISUAL (CytoScape) --- */
-        #view-flow { background: #0b101a; }
-        #cy { background: radial-gradient(#1e293b 1px, transparent 1px) 0 0 / 30px 30px; } 
         
-        .flow-controls { 
-            position: absolute; bottom: 30px; left: 30px; 
-            display: flex; flex-direction: column; gap: 8px; z-index: 10; 
-        }
-        .ctrl-btn { 
-            width: 40px; height: 40px; 
-            background: var(--bg-card); 
-            border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; border: 1px solid var(--border); 
-            color: var(--text-muted); 
+        .flow-step-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
             box-shadow: var(--shadow-card);
         }
-        .ctrl-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+
+        .flow-step-content { flex: 1; }
+        .flow-step-title { font-weight: 700; color: var(--text-main); font-size: 1rem; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+        .flow-step-subtitle { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+        
+        .step-tag { 
+            font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; 
+            text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border: 1px solid transparent; 
+        }
+
+        /* Colores por tipo */
+        .type-menu { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
+        .type-filtro { background: rgba(168, 85, 247, 0.1); color: #c084fc; border-color: rgba(168, 85, 247, 0.2); }
+        .type-input { background: rgba(249, 115, 22, 0.1); color: #fb923c; border-color: rgba(249, 115, 22, 0.2); }
+        .type-message { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+        .type-cita { background: rgba(236, 72, 153, 0.1); color: #f472b6; border-color: rgba(236, 72, 153, 0.2); }
+        .type-fin_bot { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
 
         .fab { 
-            position: absolute; bottom: 30px; right: 30px; 
+            position: fixed; bottom: 30px; right: 30px; 
             background: var(--primary); color: white; 
             width: 56px; height: 56px; 
             border-radius: 16px; 
             display: flex; align-items: center; justify-content: center; 
             cursor: pointer; 
             box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); 
-            z-index: 20; font-size: 28px; 
+            z-index: 100; font-size: 28px; 
             transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
         .fab:hover { transform: scale(1.1) rotate(90deg); }
 
-        /* --- MODALES CON GLASSMORPHISM --- */
+        /* --- MODALES & Z-INDEX FIXES --- */
         .modal { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.6); 
             backdrop-filter: blur(8px); 
-            z-index: 200; 
+            z-index: 200; /* Base modal level */
             display: none; justify-content: center; align-items: center; 
         }
+        
+        /* Prioridad de capas: Confirm > Prompt > Editor */
+        #modalConfirm, #modalPrompt { z-index: 220; } 
+        
         .modal.active { display: flex; animation: fadeIn 0.2s; }
         
         .sheet { 
@@ -398,43 +382,39 @@
         }
 
         /* --- TOASTS & NOTIFICACIONES --- */
-        /* Fixed: Ya no empujan el contenido */
         #toast-container { 
-            position: fixed; 
-            top: 24px; 
-            right: 24px; 
-            z-index: 9999; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-            pointer-events: none; /* Permite clicks debajo */
+            position: fixed; top: 24px; right: 24px; z-index: 9999; 
+            display: flex; flex-direction: column; gap: 12px; pointer-events: none; 
         }
         .toast { 
-            background: var(--bg-card); 
-            border: 1px solid var(--border); 
-            padding: 14px 20px; 
-            border-radius: 12px; 
-            color: var(--text-main); 
-            font-size: 0.9rem; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            box-shadow: var(--shadow-modal);
-            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: all;
-            min-width: 250px;
+            background: var(--bg-card); border: 1px solid var(--border); padding: 14px 20px; 
+            border-radius: 12px; color: var(--text-main); font-size: 0.9rem; 
+            display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-modal);
+            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: all; min-width: 250px;
         }
-        .toast i { font-size: 1.1rem; }
         .toast.success i { color: var(--success); }
         .toast.error i { color: var(--danger); }
         
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* --- TOGGLES & SWITCHES --- */
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        /* --- TOGGLES (Fixed Deformation) --- */
+        .switch { 
+            position: relative; 
+            display: inline-block; 
+            width: 44px; 
+            height: 24px; 
+            flex-shrink: 0; /* IMPEDIR DEFORMACIÓN */
+        }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-input); transition: .4s; border-radius: 34px; border: 1px solid var(--border); }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        .slider { 
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
+            background-color: var(--bg-input); transition: .4s; 
+            border-radius: 34px; border: 1px solid var(--border); 
+        }
+        .slider:before { 
+            position: absolute; content: ""; height: 18px; width: 18px; 
+            left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; 
+        }
         input:checked + .slider { background-color: var(--success); border-color: var(--success); }
         input:checked + .slider:before { transform: translateX(20px); }
 
@@ -446,6 +426,7 @@
             .sidebar.active { transform: translateX(0); }
             .sheet { border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; max-width: 100%; }
             #toast-container { top: 10px; right: 10px; left: 10px; }
+            .fab { bottom: 20px; right: 20px; width: 50px; height: 50px; }
         }
         
         /* Wizard Specific */
@@ -484,7 +465,7 @@
                 <button onclick="toggleMenu()" class="d-md-none" style="background:none; border:none; color:var(--text-main); margin-left:auto;">✕</button>
             </div>
             <div class="menu">
-                <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-sitemap"></i> Flujo Visual</div>
+                <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-list-ul"></i> Pasos del Bot</div>
                 <div class="menu-item" onclick="nav('activity', this)">
                     <i class="fas fa-chart-line"></i> Monitor
                     <span id="notifyBadge" class="badge-count">0</span>
@@ -512,18 +493,16 @@
         <div class="content">
             <div class="mobile-header">
                 <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.2rem;">☰</button>
-                <span id="pageTitle" style="font-size:0.95rem; font-weight:700; letter-spacing:0.5px;">FLUJO VISUAL</span>
+                <span id="pageTitle" style="font-size:0.95rem; font-weight:700; letter-spacing:0.5px;">LISTA DE PASOS</span>
                 <div style="width:30px"></div>
             </div>
 
-            <!-- VISTA: FLUJO (EDITOR) -->
-            <div id="view-flow" class="view active">
-                <div id="cy"></div>
-                <div class="flow-controls">
-                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()+0.2)" title="Zoom In"><i class="fas fa-plus"></i></div>
-                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)" title="Zoom Out"><i class="fas fa-minus"></i></div>
-                    <div class="ctrl-btn" onclick="cy.fit()" title="Fit View"><i class="fas fa-compress-arrows-alt"></i></div>
+            <!-- VISTA: LISTA DE PASOS (NUEVO) -->
+            <div id="view-flow" class="view active view-padding">
+                <div class="flow-list-container" id="flowListContainer">
+                    <!-- Cards will be injected here -->
                 </div>
+                
                 <div class="fab" onclick="openPrompt('Nombre del nuevo paso (ej: MENU_VENTAS):', createNewStep)">
                     <i class="fas fa-plus"></i>
                 </div>
@@ -849,7 +828,6 @@
     let simPhone = '5218991234567';
     let simState = { step: 'BIENVENIDA', history: {} };
     let flow={}, users=[];
-    let cy = null;
     let currentRefDate = new Date();
     let wakeLock = null;
     const socket = io(API_BASE);
@@ -863,11 +841,10 @@
         document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
         document.getElementById('view-' + v).classList.add('active');
         if (btn) btn.classList.add('active');
-        const titles = { flow: 'FLUJO VISUAL', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'SIMULADOR' };
+        const titles = { flow: 'LISTA DE PASOS', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'SIMULADOR' };
         document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
         document.getElementById('sidebar').classList.remove('active');
-        if (v !== 'flow' && cy) { try { cy.destroy(); cy = null; } catch(e){} }
-        if (v === 'flow') setTimeout(renderFlow, 100); 
+        if (v === 'flow') renderFlowList();
         if (v === 'activity') loadActivity();
         if (v === 'agenda') renderCalendar();
         if (v === 'sim') scrollToBottomSim(); 
@@ -925,11 +902,10 @@
         try {
             const res = await fetch(`${API_BASE}/api/flow`);
             flow = await res.json();
-            renderFlow();
+            renderFlowList();
         } catch(e) {
             console.error("No se pudo cargar el flujo");
-            const c = document.getElementById('cy');
-            if(c) c.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
+            document.getElementById('flowListContainer').innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
         }
         try {
             const set = await (await fetch(`${API_BASE}/api/settings`)).json();
@@ -973,75 +949,49 @@
 
     async function crmAction(phone, nextStep) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-    function renderFlow() {
-        let savedZoom = null;
-        let savedPan = null;
-        if (cy && typeof cy.zoom === 'function') { try { savedZoom = cy.zoom(); savedPan = cy.pan(); } catch(e) {} cy.destroy(); }
+    // --- NUEVO RENDERIZADO TIPO LISTA ---
+    function renderFlowList() {
+        const container = document.getElementById('flowListContainer');
+        container.innerHTML = '';
+        
+        if (!flow || Object.keys(flow).length === 0) {
+            container.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:50px;">No hay pasos creados. Pulsa el botón +</div>`;
+            return;
+        }
 
-        let elements = [];
-        if (!flow || Object.keys(flow).length === 0) return;
+        const keys = Object.keys(flow).sort();
 
-        Object.keys(flow).forEach(k => {
-            const s = flow[k];
-            if (!s) return;
-            let color = '#64748b'; 
-            if(s.type === 'menu') color = '#3b82f6';
-            else if(s.type === 'filtro') color = '#a855f7';
-            else if(s.type === 'input') color = '#f97316';
-            else if(s.type === 'message') color = '#10b981';
-            else if(s.type === 'cita') color = '#ec4899';
-            else if(s.type === 'fin_bot') color = '#ef4444';
-                
-            elements.push({ data: { id: k, label: k, color: color } });
-                
-            if(s.options && Array.isArray(s.options)) { 
-                s.options.forEach(o => { 
-                    if(o.next_step && flow[o.next_step]) elements.push({ data: { source: k, target: o.next_step, label: o.label || '' } }); 
-                }); 
-            } else if(s.next_step && flow[s.next_step]) {
-                elements.push({ data: { source: k, target: s.next_step } }); 
-            }
+        keys.forEach(key => {
+            const step = flow[key];
+            const div = document.createElement('div');
+            div.className = 'flow-step-card';
+            div.onclick = () => edit(key);
+
+            // Iconos y etiquetas por tipo
+            let icon = 'fa-comment-alt';
+            let labelType = 'Mensaje';
+            if (step.type === 'menu') { icon = 'fa-list-ul'; labelType = 'Menú'; }
+            if (step.type === 'filtro') { icon = 'fa-filter'; labelType = 'Filtro'; }
+            if (step.type === 'input') { icon = 'fa-pen'; labelType = 'Entrada'; }
+            if (step.type === 'cita') { icon = 'fa-calendar-check'; labelType = 'Cita'; }
+            if (step.type === 'fin_bot') { icon = 'fa-flag-checkered'; labelType = 'Fin'; }
+
+            // Resumen de mensaje
+            let preview = step.message || "Sin mensaje configurado";
+            if (preview.length > 60) preview = preview.substring(0, 60) + "...";
+
+            div.innerHTML = `
+                <div class="flow-step-content">
+                    <div class="flow-step-title">
+                        <span class="step-tag type-${step.type}"><i class="fas ${icon}"></i> ${labelType}</span>
+                        ${key}
+                    </div>
+                    <div class="flow-step-subtitle">${preview}</div>
+                </div>
+                <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>
+            `;
+            container.appendChild(div);
         });
-
-        try {
-            cy = cytoscape({ 
-                container: document.getElementById('cy'), 
-                elements: elements, 
-                autoungrabify: true,        
-                boxSelectionEnabled: false,
-                wheelSensitivity: 0.2,
-                style: [ 
-                    { selector: 'node', style: { 
-                        'background-color': '#0f172a', 'label': 'data(label)', 'color': '#f8fafc', 
-                        'shape': 'round-rectangle', 'width': 'label', 'height': 'label', 'padding': '12px 20px',
-                        'font-family': 'Inter, sans-serif', 'font-size': '12px', 'font-weight': '600', 
-                        'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 
-                        'border-width': 2, 'border-color': 'data(color)', 
-                        'shadow-blur': 0, 'shadow-offset-y': 0
-                    }}, 
-                    { selector: 'edge', style: { 
-                        'width': 2, 'line-color': '#475569', 'curve-style': 'taxi', 'taxi-direction': 'rightward', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#475569', 
-                        'label': 'data(label)', 'font-size': '10px', 'font-weight': '500', 'color': '#94a3b8', 
-                        'text-background-color': '#0f172a', 'text-background-opacity': 1, 'text-background-padding': '4px', 'text-background-shape': 'roundrectangle',
-                        'text-rotation': 'autorotate' 
-                    }},
-                    { selector: 'node:selected', style: { 'border-width': 3, 'background-color': '#1e293b' }}
-                ],
-                layout: { name: 'preset' } 
-            });
-
-            let roots = cy.nodes().roots();
-            if(roots.length === 0) roots = cy.nodes().first(); 
-            cy.edges().addClass('cross-edge');
-            cy.elements().bfs({ roots: roots, visit: function(v, e) { if (e) { e.removeClass('cross-edge'); } }, directed: true });
-            const layoutElements = cy.elements().not('edge.cross-edge');
-            layoutElements.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 50, rankSep: 100, ranker: 'network-simplex', align: 'UL', animate: false, fit: !savedZoom }).run();
-            if (savedZoom && savedPan) cy.viewport({ zoom: savedZoom, pan: savedPan });
-
-            cy.on('tap', 'node', function(evt){ const node = evt.target; cy.elements().removeClass('highlighted faded'); const neighborhood = node.predecessors().union(node.successors()).union(node); cy.elements().not(neighborhood).addClass('faded'); neighborhood.addClass('highlighted'); });
-            cy.on('tap', function(evt){ if(evt.target === cy) cy.elements().removeClass('highlighted faded'); });
-            cy.on('dbltap', 'node', function(evt){ edit(evt.target.id()); });
-        } catch(e) { console.error(e); }
     }
 
     let currentMediaList = [];
@@ -1149,8 +1099,8 @@
 
         try {
             await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData }) });
-            flow[id] = stepData; // ACTUALIZACIÓN INSTANTÁNEA EN MEMORIA
-            renderFlow(); 
+            flow[id] = stepData; // ACTUALIZACIÓN INSTANTÁNEA
+            renderFlowList(); 
             closeEditor(); 
             showToast('Guardado correctamente');
         } catch (e) { console.error(e); showToast('Error al guardar', 'error'); }
@@ -1159,11 +1109,11 @@
     function createNewStep(id) {
         if(id) { 
             flow[id.toUpperCase()]={type:'menu'}; 
-            renderFlow(); 
+            renderFlowList(); 
             setTimeout(()=>edit(id.toUpperCase()),200); 
         }
     }
-    async function delStep() { const id=document.getElementById('stId').value; await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); delete flow[id]; renderFlow(); closeEditor(); showToast('Eliminado'); }
+    async function delStep() { const id=document.getElementById('stId').value; await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); delete flow[id]; renderFlowList(); closeEditor(); showToast('Eliminado'); }
 
     function renderGallery() {
         const c = document.getElementById('galleryContainer'); c.innerHTML='';
