@@ -397,6 +397,39 @@
             max-height: 85vh;
         }
 
+        /* --- TOASTS & NOTIFICACIONES --- */
+        /* Fixed: Ya no empujan el contenido */
+        #toast-container { 
+            position: fixed; 
+            top: 24px; 
+            right: 24px; 
+            z-index: 9999; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            pointer-events: none; /* Permite clicks debajo */
+        }
+        .toast { 
+            background: var(--bg-card); 
+            border: 1px solid var(--border); 
+            padding: 14px 20px; 
+            border-radius: 12px; 
+            color: var(--text-main); 
+            font-size: 0.9rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            box-shadow: var(--shadow-modal);
+            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: all;
+            min-width: 250px;
+        }
+        .toast i { font-size: 1.1rem; }
+        .toast.success i { color: var(--success); }
+        .toast.error i { color: var(--danger); }
+        
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
         /* --- TOGGLES & SWITCHES --- */
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -412,12 +445,13 @@
             .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.8); z-index: 200; } 
             .sidebar.active { transform: translateX(0); }
             .sheet { border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; max-width: 100%; }
+            #toast-container { top: 10px; right: 10px; left: 10px; }
         }
         
         /* Wizard Specific */
         #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
         .wizard-card { box-shadow: var(--shadow-modal); }
-        .step-hidden { display: none !important; } /* CORRECCIÓN: Clase que faltaba */
+        .step-hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -431,7 +465,6 @@
             <h2 style="color:var(--text-main); margin-top:0;">Iniciando Sistema</h2>
             <p style="color:var(--text-muted); font-size:0.9rem;">Estableciendo conexión segura...</p>
             <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--primary); margin-top:20px;"></i>
-            <!-- Se eliminó el botón de reinicio de esta pantalla para evitar confusión -->
         </div>
 
         <div id="stepQR" class="wizard-card step-hidden">
@@ -439,7 +472,7 @@
             <p style="color:var(--text-muted); font-size:0.85rem;">Escanea el código QR desde WhatsApp.</p>
             <div class="qr-container"><canvas id="qrCanvas"></canvas></div>
             <p id="qrStatus" style="font-size:0.8rem; color:var(--success); font-weight:600; margin-bottom:15px;">Generando código...</p>
-            <button class="w-btn" onclick="resetSession()" style="background:transparent; border:1px solid var(--border); color:var(--text-main);">Generar Nuevo Código</button>
+            <button class="w-btn" onclick="openConfirm('¿Generar un nuevo código QR desconectará la sesión actual?', resetSession)" style="background:transparent; border:1px solid var(--border); color:var(--text-main);">Generar Nuevo Código</button>
         </div>
     </div>
 
@@ -461,8 +494,8 @@
                 <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h"></i> Configuración</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal"></i> Simulador</div>
                 
-                <!-- BOTÓN CERRAR SESIÓN EN SIDEBAR -->
-                <div class="menu-item logout" onclick="resetSession()">
+                <!-- BOTÓN CERRAR SESIÓN -->
+                <div class="menu-item logout" onclick="openConfirm('¿Seguro que deseas cerrar sesión y desconectar el bot?', resetSession)">
                     <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                 </div>
             </div>
@@ -491,7 +524,7 @@
                     <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)" title="Zoom Out"><i class="fas fa-minus"></i></div>
                     <div class="ctrl-btn" onclick="cy.fit()" title="Fit View"><i class="fas fa-compress-arrows-alt"></i></div>
                 </div>
-                <div class="fab" onclick="newStep()">
+                <div class="fab" onclick="openPrompt('Nombre del nuevo paso (ej: MENU_VENTAS):', createNewStep)">
                     <i class="fas fa-plus"></i>
                 </div>
             </div>
@@ -568,7 +601,7 @@
                             <div style="width:10px; height:10px; background:var(--success); border-radius:50%;"></div>
                             <span>Simulador en vivo</span>
                         </div>
-                        <i class="fas fa-trash-alt" onclick="restartSim()" style="cursor:pointer; color:var(--text-muted); transition:0.2s;" title="Limpiar Chat"></i>
+                        <i class="fas fa-trash-alt" onclick="openConfirm('¿Borrar historial del simulador?', restartSim)" style="cursor:pointer; color:var(--text-muted); transition:0.2s;" title="Limpiar Chat"></i>
                     </div>
                     <div class="chat-msgs" id="simMsgs"></div>
                     <div style="padding: 16px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border);">
@@ -613,6 +646,33 @@
         </div>
     </div>
 
+    <!-- MODAL: PROMPT (INPUT TEXT) -->
+    <div class="modal" id="modalPrompt">
+        <div class="sheet" style="height:auto; max-width: 420px;">
+            <h3 id="promptTitle" style="margin-top:0;">Entrada requerida</h3>
+            <input type="text" id="promptInput" style="margin-top:10px;">
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button id="promptBtnConfirm" class="btn-primary" style="flex:1;">Aceptar</button>
+                <button onclick="closePrompt()" style="padding:10px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRM (YES/NO) -->
+    <div class="modal" id="modalConfirm">
+        <div class="sheet" style="height:auto; max-width: 400px; text-align: center; align-items: center;">
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin-bottom:20px;">
+                <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: var(--danger);"></i>
+            </div>
+            <h3 style="margin:0;">¿Estás seguro?</h3>
+            <p id="confirmMsg" style="color:var(--text-muted); margin-bottom: 25px;">Esta acción requiere confirmación.</p>
+            <div style="display:flex; gap:10px; width:100%;">
+                <button id="confirmBtnYes" class="btn-primary" style="background: var(--danger); border:none; flex:1;">Sí, continuar</button>
+                <button onclick="closeConfirm()" style="flex:1; padding:10px; background:transparent; border:1px solid var(--border); color:var(--text-main); border-radius:8px; cursor:pointer;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL: DETALLES DÍA (AGENDA) -->
     <div class="modal" id="dayModal">
         <div class="sheet">
@@ -626,21 +686,18 @@
             
             <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:12px; padding-right:5px;">
                 <div id="modalApptList"></div>
-                
                 <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:14px; background:var(--bg-body); color:var(--primary); border:1px dashed var(--border); border-radius:8px; font-weight:600; cursor:pointer; transition:0.2s;">
                     + Añadir Evento Manual
                 </button>
-                
                 <div id="eventForm" style="display:none; background:var(--bg-body); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:10px;">
                     <h4 style="margin:0 0 15px 0; font-size:0.95rem; color:var(--text-main);">Nueva Cita</h4>
                     <input type="hidden" id="evtOldTime">
                     <div style="display:flex; gap:15px;">
                         <div style="flex:1"><label>Hora</label><input type="time" id="evtTime"></div>
-                        <div style="flex:1"><label>Teléfono (Opcional)</label><input type="text" id="evtPhone" placeholder="55..."></div>
+                        <div style="flex:1"><label>Teléfono</label><input type="text" id="evtPhone" placeholder="55..."></div>
                     </div>
                     <label>Nombre del Cliente</label><input type="text" id="evtName" placeholder="Ej: Juan Pérez">
                     <label>Notas Adicionales</label><textarea id="evtNote" rows="2" placeholder="Detalles..."></textarea>
-                    
                     <div style="display:flex; gap:10px; margin-top:15px;">
                         <button onclick="saveEvent()" class="btn-primary" style="flex:1;">Guardar</button>
                         <button onclick="hideEventForm()" style="padding:10px 20px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer; font-weight:500;">Cancelar</button>
@@ -655,10 +712,8 @@
         <div class="sheet" style="height:auto;">
             <h3 style="margin-top:0;">Añadir Usuario</h3>
             <p style="color:var(--text-muted); font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">Registra manualmente a un cliente para el bot.</p>
-            
             <label>Nombre / Alias</label><input type="text" id="newContName">
             <label>WhatsApp (con código país)</label><input type="tel" id="newContPhone" placeholder="Ej: 521...">
-            
             <div style="background:var(--bg-body); padding:16px; border-radius:8px; margin:10px 0 20px 0; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:0.9rem; font-weight:500;">Activar Bot Automático</span>
                 <label class="switch">
@@ -666,7 +721,6 @@
                     <span class="slider"></span>
                 </label>
             </div>
-            
             <div style="display:flex; gap:10px;">
                 <button onclick="saveNewContact()" class="btn-primary" style="flex:1;">Registrar Usuario</button>
                 <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:12px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer;">Cancelar</button>
@@ -720,7 +774,7 @@
             
             <div style="margin-top:25px; display:flex; gap:12px;">
                 <button onclick="saveStep()" class="btn-primary" style="flex:1;">Guardar Cambios</button>
-                <button onclick="delStep()" style="width: 50px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                <button onclick="openConfirm('¿Seguro que deseas eliminar este paso? Esto podría romper el flujo.', delStep)" style="width: 50px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
                     <i class="fas fa-trash-alt"></i>
                 </button>
             </div>
@@ -739,6 +793,10 @@
     let lastQr = '';
     let isConnected = false;
     let isPollingActive = false;
+
+    // Callbacks for modals
+    let promptCallback = null;
+    let confirmCallback = null;
 
      function cleanupAllIntervals() {
         if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
@@ -770,7 +828,7 @@
                     isConnected = true;
                     cleanupAllIntervals(); 
                     document.getElementById('setupWizard').classList.add('step-hidden');
-                    document.getElementById('mainApp').classList.add('visible'); // Show dashboard
+                    document.getElementById('mainApp').classList.add('visible');
                     showToast('Conectado exitosamente');
                     updateStatusUI();
                 } else if (data.qr) {
@@ -786,7 +844,7 @@
         }, 2000);
     }
     function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
-    async function resetSession() { if(!confirm("¿Cerrar sesión y desconectar bot?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
+    async function resetSession() { await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
 
     let simPhone = '5218991234567';
     let simState = { step: 'BIENVENIDA', history: {} };
@@ -817,6 +875,7 @@
     }
 
     document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); });
+    
     function showToast(msg, type='success') {
         const c = document.getElementById('toast-container');
         const t = document.createElement('div');
@@ -824,6 +883,42 @@
         t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> <span>${msg}</span>`;
         c.appendChild(t);
         setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
+    }
+
+    // --- MODAL SYSTEM LOGIC ---
+    function openPrompt(title, callback) {
+        document.getElementById('promptTitle').innerText = title;
+        document.getElementById('promptInput').value = '';
+        promptCallback = callback;
+        document.getElementById('modalPrompt').classList.add('active');
+        setTimeout(()=>document.getElementById('promptInput').focus(), 100);
+    }
+    
+    document.getElementById('promptBtnConfirm').onclick = function() {
+        const val = document.getElementById('promptInput').value;
+        if(val && promptCallback) promptCallback(val);
+        closePrompt();
+    };
+
+    function closePrompt() {
+        document.getElementById('modalPrompt').classList.remove('active');
+        promptCallback = null;
+    }
+
+    function openConfirm(msg, callback) {
+        document.getElementById('confirmMsg').innerText = msg;
+        confirmCallback = callback;
+        document.getElementById('modalConfirm').classList.add('active');
+    }
+
+    document.getElementById('confirmBtnYes').onclick = function() {
+        if(confirmCallback) confirmCallback();
+        closeConfirm();
+    };
+
+    function closeConfirm() {
+        document.getElementById('modalConfirm').classList.remove('active');
+        confirmCallback = null;
     }
 
     async function loadAll() {
@@ -859,7 +954,7 @@
                 allToShow.forEach(u => {
                     const s = flow[u.current_step] || { type: 'unknown' };
                     let actionsHtml = `<div style="margin-bottom:5px;"><span style="font-size:0.7rem; background:var(--bg-body); padding:2px 8px; border:1px solid var(--border); border-radius:12px; color:var(--text-muted); font-weight:600;">${u.current_step}</span></div>`;
-                    if (s.type === 'filtro' && s.options) { s.options.forEach(opt => { actionsHtml += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${opt.next_step}')">${opt.label}</button>`; }); }
+                    if (s.type === 'filtro' && s.options) { s.options.forEach(opt => { actionsHtml += `<button class="admin-btn" onclick="openConfirm('¿Mover a ${opt.next_step}?', () => crmAction('${u.phone}', '${opt.next_step}'))">${opt.label}</button>`; }); }
                     let dataHtml = '';
                     if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:2px;"><strong style="color:var(--text-main); text-transform:capitalize;">${k.replace('_',' ')}:</strong> ${v}</div>`);
                     const row = document.createElement('tr');
@@ -876,7 +971,7 @@
         badge.innerHTML = '● ONLINE';
     }
 
-    async function crmAction(phone, nextStep) { if(!confirm(`¿Mover a ${nextStep}?`)) return; await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
+    async function crmAction(phone, nextStep) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
     function renderFlow() {
         let savedZoom = null;
@@ -889,14 +984,13 @@
         Object.keys(flow).forEach(k => {
             const s = flow[k];
             if (!s) return;
-            // Palette matches CSS vars
-            let color = '#64748b'; // Default Slate
-            if(s.type === 'menu') color = '#3b82f6'; // Blue
-            else if(s.type === 'filtro') color = '#a855f7'; // Purple
-            else if(s.type === 'input') color = '#f97316'; // Orange
-            else if(s.type === 'message') color = '#10b981'; // Green
-            else if(s.type === 'cita') color = '#ec4899'; // Pink
-            else if(s.type === 'fin_bot') color = '#ef4444'; // Red
+            let color = '#64748b'; 
+            if(s.type === 'menu') color = '#3b82f6';
+            else if(s.type === 'filtro') color = '#a855f7';
+            else if(s.type === 'input') color = '#f97316';
+            else if(s.type === 'message') color = '#10b981';
+            else if(s.type === 'cita') color = '#ec4899';
+            else if(s.type === 'fin_bot') color = '#ef4444';
                 
             elements.push({ data: { id: k, label: k, color: color } });
                 
@@ -1062,8 +1156,14 @@
         } catch (e) { console.error(e); showToast('Error al guardar', 'error'); }
     }
 
-    function newStep() { const id = prompt("Nombre del Nuevo Paso (ej: MENU_VENTAS):"); if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlow(); setTimeout(()=>edit(id.toUpperCase()),200); } }
-    async function delStep() { const id=document.getElementById('stId').value; if(confirm('¿Eliminar este paso?')) { await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); delete flow[id]; renderFlow(); closeEditor(); showToast('Eliminado'); } }
+    function createNewStep(id) {
+        if(id) { 
+            flow[id.toUpperCase()]={type:'menu'}; 
+            renderFlow(); 
+            setTimeout(()=>edit(id.toUpperCase()),200); 
+        }
+    }
+    async function delStep() { const id=document.getElementById('stId').value; await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); delete flow[id]; renderFlow(); closeEditor(); showToast('Eliminado'); }
 
     function renderGallery() {
         const c = document.getElementById('galleryContainer'); c.innerHTML='';
@@ -1118,7 +1218,7 @@
                     </div>
                     ${c.note ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-style:italic; border-left:2px solid var(--border); padding-left:8px;">"${c.note}"</div>` : ''}
                 </div>
-                <button onclick="deleteAppt('${dateKey}', '${c.time}')" style="background:transparent; border:none; color:var(--danger); cursor:pointer; padding:5px; opacity:0.7; transition:0.2s;"><i class="fas fa-trash-alt"></i></button>`;
+                <button onclick="openConfirm('¿Eliminar esta cita?', () => deleteAppt('${dateKey}', '${c.time}'))" style="background:transparent; border:none; color:var(--danger); cursor:pointer; padding:5px; opacity:0.7; transition:0.2s;"><i class="fas fa-trash-alt"></i></button>`;
             list.appendChild(row);
         });
         document.getElementById('evtOldTime').dataset.date = dateKey; 
@@ -1136,7 +1236,6 @@
         hideEventForm(); renderEventList(date); showToast('Evento Guardado');
     }
     async function deleteAppt(date, time) {
-        if(!confirm('¿Eliminar?')) return;
         await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) });
         renderEventList(date);
     }
