@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CRM - Flow Studio</title>
     
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
-    <!-- Librerías JS (Solo las necesarias, se eliminó Cytoscape) -->
+    <!-- Librerías JS -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
@@ -496,6 +502,11 @@
                 <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h"></i> Configuración</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal"></i> Simulador</div>
                 
+                <!-- BOTÓN NOTIFICACIONES (NUEVO) -->
+                <div class="menu-item" onclick="requestNotifyPermission()">
+                    <i class="fas fa-bell"></i> Activar Alertas
+                </div>
+
                 <!-- BOTÓN CERRAR SESIÓN -->
                 <div class="menu-item logout" onclick="openConfirm('¿Seguro que deseas cerrar sesión y desconectar el bot?', resetSession)">
                     <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
@@ -640,6 +651,11 @@
                     
                     <button onclick="saveSettings()" class="btn-primary" style="width:100%; margin-top:10px;">
                         Guardar Configuración
+                    </button>
+
+                    <!-- BOTÓN TEST NOTIFICACIONES -->
+                    <button onclick="sendTestNotification()" class="w-btn" style="margin-top:20px; width:100%; background:transparent; border:1px dashed var(--primary); color:var(--primary); padding:10px; border-radius:8px;">
+                         <i class="fas fa-bell"></i> Probar Notificación Nativa
                     </button>
                 </div>
             </div>
@@ -871,6 +887,45 @@
         if (v === 'sim') scrollToBottomSim(); 
         if (v === 'contacts') renderContacts();
     }
+
+    // --- LÓGICA DE NOTIFICACIONES ---
+    function requestNotifyPermission() {
+        if (!("Notification" in window)) {
+            return showToast("Este navegador no soporta notificaciones", "error");
+        }
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                showToast("¡Notificaciones Activas!");
+                sendNativeNotification("Sistema Listo", "Te avisaremos aquí cuando haya actividad.");
+            } else {
+                showToast("Permiso denegado", "error");
+            }
+        });
+    }
+
+    function sendNativeNotification(title, body) {
+        if (Notification.permission === "granted") {
+            // Icono genérico o logo de la app
+            const options = {
+                body: body,
+                icon: "https://cdn-icons-png.flaticon.com/512/9374/9374978.png",
+                vibrate: [200, 100, 200]
+            };
+            const notif = new Notification(title, options);
+            
+            notif.onclick = function(event) {
+                event.preventDefault(); // Previene focus automático del navegador a veces
+                window.focus(); // Intenta traer la ventana al frente
+                notif.close();
+                nav('activity'); // Navega a la vista de monitor
+            };
+        }
+    }
+
+    function sendTestNotification() {
+        sendNativeNotification("🔔 Prueba de CRM", "¡Si lees esto, las notificaciones funcionan en segundo plano!");
+    }
+    // --------------------------------
 
     document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); });
     
