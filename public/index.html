@@ -20,21 +20,21 @@
         /* --- TEMA PROFESIONAL (Slate Palette) --- */
         :root { 
             /* Fondos */
-            --bg-body: #0f172a;       /* Slate 900 - Fondo principal elegante */
-            --bg-sidebar: #1e293b;    /* Slate 800 - Barra lateral */
-            --bg-card: #1e293b;       /* Slate 800 - Tarjetas */
-            --bg-hover: #334155;      /* Slate 700 - Hover */
-            --bg-input: #020617;      /* Slate 950 - Inputs */
+            --bg-body: #0f172a;       /* Slate 900 */
+            --bg-sidebar: #1e293b;    /* Slate 800 */
+            --bg-card: #1e293b;       /* Slate 800 */
+            --bg-hover: #334155;      /* Slate 700 */
+            --bg-input: #020617;      /* Slate 950 */
             
             /* Bordes */
-            --border: #334155;        /* Slate 700 - Bordes sutiles */
+            --border: #334155;        /* Slate 700 */
             
             /* Textos */
-            --text-main: #f8fafc;     /* Slate 50 - Blanco suave */
-            --text-muted: #94a3b8;    /* Slate 400 - Gris texto secundario */
+            --text-main: #f8fafc;     /* Slate 50 */
+            --text-muted: #94a3b8;    /* Slate 400 */
             
             /* Acentos */
-            --primary: #3b82f6;       /* Blue 500 - Acción principal */
+            --primary: #3b82f6;       /* Blue 500 */
             --primary-hover: #2563eb; /* Blue 600 */
             --success: #10b981;       /* Green 500 */
             --danger: #ef4444;        /* Red 500 */
@@ -60,7 +60,8 @@
         }
 
         /* --- LAYOUT PRINCIPAL --- */
-        #mainApp { display: flex; width: 100%; height: 100%; }
+        #mainApp { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+        #mainApp.visible { opacity: 1; pointer-events: all; }
 
         /* Sidebar */
         .sidebar { 
@@ -112,6 +113,15 @@
         }
         
         .menu-item.active i { color: #60a5fa; }
+
+        .menu-item.logout { 
+            color: var(--danger); 
+            margin-top: auto; 
+            border-top: 1px solid var(--border); 
+            border-radius: 0; 
+            padding-top: 20px;
+        }
+        .menu-item.logout:hover { background: rgba(239, 68, 68, 0.1); }
 
         .badge-count { 
             background: var(--danger); 
@@ -281,7 +291,7 @@
 
         /* --- CHAT SIMULATOR (WhatsApp Style) --- */
         .chat-container-wrapper { 
-            background: #0b101a; /* Más oscuro para el fondo del chat */
+            background: #0b101a; 
             border: 1px solid var(--border); 
             border-radius: var(--radius); 
             flex: 1; 
@@ -328,7 +338,7 @@
             border: 1px solid var(--border);
         }
         .msg.user { 
-            background: #005c4b; /* WhatsApp Green Dark */
+            background: #005c4b; 
             color: #e9edef; 
             align-self: flex-end; 
             border-bottom-right-radius: 2px; 
@@ -336,7 +346,7 @@
 
         /* --- EDITOR VISUAL (CytoScape) --- */
         #view-flow { background: #0b101a; }
-        #cy { background: radial-gradient(#1e293b 1px, transparent 1px) 0 0 / 30px 30px; } /* Grid effect */
+        #cy { background: radial-gradient(#1e293b 1px, transparent 1px) 0 0 / 30px 30px; } 
         
         .flow-controls { 
             position: absolute; bottom: 30px; left: 30px; 
@@ -357,7 +367,7 @@
             position: absolute; bottom: 30px; right: 30px; 
             background: var(--primary); color: white; 
             width: 56px; height: 56px; 
-            border-radius: 16px; /* Más cuadrado estilo iOS */
+            border-radius: 16px; 
             display: flex; align-items: center; justify-content: center; 
             cursor: pointer; 
             box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); 
@@ -370,7 +380,7 @@
         .modal { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.6); 
-            backdrop-filter: blur(8px); /* Efecto Glass */
+            backdrop-filter: blur(8px); 
             z-index: 200; 
             display: none; justify-content: center; align-items: center; 
         }
@@ -405,7 +415,7 @@
         }
         
         /* Wizard Specific */
-        #setupWizard { background: var(--bg-body); }
+        #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
         .wizard-card { box-shadow: var(--shadow-modal); }
     </style>
 </head>
@@ -414,17 +424,13 @@
     <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
     <div id="toast-container"></div>
 
-    <!-- WIZARD INICIAL -->
+    <!-- PANTALLA DE INICIO / QR (WIZARD) -->
     <div id="setupWizard" class="step-hidden">
         <div id="stepLoading" class="wizard-card">
             <h2 style="color:var(--text-main); margin-top:0;">Iniciando Sistema</h2>
             <p style="color:var(--text-muted); font-size:0.9rem;">Estableciendo conexión segura...</p>
             <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--primary); margin-top:20px;"></i>
-            <div style="margin-top: 25px; border-top: 1px solid var(--border); padding-top: 20px;">
-                <button onclick="resetSession()" class="admin-btn" style="width: 100%; color: var(--danger); border-color: var(--danger);">
-                    <i class="fas fa-power-off"></i> Forzar Reinicio
-                </button>
-            </div>
+            <!-- Se eliminó el botón de reinicio de esta pantalla para evitar confusión -->
         </div>
 
         <div id="stepQR" class="wizard-card step-hidden">
@@ -436,7 +442,7 @@
         </div>
     </div>
 
-    <!-- APP PRINCIPAL -->
+    <!-- APP PRINCIPAL (DASHBOARD) -->
     <div id="mainApp">
         <div class="sidebar" id="sidebar">
             <div class="brand">
@@ -453,7 +459,13 @@
                 <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Usuarios</div>
                 <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h"></i> Configuración</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal"></i> Simulador</div>
+                
+                <!-- BOTÓN CERRAR SESIÓN EN SIDEBAR -->
+                <div class="menu-item logout" onclick="resetSession()">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </div>
             </div>
+            
             <div style="padding: 24px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted);">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
                     <div style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success);"></div>
@@ -757,6 +769,7 @@
                     isConnected = true;
                     cleanupAllIntervals(); 
                     document.getElementById('setupWizard').classList.add('step-hidden');
+                    document.getElementById('mainApp').classList.add('visible'); // Show dashboard
                     showToast('Conectado exitosamente');
                     updateStatusUI();
                 } else if (data.qr) {
@@ -772,7 +785,7 @@
         }, 2000);
     }
     function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
-    async function resetSession() { if(!confirm("¿Reiniciar conexión?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
+    async function resetSession() { if(!confirm("¿Cerrar sesión y desconectar bot?")) return; await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
 
     let simPhone = '5218991234567';
     let simState = { step: 'BIENVENIDA', history: {} };
