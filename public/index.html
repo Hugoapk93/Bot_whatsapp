@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CRM - Monitor Dark</title>
+    <title>CRM - Flow Studio</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Fuentes e Iconos -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
+    <!-- Librerías JS -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>  
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>     
@@ -15,93 +17,396 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
+        /* --- TEMA PROFESIONAL (Slate Palette) --- */
         :root { 
-            --bg-body: #000000;       
-            --bg-sidebar: #09090b;    
-            --bg-card: #121212;       
-            --bg-hover: #27272a;      
-            --border: #27272a;        
-            --primary: #ffffff;       
-            --text-main: #e4e4e7;     
-            --text-muted: #a1a1aa;    
-            --accent-blue: #3b82f6;   
-            --danger: #ef4444;
-            --success: #10b981; 
-            --shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 4px 12px rgba(0, 0, 0, 0.5);
-            --radius: 8px;            
+            /* Fondos */
+            --bg-body: #0f172a;       /* Slate 900 - Fondo principal elegante */
+            --bg-sidebar: #1e293b;    /* Slate 800 - Barra lateral */
+            --bg-card: #1e293b;       /* Slate 800 - Tarjetas */
+            --bg-hover: #334155;      /* Slate 700 - Hover */
+            --bg-input: #020617;      /* Slate 950 - Inputs */
+            
+            /* Bordes */
+            --border: #334155;        /* Slate 700 - Bordes sutiles */
+            
+            /* Textos */
+            --text-main: #f8fafc;     /* Slate 50 - Blanco suave */
+            --text-muted: #94a3b8;    /* Slate 400 - Gris texto secundario */
+            
+            /* Acentos */
+            --primary: #3b82f6;       /* Blue 500 - Acción principal */
+            --primary-hover: #2563eb; /* Blue 600 */
+            --success: #10b981;       /* Green 500 */
+            --danger: #ef4444;        /* Red 500 */
+            
+            /* UI */
+            --radius: 12px;
+            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
         }
+
+        /* --- RESET & BASE --- */
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Inter', sans-serif; margin: 0; height: 100dvh; width: 100vw; background: var(--bg-body); color: var(--text-main); overflow: hidden; }
-        #mainApp { display: flex; width: 100%; height: 100%; overflow: hidden; background: var(--bg-body); }
-        .sidebar { width: 250px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 50; flex-shrink: 0; }
-        .brand { padding: 20px; color: var(--text-main); font-weight: 600; font-size: 1rem; display: flex; gap: 10px; align-items: center; border-bottom: 1px solid var(--border); letter-spacing: 0.5px; text-transform: uppercase; }
-        .menu { padding: 15px; flex: 1; overflow-y: auto; }
-        .menu-item { padding: 12px; margin-bottom: 4px; cursor: pointer; border-radius: var(--radius); font-size: 0.9rem; font-weight: 400; display: flex; align-items: center; gap: 12px; color: var(--text-muted); transition: all 0.2s ease; }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            height: 100dvh; 
+            width: 100vw; 
+            background: var(--bg-body); 
+            color: var(--text-main); 
+            overflow: hidden; 
+            font-size: 14px;
+        }
+
+        /* --- LAYOUT PRINCIPAL --- */
+        #mainApp { display: flex; width: 100%; height: 100%; }
+
+        /* Sidebar */
+        .sidebar { 
+            width: 260px; 
+            background: var(--bg-sidebar); 
+            border-right: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            z-index: 50; 
+            flex-shrink: 0; 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .brand { 
+            height: 64px; 
+            padding: 0 24px; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px;
+            font-weight: 700; 
+            font-size: 1rem; 
+            letter-spacing: 1px; 
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .menu { padding: 20px 12px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+
+        .menu-item { 
+            padding: 12px 16px; 
+            border-radius: 8px; 
+            font-size: 0.9rem; 
+            font-weight: 500; 
+            color: var(--text-muted); 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+
         .menu-item:hover { background: var(--bg-hover); color: var(--text-main); }
-        .menu-item.active { background: var(--bg-hover); color: var(--text-main); font-weight: 500; border-left: 2px solid var(--primary); }
-        .badge-count { background: var(--danger); color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-left: auto; display: none; }
-        .content { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; overflow: hidden; background: var(--bg-body); }
-        .view { display: none; flex: 1; overflow: hidden; flex-direction: column; height: 100%; position: relative; }
-        .view.active { display: flex; }
-        .view-padding { padding: 25px; overflow-y: auto; }
-        .mobile-header { display: none; background: var(--bg-sidebar); padding: 0 15px; height: 50px; align-items: center; color: var(--text-main); justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid var(--border); }
-        .card { background: var(--bg-card); padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; border: 1px solid var(--border); }
-        .act-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--text-main); }
-        .act-table th { text-align: left; padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; }
-        .act-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        .status-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; letter-spacing: 0.5px; }
-        .status-badge.open { background: rgba(16, 185, 129, 0.1); color: var(--success); border-color: rgba(16, 185, 129, 0.2); }
-        .status-badge.closed { background: rgba(239, 68, 68, 0.1); color: var(--danger); border-color: rgba(239, 68, 68, 0.2); }
-        .admin-btn { padding: 6px 12px; border: 1px solid var(--border); background: transparent; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: 500; color: var(--text-main); margin-right: 5px; transition: all 0.2s; }
-        .admin-btn:hover { background: var(--bg-hover); border-color: var(--text-muted); }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .calendar-nav-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-        .weekday { background: var(--bg-card); color: var(--text-muted); font-size: 0.7rem; text-align: center; padding: 10px 0; font-weight: 600; text-transform: uppercase; }
-        .day { height: 100px; background: var(--bg-card); color: var(--text-muted); padding: 8px; font-size: 0.85rem; position: relative; cursor: pointer; transition: background 0.2s; }
+        
+        .menu-item.active { 
+            background: rgba(59, 130, 246, 0.15); 
+            color: #60a5fa; 
+            font-weight: 600; 
+        }
+        
+        .menu-item.active i { color: #60a5fa; }
+
+        .badge-count { 
+            background: var(--danger); 
+            color: white; 
+            font-size: 0.65rem; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            margin-left: auto; 
+            font-weight: 700;
+            display: none; 
+        }
+
+        /* Content Area */
+        .content { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            height: 100%; 
+            overflow: hidden; 
+            background: var(--bg-body); 
+        }
+
+        .view { display: none; flex: 1; flex-direction: column; height: 100%; position: relative; overflow: hidden; }
+        .view.active { display: flex; animation: fadeIn 0.3s ease; }
+        .view-padding { padding: 30px; overflow-y: auto; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Mobile Header */
+        .mobile-header { 
+            display: none; 
+            background: var(--bg-sidebar); 
+            height: 60px; 
+            padding: 0 20px; 
+            align-items: center; 
+            justify-content: space-between; 
+            border-bottom: 1px solid var(--border); 
+            flex-shrink: 0; 
+        }
+
+        /* --- COMPONENTES UI --- */
+        
+        /* Cards */
+        .card { 
+            background: var(--bg-card); 
+            padding: 24px; 
+            border-radius: var(--radius); 
+            border: 1px solid var(--border); 
+            box-shadow: var(--shadow-card);
+            margin-bottom: 24px; 
+        }
+
+        h3 { color: var(--text-main); margin-bottom: 16px; font-weight: 600; letter-spacing: -0.5px; }
+
+        /* Tables */
+        .act-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .act-table th { 
+            text-align: left; 
+            padding: 16px; 
+            border-bottom: 1px solid var(--border); 
+            color: var(--text-muted); 
+            font-weight: 600; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+        }
+        .act-table td { 
+            padding: 16px; 
+            border-bottom: 1px solid var(--border); 
+            vertical-align: middle; 
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .act-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .act-table tr:last-child td { border-bottom: none; }
+
+        /* Badges */
+        .status-badge { 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 0.7rem; 
+            font-weight: 700; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 6px; 
+            letter-spacing: 0.5px; 
+        }
+        .status-badge.open { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .status-badge.closed { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+        /* Buttons */
+        button, .admin-btn, .w-btn { font-family: 'Inter', sans-serif; transition: all 0.2s; }
+        
+        .admin-btn { 
+            padding: 6px 14px; 
+            border: 1px solid var(--border); 
+            background: var(--bg-body); 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.8rem; 
+            font-weight: 500; 
+            color: var(--text-main); 
+            margin-right: 6px; 
+        }
+        .admin-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(59, 130, 246, 0.1); }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+        /* Inputs */
+        input, select, textarea { 
+            width: 100%; 
+            padding: 12px; 
+            background: var(--bg-input); 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            color: var(--text-main); 
+            font-size: 0.95rem; 
+            margin-bottom: 12px; 
+            font-family: inherit; 
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+
+        /* Calendar */
+        .calendar-nav-btn { color: var(--text-main); padding: 8px; border-radius: 6px; }
+        .calendar-nav-btn:hover { background: var(--bg-hover); }
+        
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 1px; 
+            background: var(--border); 
+            border: 1px solid var(--border); 
+            border-radius: var(--radius); 
+            overflow: hidden; 
+        }
+        .weekday { background: var(--bg-sidebar); padding: 12px 0; font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; text-align: center; }
+        .day { 
+            height: 110px; 
+            background: var(--bg-card); 
+            color: var(--text-muted); 
+            padding: 10px; 
+            position: relative; 
+            cursor: pointer; 
+            transition: background 0.2s; 
+        }
         .day:hover { background: var(--bg-hover); color: var(--text-main); }
-        .day.today { color: var(--primary); font-weight: 700; background: #1a1a1a; }
-        .day-indicator { position: absolute; bottom: 8px; right: 8px; background: var(--primary); color: black; font-weight: bold; font-size: 0.65rem; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        #view-flow { position: relative; width: 100%; height: 100%; }
-        #cy { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #050505; z-index: 1; } 
-        .flow-controls { position: absolute; bottom: 20px; left: 20px; display: flex; gap: 8px; z-index: 10; }
-        .ctrl-btn { width: 32px; height: 32px; background: var(--bg-card); border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border); color: var(--text-main); font-size: 0.8rem; }
-        .fab { position: absolute; bottom: 20px; right: 20px; background: var(--primary); color: black; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15); z-index: 20; font-size: 24px; transition: transform 0.2s; }
-        .fab:hover { transform: scale(1.05); }
-        .chat-container-wrapper { background: #000; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; height: 100%; }
-        .chat-header { background: var(--bg-card); padding: 15px; color: var(--text-main); border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; }
-        .chat-msgs { flex: 1; padding: 20px; overflow-y: auto; background: #050505; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; color: #e4e4e7; }
-        .msg.bot { background: var(--bg-hover); align-self: flex-start; border-bottom-left-radius: 2px; }
-        .msg.user { background: var(--primary); color: black; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 200; display: none; justify-content: center; align-items: center; }
+        .day.today { color: var(--primary); font-weight: 700; background: rgba(59, 130, 246, 0.05); }
+        .day-indicator { 
+            position: absolute; bottom: 10px; right: 10px; 
+            background: var(--primary); color: white; 
+            font-weight: 600; font-size: 0.75rem; 
+            width: 24px; height: 24px; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* --- CHAT SIMULATOR (WhatsApp Style) --- */
+        .chat-container-wrapper { 
+            background: #0b101a; /* Más oscuro para el fondo del chat */
+            border: 1px solid var(--border); 
+            border-radius: var(--radius); 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100%; 
+            overflow: hidden;
+        }
+        .chat-header { 
+            background: var(--bg-sidebar); 
+            padding: 16px 20px; 
+            color: var(--text-main); 
+            border-bottom: 1px solid var(--border); 
+            font-weight: 600; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .chat-msgs { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            background-image: radial-gradient(var(--border) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-opacity: 0.1;
+        }
+        .msg { 
+            max-width: 80%; 
+            padding: 12px 16px; 
+            border-radius: 12px; 
+            font-size: 0.95rem; 
+            line-height: 1.5; 
+            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .msg.bot { 
+            background: var(--bg-sidebar); 
+            color: var(--text-main);
+            align-self: flex-start; 
+            border-bottom-left-radius: 2px; 
+            border: 1px solid var(--border);
+        }
+        .msg.user { 
+            background: #005c4b; /* WhatsApp Green Dark */
+            color: #e9edef; 
+            align-self: flex-end; 
+            border-bottom-right-radius: 2px; 
+        }
+
+        /* --- EDITOR VISUAL (CytoScape) --- */
+        #view-flow { background: #0b101a; }
+        #cy { background: radial-gradient(#1e293b 1px, transparent 1px) 0 0 / 30px 30px; } /* Grid effect */
+        
+        .flow-controls { 
+            position: absolute; bottom: 30px; left: 30px; 
+            display: flex; flex-direction: column; gap: 8px; z-index: 10; 
+        }
+        .ctrl-btn { 
+            width: 40px; height: 40px; 
+            background: var(--bg-card); 
+            border-radius: 8px; 
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; border: 1px solid var(--border); 
+            color: var(--text-muted); 
+            box-shadow: var(--shadow-card);
+        }
+        .ctrl-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+
+        .fab { 
+            position: absolute; bottom: 30px; right: 30px; 
+            background: var(--primary); color: white; 
+            width: 56px; height: 56px; 
+            border-radius: 16px; /* Más cuadrado estilo iOS */
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; 
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); 
+            z-index: 20; font-size: 28px; 
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .fab:hover { transform: scale(1.1) rotate(90deg); }
+
+        /* --- MODALES CON GLASSMORPHISM --- */
+        .modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.6); 
+            backdrop-filter: blur(8px); /* Efecto Glass */
+            z-index: 200; 
+            display: none; justify-content: center; align-items: center; 
+        }
         .modal.active { display: flex; animation: fadeIn 0.2s; }
-        .sheet { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-main); width: 100%; max-width: 500px; max-height: 90vh; border-radius: var(--radius); padding: 25px; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-        input, select, textarea { width: 100%; padding: 10px; background: var(--bg-body); border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 0.9rem; margin-bottom: 10px; font-family: inherit; }
-        input:focus, select:focus, textarea:focus { border-color: var(--text-muted); }
-        label { display: block; margin-bottom: 6px; font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
-        #setupWizard { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body); z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .step-hidden { display: none !important; }
-        .wizard-card { background: var(--bg-card); padding: 40px; border-radius: var(--radius); border: 1px solid var(--border); text-align: center; max-width: 400px; width: 90%; }
-        .qr-container { background: white; border-radius: 8px; padding: 10px; margin: 20px auto; width: fit-content; }
-        .w-btn { width: 100%; padding: 12px; background: var(--primary); color: black; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; }
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background: var(--bg-card); border: 1px solid var(--border); padding: 12px 20px; border-radius: 6px; color: var(--text-main); font-size: 0.85rem; display: flex; align-items: center; gap: 10px; animation: slideIn 0.3s; }
-        .toast i { color: var(--success); }
-        .toast.error i { color: var(--danger); }
-        @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
+        .sheet { 
+            background: var(--bg-card); 
+            border: 1px solid var(--border); 
+            width: 100%; max-width: 550px; 
+            border-radius: 16px; 
+            padding: 30px; 
+            display: flex; flex-direction: column; 
+            box-shadow: var(--shadow-modal); 
+            max-height: 85vh;
+        }
+
+        /* --- TOGGLES & SWITCHES --- */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-input); transition: .4s; border-radius: 34px; border: 1px solid var(--border); }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--success); border-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* --- MEDIA QUERIES --- */
         @media(max-width: 768px) { 
             #mainApp { flex-direction: column; } 
             .mobile-header { display: flex; }
             .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.8); z-index: 200; } 
             .sidebar.active { transform: translateX(0); }
-            .sheet { height: 100%; max-height: 100%; border-radius: 0; }
-            .table-responsive { display: block; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: var(--radius); }
-            .act-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: var(--text-main); min-width: 600px; }
-            .act-table th { text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; white-space: nowrap; background: var(--bg-card); }
-            .act-table td { padding: 12px 15px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
-            .act-table td:nth-child(2) { white-space: normal; min-width: 180px; max-width: 300px; }
+            .sheet { border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; max-width: 100%; }
         }
+        
+        /* Wizard Specific */
+        #setupWizard { background: var(--bg-body); }
+        .wizard-card { box-shadow: var(--shadow-modal); }
     </style>
 </head>
 <body>
@@ -114,20 +419,19 @@
         <div id="stepLoading" class="wizard-card">
             <h2 style="color:var(--text-main); margin-top:0;">Iniciando Sistema</h2>
             <p style="color:var(--text-muted); font-size:0.9rem;">Estableciendo conexión segura...</p>
-            <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--text-muted); margin-top:20px;"></i>
+            <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--primary); margin-top:20px;"></i>
             <div style="margin-top: 25px; border-top: 1px solid var(--border); padding-top: 20px;">
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">¿Tarda demasiado?</p>
-                <button onclick="resetSession()" style="background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; width: 100%;">
-                    <i class="fas fa-power-off"></i> Forzar Reinicio / Cerrar Sesión
+                <button onclick="resetSession()" class="admin-btn" style="width: 100%; color: var(--danger); border-color: var(--danger);">
+                    <i class="fas fa-power-off"></i> Forzar Reinicio
                 </button>
             </div>
         </div>
 
         <div id="stepQR" class="wizard-card step-hidden">
             <h2 style="color:var(--text-main); margin-top:0;">Vincular Dispositivo</h2>
-            <p style="color:var(--text-muted); font-size:0.85rem;">Escanea el código QR desde WhatsApp en tu móvil.</p>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Escanea el código QR desde WhatsApp.</p>
             <div class="qr-container"><canvas id="qrCanvas"></canvas></div>
-            <p id="qrStatus" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px;">Generando código...</p>
+            <p id="qrStatus" style="font-size:0.8rem; color:var(--success); font-weight:600; margin-bottom:15px;">Generando código...</p>
             <button class="w-btn" onclick="resetSession()" style="background:transparent; border:1px solid var(--border); color:var(--text-main);">Generar Nuevo Código</button>
         </div>
     </div>
@@ -136,29 +440,33 @@
     <div id="mainApp">
         <div class="sidebar" id="sidebar">
             <div class="brand">
-                <i class="fas fa-cube"></i> MENÚ
+                <i class="fas fa-layer-group" style="color: var(--primary);"></i> FLOW STUDIO
                 <button onclick="toggleMenu()" class="d-md-none" style="background:none; border:none; color:var(--text-main); margin-left:auto;">✕</button>
             </div>
             <div class="menu">
-                <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-sitemap" style="width:20px"></i> Flujo Visual</div>
+                <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-sitemap"></i> Flujo Visual</div>
                 <div class="menu-item" onclick="nav('activity', this)">
-                    <i class="fas fa-chart-line" style="width:20px"></i> Monitor
+                    <i class="fas fa-chart-line"></i> Monitor
                     <span id="notifyBadge" class="badge-count">0</span>
                 </div>
-                <div class="menu-item" onclick="nav('agenda', this)"><i class="far fa-calendar-alt" style="width:20px"></i> Agenda</div>
-                <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users" style="width:20px"></i> Usuarios</div>
-                <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h" style="width:20px"></i> Horario</div>
-                <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal" style="width:20px"></i> Test Bot</div>
+                <div class="menu-item" onclick="nav('agenda', this)"><i class="far fa-calendar-alt"></i> Agenda</div>
+                <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Usuarios</div>
+                <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h"></i> Configuración</div>
+                <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal"></i> Simulador</div>
             </div>
-            <div style="padding: 20px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted);">
-                v2.1.0 Stable<br>Server Status: <span style="color:var(--success)">● Online</span>
+            <div style="padding: 24px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted);">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                    <div style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success);"></div>
+                    <span style="font-weight:600; color:var(--text-main);">Sistema Online</span>
+                </div>
+                v3.0.0 PRO
             </div>
         </div>
 
         <div class="content">
             <div class="mobile-header">
                 <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.2rem;">☰</button>
-                <span id="pageTitle" style="font-size:0.9rem; font-weight:600;">FLUJO VISUAL</span>
+                <span id="pageTitle" style="font-size:0.95rem; font-weight:700; letter-spacing:0.5px;">FLUJO VISUAL</span>
                 <div style="width:30px"></div>
             </div>
 
@@ -166,18 +474,23 @@
             <div id="view-flow" class="view active">
                 <div id="cy"></div>
                 <div class="flow-controls">
-                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()+0.2)"><i class="fas fa-plus"></i></div>
-                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)"><i class="fas fa-minus"></i></div>
-                    <div class="ctrl-btn" onclick="cy.fit()"><i class="fas fa-expand"></i></div>
+                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()+0.2)" title="Zoom In"><i class="fas fa-plus"></i></div>
+                    <div class="ctrl-btn" onclick="cy.zoom(cy.zoom()-0.2)" title="Zoom Out"><i class="fas fa-minus"></i></div>
+                    <div class="ctrl-btn" onclick="cy.fit()" title="Fit View"><i class="fas fa-compress-arrows-alt"></i></div>
                 </div>
-                <div class="fab" onclick="newStep()">+</div>
+                <div class="fab" onclick="newStep()">
+                    <i class="fas fa-plus"></i>
+                </div>
             </div>
 
             <!-- VISTA: MONITOR -->
             <div id="view-activity" class="view view-padding">
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h3 style="margin:0; font-size:1rem; color:var(--text-main)">Actividad Reciente</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+                        <div>
+                            <h3 style="margin:0;">Actividad en Tiempo Real</h3>
+                            <p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Monitoreo de interacciones con clientes</p>
+                        </div>
                         <span id="crmStatusBadge" class="status-badge closed">● OFFLINE</span>
                     </div>
                     <div style="overflow-x:auto; -webkit-overflow-scrolling: touch;">
@@ -185,16 +498,16 @@
                             <thead>
                                 <tr>
                                     <th>Cliente</th>
-                                    <th>Datos</th>
-                                    <th>Acciones</th>
+                                    <th>Contexto y Datos</th>
+                                    <th>Acciones Rápidas</th>
                                 </tr>
                             </thead>
                             <tbody id="activityBody"></tbody>
                         </table>
                     </div>
                 </div>
-                <button onclick="loadActivity(); showToast('Actualizando...')" style="width:100%; padding:12px; background:transparent; color:var(--text-muted); border:1px solid var(--border); border-radius:6px; font-weight:500; cursor:pointer; font-size:0.8rem; transition:0.2s;">
-                    <i class="fas fa-sync-alt"></i> Forzar Actualización
+                <button class="btn-primary" onclick="loadActivity(); showToast('Actualizando...')" style="background: var(--bg-card); border:1px solid var(--border); color:var(--text-muted); width:100%;">
+                    <i class="fas fa-sync-alt"></i> Actualizar Lista
                 </button>
             </div>
 
@@ -203,25 +516,33 @@
                 <div class="card" style="height: 100%; display: flex; flex-direction: column;">
                     <div class="calendar-header">
                         <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
-                        <h3 id="monthDisplay"></h3>
+                        <h3 id="monthDisplay" style="margin:0; font-size:1.1rem;"></h3>
                         <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
                     </div>
                     <div class="calendar-grid">
-                        <div class="weekday">Dom</div><div class="weekday">Lun</div><div class="weekday">Mar</div><div class="weekday">Mié</div>
-                        <div class="weekday">Jue</div><div class="weekday">Vie</div><div class="weekday">Sáb</div>
+                        <div class="weekday">DOM</div><div class="weekday">LUN</div><div class="weekday">MAR</div><div class="weekday">MIÉ</div>
+                        <div class="weekday">JUE</div><div class="weekday">VIE</div><div class="weekday">SÁB</div>
                     </div>
-                    <div id="calendarDays" class="calendar-grid" style="flex: 1; border-top: none; border-radius: 0 0 8px 8px; border-color: var(--border);"></div>
+                    <div id="calendarDays" class="calendar-grid" style="flex: 1; border-top: none; border-radius: 0 0 12px 12px; border-color: var(--border);"></div>
                 </div>
             </div>
 
             <!-- VISTA: CONTACTOS -->
             <div id="view-contacts" class="view view-padding">
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3 style="margin:0; font-size:1rem;">Base de Usuarios</h3>
-                        <button onclick="openContactModal()" style="background:var(--primary); color:black; border:none; width:30px; height:30px; border-radius:4px; font-size:1rem; cursor:pointer; font-weight:bold;">+</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <div>
+                            <h3 style="margin:0;">Base de Usuarios</h3>
+                            <p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Gestión de permisos y acceso al bot</p>
+                        </div>
+                        <button onclick="openContactModal()" class="btn-primary" style="padding: 8px 16px;">
+                            <i class="fas fa-user-plus"></i> Nuevo
+                        </button>
                     </div>
-                    <input type="text" placeholder="Filtrar por nombre o teléfono..." oninput="delayedFilter(this.value)">
+                    <div style="position:relative; margin-bottom:15px;">
+                        <i class="fas fa-search" style="position:absolute; left:12px; top:12px; color:var(--text-muted);"></i>
+                        <input type="text" placeholder="Buscar por nombre o teléfono..." oninput="delayedFilter(this.value)" style="padding-left:36px;">
+                    </div>
                     <div id="contactsList" style="max-height: 60vh; overflow-y: auto;"></div>
                 </div>
             </div>
@@ -230,125 +551,164 @@
             <div id="view-sim" class="view view-padding">
                 <div class="chat-container-wrapper">
                     <div class="chat-header">
-                        <span>Simulador</span>
-                        <i class="fas fa-eraser" onclick="restartSim()" style="cursor:pointer; opacity:0.7;" title="Limpiar"></i>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:10px; height:10px; background:var(--success); border-radius:50%;"></div>
+                            <span>Simulador en vivo</span>
+                        </div>
+                        <i class="fas fa-trash-alt" onclick="restartSim()" style="cursor:pointer; color:var(--text-muted); transition:0.2s;" title="Limpiar Chat"></i>
                     </div>
                     <div class="chat-msgs" id="simMsgs"></div>
-                    <div style="padding: 15px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border);">
-                        <input type="text" id="simInput" placeholder="Escribe comando o mensaje..." style="margin:0; flex:1;" onkeypress="if(event.key==='Enter') sendSim()">
-                        <button onclick="sendSim()" style="background:var(--primary); color:black; border:none; border-radius:4px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer;"><i class="fas fa-arrow-right"></i></button>
+                    <div style="padding: 16px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border);">
+                        <input type="text" id="simInput" placeholder="Escribe un mensaje..." style="margin:0; flex:1;" onkeypress="if(event.key==='Enter') sendSim()">
+                        <button onclick="sendSim()" class="btn-primary" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%;">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <!-- VISTA: HORARIO -->
+            <!-- VISTA: CONFIGURACIÓN -->
             <div id="view-settings" class="view view-padding">
-                <div class="card" style="max-width: 500px; margin: 0 auto;">
-                    <h3 style="margin-top:0; font-size:1rem; margin-bottom:20px;">Configuración Global</h3>
-                    <div style="padding:15px; border:1px solid var(--border); border-radius:6px; margin-bottom:20px;">
-                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin:0; color:var(--text-main);">
-                            <input type="checkbox" id="schedActive" style="width:16px; height:16px; margin:0;"> Restringir Horario de Respuesta
-                        </label>
-                        <p style="margin:5px 0 0 26px; font-size:0.75rem; color:var(--text-muted);">El bot responderá con un mensaje de ausencia fuera del horario establecido.</p>
+                <div class="card" style="max-width: 600px; margin: 0 auto;">
+                    <h3 style="margin-top:0;">Configuración de Horario</h3>
+                    <div style="padding:20px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); margin-bottom:24px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <label style="margin:0; font-size:0.95rem; color:var(--text-main); cursor:pointer;" for="schedActive">Restricción de Horario</label>
+                                <p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Activa la respuesta automática de ausencia.</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="schedActive">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:15px; margin-bottom:15px;">
-                        <div style="flex:1"><label>Apertura</label><input type="time" id="schedStart"></div>
-                        <div style="flex:1"><label>Cierre</label><input type="time" id="schedEnd"></div>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
+                        <div><label>Hora Apertura</label><input type="time" id="schedStart"></div>
+                        <div><label>Hora Cierre</label><input type="time" id="schedEnd"></div>
                     </div>
+                    
                     <label>Mensaje de Ausencia</label>
-                    <textarea id="schedMsg" placeholder="Ej: Actualmente no estamos disponibles..." rows="3"></textarea>
-                    <button onclick="saveSettings()" style="width:100%; padding:12px; background:var(--primary); color:black; border:none; border-radius:6px; font-weight:600; margin-top:10px; cursor:pointer;">Guardar Cambios</button>
+                    <textarea id="schedMsg" placeholder="Ej: Actualmente no estamos disponibles..." rows="4"></textarea>
+                    
+                    <button onclick="saveSettings()" class="btn-primary" style="width:100%; margin-top:10px;">
+                        Guardar Configuración
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODALES -->
+    <!-- MODAL: DETALLES DÍA (AGENDA) -->
     <div class="modal" id="dayModal">
         <div class="sheet">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:15px;">
-                <div><h3 id="modalDateTitle" style="margin:0; font-size:1rem;">Eventos</h3><small id="modalDateSubtitle" style="color:var(--text-muted);"></small></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:20px; margin-bottom:20px;">
+                <div>
+                    <h3 id="modalDateTitle" style="margin:0; font-size:1.1rem;">Eventos</h3>
+                    <small id="modalDateSubtitle" style="color:var(--text-muted); display:block; margin-top:4px;">Gestiona las citas del día</small>
+                </div>
                 <button onclick="closeDayModal()" style="background:none; border:none; font-size:1.2rem; color:var(--text-muted); cursor:pointer;">✕</button>
             </div>
-            <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:10px;">
+            
+            <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:12px; padding-right:5px;">
                 <div id="modalApptList"></div>
-                <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:10px; background:var(--bg-hover); color:var(--text-main); border:1px dashed var(--border); border-radius:6px; font-size:0.85rem; cursor:pointer;">+ Nuevo Evento</button>
-                <div id="eventForm" style="display:none; background:var(--bg-body); padding:15px; border-radius:6px; border:1px solid var(--border); margin-top:10px;">
-                    <h4 style="margin:0 0 10px 0; font-size:0.9rem;">Detalles del Evento</h4>
+                
+                <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:14px; background:var(--bg-body); color:var(--primary); border:1px dashed var(--border); border-radius:8px; font-weight:600; cursor:pointer; transition:0.2s;">
+                    + Añadir Evento Manual
+                </button>
+                
+                <div id="eventForm" style="display:none; background:var(--bg-body); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:10px;">
+                    <h4 style="margin:0 0 15px 0; font-size:0.95rem; color:var(--text-main);">Nueva Cita</h4>
                     <input type="hidden" id="evtOldTime">
-                    <div style="display:flex; gap:10px;">
+                    <div style="display:flex; gap:15px;">
                         <div style="flex:1"><label>Hora</label><input type="time" id="evtTime"></div>
-                        <div style="flex:2"><label>Teléfono</label><input type="text" id="evtPhone" placeholder="Opcional"></div>
+                        <div style="flex:1"><label>Teléfono (Opcional)</label><input type="text" id="evtPhone" placeholder="55..."></div>
                     </div>
-                    <label>Nombre / Título</label><input type="text" id="evtName">
-                    <label>Notas</label><textarea id="evtNote" rows="2"></textarea>
-                    <div style="display:flex; gap:10px; margin-top:5px;">
-                        <button onclick="saveEvent()" style="flex:1; padding:8px; background:var(--primary); color:black; border:none; border-radius:4px; cursor:pointer; font-weight:600;">Guardar</button>
-                        <button onclick="hideEventForm()" style="padding:8px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; cursor:pointer;">Cancelar</button>
+                    <label>Nombre del Cliente</label><input type="text" id="evtName" placeholder="Ej: Juan Pérez">
+                    <label>Notas Adicionales</label><textarea id="evtNote" rows="2" placeholder="Detalles..."></textarea>
+                    
+                    <div style="display:flex; gap:10px; margin-top:15px;">
+                        <button onclick="saveEvent()" class="btn-primary" style="flex:1;">Guardar</button>
+                        <button onclick="hideEventForm()" style="padding:10px 20px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer; font-weight:500;">Cancelar</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- MODAL: NUEVO CONTACTO -->
     <div class="modal" id="contactModal">
         <div class="sheet" style="height:auto;">
-            <h3 style="margin-top:0; font-size:1rem;">Añadir Usuario Manual</h3>
+            <h3 style="margin-top:0;">Añadir Usuario</h3>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">Registra manualmente a un cliente para el bot.</p>
+            
             <label>Nombre / Alias</label><input type="text" id="newContName">
             <label>WhatsApp (con código país)</label><input type="tel" id="newContPhone" placeholder="Ej: 521...">
-            <div style="background:var(--bg-body); padding:10px; border-radius:6px; margin:10px 0; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.85rem;">Bot Activo</span>
-                <input type="checkbox" id="newContEnable" checked>
+            
+            <div style="background:var(--bg-body); padding:16px; border-radius:8px; margin:10px 0 20px 0; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.9rem; font-weight:500;">Activar Bot Automático</span>
+                <label class="switch">
+                    <input type="checkbox" id="newContEnable" checked>
+                    <span class="slider"></span>
+                </label>
             </div>
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <button onclick="saveNewContact()" style="flex:1; padding:10px; background:var(--primary); color:black; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Añadir</button>
-                <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:10px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; cursor:pointer;">Cancelar</button>
+            
+            <div style="display:flex; gap:10px;">
+                <button onclick="saveNewContact()" class="btn-primary" style="flex:1;">Registrar Usuario</button>
+                <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:12px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer;">Cancelar</button>
             </div>
         </div>
     </div>
 
+    <!-- MODAL: EDITOR DE NODOS -->
     <div class="modal" id="editorModal">
         <div class="sheet">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:15px;">
-                <h3 style="margin:0; font-size:1rem;">Propiedades del Nodo</h3>
+                <div>
+                    <h3 style="margin:0;">Editar Paso</h3>
+                    <small style="color:var(--text-muted);">Configura la respuesta del bot</small>
+                </div>
                 <button onclick="closeEditor()" style="background:none; border:none; font-size:1.2rem; color:var(--text-muted); cursor:pointer;">✕</button>
             </div>
+            
             <div style="flex:1; overflow-y:auto; padding-right:5px;">
                 <input type="hidden" id="stId">
                 <label>Tipo de Interacción</label>
                 <select id="stType" onchange="renderFields()">
-                    <option value="menu">Menú Interactivo</option>
-                    <option value="filtro">Filtro / Decisión</option>
-                    <option value="input">Solicitar Dato</option>
-                    <option value="message">Enviar Mensaje</option>
-                    <option value="cita">Módulo Citas</option>
-                    <option value="fin_bot">Fin / Pasar a Agente</option>
+                    <option value="menu">🔘 Menú con Botones</option>
+                    <option value="filtro">👮 Filtro / Aprobación Admin</option>
+                    <option value="input">💾 Solicitar & Guardar Dato</option>
+                    <option value="message">💬 Enviar Mensaje Simple</option>
+                    <option value="cita">📅 Módulo de Citas</option>
+                    <option value="fin_bot">🏁 Finalizar Conversación</option>
                 </select>
                 
-                <div id="wrapper-msg" style="margin-top:15px;">
-                    <label>Contenido del Mensaje</label>
-                    <textarea id="stMsg" rows="4" placeholder="Escribe lo que dirá el bot..."></textarea>
+                <div id="wrapper-msg" style="margin-top:20px;">
+                    <label>Mensaje del Bot</label>
+                    <textarea id="stMsg" rows="4" placeholder="Hola, ¿en qué puedo ayudarte hoy?"></textarea>
+                    <small style="color:var(--text-muted); display:block; margin-top:-8px; margin-bottom:15px;">Puedes usar variables como {{nombre}}</small>
                 </div>
                 
-                <div id="wrapper-media" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                        <label>Adjuntos</label>
-                        <span id="imgCount" style="font-size:0.7rem; color:var(--text-muted);">0 archivos</span>
+                <div id="wrapper-media" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                        <label style="margin:0;">Archivos Multimedia</label>
+                        <span id="imgCount" style="font-size:0.75rem; color:var(--primary);">0 archivos</span>
                     </div>
-                    <div id="galleryContainer" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;"></div>
-                    <label class="upload-btn" style="display:block; text-align:center; padding:8px; border:1px dashed var(--border); border-radius:4px; font-size:0.8rem; cursor:pointer; color:var(--text-muted);">
-                        + Subir Imagen
+                    <div id="galleryContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px;"></div>
+                    <label class="admin-btn" style="display:block; text-align:center; border-style:dashed; color:var(--text-muted);">
+                        <i class="fas fa-cloud-upload-alt"></i> Subir Imagen/Video
                         <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
                     </label>
                 </div>
 
-                <div id="dynFields" style="margin-top:15px; border-top:1px solid var(--border); padding-top:15px;"></div>
+                <div id="dynFields" style="margin-top:25px; padding-top:15px; border-top:1px solid var(--border);"></div>
             </div>
             
-            <div style="margin-top:20px; display:flex; flex-direction: row; gap:10px; align-items: stretch;">
-                <button onclick="saveStep()" style="flex:1; padding:12px; background:var(--primary); color:black; border:none; border-radius:4px; font-weight:600; cursor:pointer;">Guardar</button>
-                <button onclick="delStep()" style="width: 50px; padding:12px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-                    <i class="fas fa-trash"></i>
+            <div style="margin-top:25px; display:flex; gap:12px;">
+                <button onclick="saveStep()" class="btn-primary" style="flex:1;">Guardar Cambios</button>
+                <button onclick="delStep()" style="width: 50px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-trash-alt"></i>
                 </button>
             </div>
         </div>
@@ -402,7 +762,7 @@
                 } else if (data.qr) {
                     document.getElementById('stepLoading').classList.add('step-hidden');
                     document.getElementById('stepQR').classList.remove('step-hidden');
-                    if (data.qr !== lastQr) { lastQr = data.qr; renderQR(data.qr); document.getElementById('qrStatus').innerText = "Escanea ahora"; }
+                    if (data.qr !== lastQr) { lastQr = data.qr; renderQR(data.qr); document.getElementById('qrStatus').innerText = "Listo para escanear"; }
                 } else {
                     if (data.status === 'disconnected') fetch(`${API_BASE}/api/auth/init`, { method: 'POST' }).catch(e => console.warn("Init error:", e));
                     document.getElementById('stepLoading').classList.remove('step-hidden');
@@ -431,7 +791,7 @@
         document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
         document.getElementById('view-' + v).classList.add('active');
         if (btn) btn.classList.add('active');
-        const titles = { flow: 'FLUJO VISUAL', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'TEST BOT' };
+        const titles = { flow: 'FLUJO VISUAL', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'SIMULADOR' };
         document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
         document.getElementById('sidebar').classList.remove('active');
         if (v !== 'flow' && cy) { try { cy.destroy(); cy = null; } catch(e){} }
@@ -460,7 +820,7 @@
         } catch(e) {
             console.error("No se pudo cargar el flujo");
             const c = document.getElementById('cy');
-            if(c) c.innerHTML = '<div style="color:white; text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
+            if(c) c.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
         }
         try {
             const set = await (await fetch(`${API_BASE}/api/settings`)).json();
@@ -484,12 +844,12 @@
             else {
                 allToShow.forEach(u => {
                     const s = flow[u.current_step] || { type: 'unknown' };
-                    let actionsHtml = `<div style="margin-bottom:5px;"><span style="font-size:0.7rem; background:var(--bg-body); padding:2px 6px; border:1px solid var(--border); border-radius:4px; color:var(--text-muted);">${u.current_step}</span></div>`;
+                    let actionsHtml = `<div style="margin-bottom:5px;"><span style="font-size:0.7rem; background:var(--bg-body); padding:2px 8px; border:1px solid var(--border); border-radius:12px; color:var(--text-muted); font-weight:600;">${u.current_step}</span></div>`;
                     if (s.type === 'filtro' && s.options) { s.options.forEach(opt => { actionsHtml += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${opt.next_step}')">${opt.label}</button>`; }); }
                     let dataHtml = '';
-                    if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.75rem; color:var(--text-muted);">${k}: <span style="color:var(--text-main)">${v}</span></div>`);
+                    if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:2px;"><strong style="color:var(--text-main); text-transform:capitalize;">${k.replace('_',' ')}:</strong> ${v}</div>`);
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td><div style="font-weight:500;">${u.phone}</div><small style="color:var(--text-muted); font-size:0.7rem;">${new Date(u.last_active).toLocaleTimeString()}</small></td><td>${dataHtml || '<span style="color:var(--text-muted)">-</span>'}</td><td>${actionsHtml}</td>`;
+                    row.innerHTML = `<td><div style="font-weight:600; font-size:0.95rem;">${u.phone}</div><small style="color:var(--text-muted); font-size:0.75rem;">Hace ${Math.floor((new Date() - new Date(u.last_active))/60000)} min</small></td><td>${dataHtml || '<span style="color:var(--text-muted); font-style:italic;">Sin datos capturados</span>'}</td><td>${actionsHtml}</td>`;
                     tb.appendChild(row);
                 });
             }
@@ -515,13 +875,14 @@
         Object.keys(flow).forEach(k => {
             const s = flow[k];
             if (!s) return;
-            let color = '#94a3b8'; 
-            if(s.type === 'menu') color = '#3b82f6';
-            else if(s.type === 'filtro') color = '#a855f7';
-            else if(s.type === 'input') color = '#f97316';
-            else if(s.type === 'message') color = '#10b981';
-            else if(s.type === 'cita') color = '#ec4899';
-            else if(s.type === 'fin') color = '#ef4444';
+            // Palette matches CSS vars
+            let color = '#64748b'; // Default Slate
+            if(s.type === 'menu') color = '#3b82f6'; // Blue
+            else if(s.type === 'filtro') color = '#a855f7'; // Purple
+            else if(s.type === 'input') color = '#f97316'; // Orange
+            else if(s.type === 'message') color = '#10b981'; // Green
+            else if(s.type === 'cita') color = '#ec4899'; // Pink
+            else if(s.type === 'fin_bot') color = '#ef4444'; // Red
                 
             elements.push({ data: { id: k, label: k, color: color } });
                 
@@ -543,20 +904,20 @@
                 wheelSensitivity: 0.2,
                 style: [ 
                     { selector: 'node', style: { 
-                        'background-color': '#ffffff', 'label': 'data(label)', 'color': '#0f172a', 'text-margin-y': 0,
-                        'shape': 'round-rectangle', 'width': 'label', 'height': 'label', 'padding': '16px 24px',
-                        'font-family': 'Inter, sans-serif', 'font-size': '14px', 'font-weight': '700', 'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 'text-wrap': 'wrap', 'text-max-width': '140px', 
-                        'border-width': 3, 'border-color': 'data(color)', 
-                        'shadow-blur': 20, 'shadow-color': 'data(color)', 'shadow-opacity': 0.25, 'shadow-offset-y': 4
+                        'background-color': '#0f172a', 'label': 'data(label)', 'color': '#f8fafc', 
+                        'shape': 'round-rectangle', 'width': 'label', 'height': 'label', 'padding': '12px 20px',
+                        'font-family': 'Inter, sans-serif', 'font-size': '12px', 'font-weight': '600', 
+                        'text-valign': 'center', 'text-halign': 'center', 'text-transform': 'uppercase', 
+                        'border-width': 2, 'border-color': 'data(color)', 
+                        'shadow-blur': 0, 'shadow-offset-y': 0
                     }}, 
                     { selector: 'edge', style: { 
-                        'width': 2, 'line-color': '#cbd5e1', 'curve-style': 'taxi', 'taxi-direction': 'rightward', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#cbd5e1', 'opacity': 1, 
-                        'label': 'data(label)', 'font-size': '11px', 'font-weight': '600', 'color': '#ffffff', 'text-background-color': '#1e293b', 'text-background-opacity': 1, 'text-background-padding': '4px', 'text-background-shape': 'roundrectangle', 'text-border-width': 1, 'text-border-color': '#475569', 'text-rotation': 'autorotate' 
+                        'width': 2, 'line-color': '#475569', 'curve-style': 'taxi', 'taxi-direction': 'rightward', 'target-arrow-shape': 'triangle', 'target-arrow-color': '#475569', 
+                        'label': 'data(label)', 'font-size': '10px', 'font-weight': '500', 'color': '#94a3b8', 
+                        'text-background-color': '#0f172a', 'text-background-opacity': 1, 'text-background-padding': '4px', 'text-background-shape': 'roundrectangle',
+                        'text-rotation': 'autorotate' 
                     }},
-                    { selector: 'edge.cross-edge', style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 3], 'line-color': '#64748b', 'target-arrow-color': '#64748b', 'opacity': 0.6 }},
-                    { selector: 'node:selected', style: { 'border-width': 4, 'shadow-blur': 30, 'shadow-opacity': 0.6, 'background-color': '#f8fafc' }},
-                    { selector: '.highlighted', style: { 'opacity': 1, 'z-index': 999 } },
-                    { selector: '.faded', style: { 'opacity': 0.15, 'label': '' } }
+                    { selector: 'node:selected', style: { 'border-width': 3, 'background-color': '#1e293b' }}
                 ],
                 layout: { name: 'preset' } 
             });
@@ -564,12 +925,9 @@
             let roots = cy.nodes().roots();
             if(roots.length === 0) roots = cy.nodes().first(); 
             cy.edges().addClass('cross-edge');
-
             cy.elements().bfs({ roots: roots, visit: function(v, e) { if (e) { e.removeClass('cross-edge'); } }, directed: true });
-
             const layoutElements = cy.elements().not('edge.cross-edge');
-            layoutElements.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 120, ranker: 'network-simplex', align: 'UL', animate: false, fit: !savedZoom }).run();
-
+            layoutElements.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 50, rankSep: 100, ranker: 'network-simplex', align: 'UL', animate: false, fit: !savedZoom }).run();
             if (savedZoom && savedPan) cy.viewport({ zoom: savedZoom, pan: savedPan });
 
             cy.on('tap', 'node', function(evt){ const node = evt.target; cy.elements().removeClass('highlighted faded'); const neighborhood = node.predecessors().union(node.successors()).union(node); cy.elements().not(neighborhood).addClass('faded'); neighborhood.addClass('highlighted'); });
@@ -607,42 +965,42 @@
 
         if (type === 'menu') {
             const keywordsVal = (d.keywords || []).join(', ');
-            html += `<label style="display:block; margin-bottom:5px; font-size:0.8rem; font-weight:600;">🔑 Palabras Clave</label>
-                     <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu" style="margin-bottom:15px;">`;
-            html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Opciones del Menú</label>`;
+            html += `<label>🔑 Palabras Clave</label>
+                     <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu" style="margin-bottom:20px;">`;
+            html += `<div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Opciones del Menú</label>`;
             (d.options||[]).forEach(o => {
-                html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
+                html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;">
                             <input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;">
                             <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
-                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
+                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>
                          </div>`;
             });
-            html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Opción</button>`;
+            html += `</div><button onclick="addOpt()" class="admin-btn" style="margin-top:10px; width:100%; border-style:dashed; color:var(--success);">+ Agregar Opción</button>`;
         } else if (type === 'filtro') {
-             html += `<div style="background:rgba(168, 85, 247, 0.1); padding:10px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:6px; margin-bottom:15px;">
-                        <label style="color:#a855f7; font-weight:bold; font-size:0.8rem;">👮 Teléfono Administrador</label>
-                        <input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3);">
+             html += `<div style="background:rgba(168, 85, 247, 0.1); padding:15px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:8px; margin-bottom:20px;">
+                        <label style="color:#a855f7; font-weight:bold;">👮 Teléfono Administrador</label>
+                        <input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3); margin-bottom:0;">
                      </div>`;
-             html += `<div id="optList" style="background:var(--bg-body); padding:10px; border-radius:6px; border:1px solid var(--border);"><label style="display:block; margin-bottom:10px; font-size:0.8rem;">Rutas de Decisión</label>`;
+             html += `<div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Rutas de Decisión</label>`;
             (d.options||[]).forEach(o => {
-                html += `<div class="row" style="display:flex; gap:5px; margin-bottom:5px;">
+                html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;">
                             <input class="o-lbl" value="${o.label}" placeholder="Acción (ej: Aprobar)" style="flex:1;">
                             <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
-                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>
+                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>
                          </div>`;
             });
-            html += `</div><button onclick="addOpt()" style="margin-top:5px; font-size:0.8rem; color:var(--success); background:none; border:none; cursor:pointer; font-weight:600;">+ Agregar Ruta</button>`;
+            html += `</div><button onclick="addOpt()" class="admin-btn" style="margin-top:10px; width:100%; border-style:dashed; color:var(--success);">+ Agregar Ruta</button>`;
         } else if (type === 'input') {
-            html += `<label style="display:block; margin-bottom:5px; margin-top:10px;">💾 Nombre Variable (donde guardar el dato)</label>
+            html += `<label style="margin-top:10px;">💾 Nombre Variable (donde guardar el dato)</label>
                      <input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente">`;
-            html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
+            html += `<label>➡️ Siguiente Paso</label>
                      <select id="stNextStep">${getOpts(d.next_step)}</select>`;
         } else if (type === 'cita') {
-             html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso (Al agendar)</label>
+             html += `<label>➡️ Siguiente Paso (Al agendar)</label>
                       <select id="stNextStep">${getOpts(d.next_step)}</select>`;
         } else {
              if (type !== 'fin_bot') {
-                 html += `<label style="display:block; margin-bottom:5px;">➡️ Siguiente Paso</label>
+                 html += `<label>➡️ Siguiente Paso</label>
                           <select id="stNextStep">${getOpts(d.next_step)}</select>`;
              }
         }
@@ -650,9 +1008,9 @@
     }
 
     function addOpt() {
-        const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:5px; margin-bottom:5px;";
+        const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:8px; margin-bottom:8px;";
         let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}">${k}</option>`);
-        div.innerHTML=`<input class="o-lbl" placeholder="Texto Botón"><select class="o-nxt">${s}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:transparent; border:none; cursor:pointer;">✕</button>`;
+        div.innerHTML=`<input class="o-lbl" placeholder="Texto Botón" style="flex:1;"><select class="o-nxt" style="flex:1;">${s}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>`;
         document.getElementById('optList').appendChild(div);
     }
         
@@ -695,7 +1053,7 @@
 
     function renderGallery() {
         const c = document.getElementById('galleryContainer'); c.innerHTML='';
-        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="position:relative; width:60px; height:60px;"><img src="${u}" style="width:100%; height:100%; border-radius:4px; object-fit:cover; border:1px solid var(--border);"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:var(--danger); color:white; border-radius:50%; width:18px; height:18px; font-size:10px; border:none; cursor:pointer;">✕</button></div>`);
+        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="position:relative; width:70px; height:70px;"><img src="${u}" style="width:100%; height:100%; border-radius:6px; object-fit:cover; border:1px solid var(--border);"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-6px; right:-6px; background:var(--danger); color:white; border-radius:50%; width:20px; height:20px; font-size:12px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button></div>`);
         document.getElementById('imgCount').innerText = currentMediaList.length + " archivos";
     }
     async function uploadImages(inp) {
@@ -710,11 +1068,11 @@
         const m = now.getMonth(), y = now.getFullYear();
         const firstDay = new Date(y, m, 1).getDay();
         const daysInMonth = new Date(y, m+1, 0).getDate();
-        const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+        const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
         document.getElementById('monthDisplay').innerText = `${months[m]} ${y}`;
         const g = document.getElementById('calendarDays'); g.innerHTML = '';
         let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
-        for(let i=0; i<firstDay; i++) g.innerHTML += `<div class="day empty"></div>`;
+        for(let i=0; i<firstDay; i++) g.innerHTML += `<div class="day empty" style="pointer-events:none;"></div>`;
         for(let i=1; i<=daysInMonth; i++) {
             const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
             const count = (appts[k]||[]).length;
@@ -731,13 +1089,22 @@
         const allAppts = await (await fetch(`${API_BASE}/api/agenda`)).json();
         const appts = allAppts[dateKey] || [];
         list.innerHTML = '';
-        if(!appts.length) list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-style:italic; font-size:0.85rem;">No hay eventos para este día.</div>';
+        if(!appts.length) list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted); font-style:italic; font-size:0.9rem;">No hay eventos para este día.</div>';
         appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
             const row = document.createElement('div');
-            row.style.cssText = "background:var(--bg-body); border:1px solid var(--border); border-radius:6px; padding:10px; display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;";
+            row.style.cssText = "background:var(--bg-body); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;";
             row.innerHTML = `
-                <div><div style="display:flex; align-items:center; gap:8px;"><span style="font-family:monospace; color:var(--primary); background:var(--bg-card); padding:2px 4px; border-radius:4px; font-size:0.8rem;">${c.time}</span><span style="font-weight:600; font-size:0.9rem;">${c.name}</span></div><div style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">${c.phone||''}</div>${c.note ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; font-style:italic;">"${c.note}"</div>` : ''}</div>
-                <button onclick="deleteAppt('${dateKey}', '${c.time}')" style="background:transparent; border:none; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>`;
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-family:monospace; color:var(--primary); background:rgba(59, 130, 246, 0.1); padding:2px 6px; border-radius:4px; font-size:0.85rem; font-weight:600;">${c.time}</span>
+                        <span style="font-weight:600; font-size:0.95rem; color:var(--text-main);">${c.name}</span>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">
+                        <i class="fab fa-whatsapp" style="margin-right:4px;"></i>${c.phone||'Sin teléfono'}
+                    </div>
+                    ${c.note ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-style:italic; border-left:2px solid var(--border); padding-left:8px;">"${c.note}"</div>` : ''}
+                </div>
+                <button onclick="deleteAppt('${dateKey}', '${c.time}')" style="background:transparent; border:none; color:var(--danger); cursor:pointer; padding:5px; opacity:0.7; transition:0.2s;"><i class="fas fa-trash-alt"></i></button>`;
             list.appendChild(row);
         });
         document.getElementById('evtOldTime').dataset.date = dateKey; 
@@ -766,22 +1133,21 @@
             let htmlBuffer = '';
             list.forEach(u => {
                 htmlBuffer += `
-                <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
-                    <div><b style="color:var(--text-main); font-size:0.9rem;">${u.name||u.phone}</b><div style="color:var(--text-muted); font-size:0.75rem;">${u.phone}</div></div>
-                    <label class="switch" style="position:relative; display:inline-block; width:36px; height:20px;">
-                        <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)" style="opacity:0; width:0; height:0;">
-                        <span class="slider" style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:var(--bg-hover); transition:.4s; border-radius:34px;"></span>
-                        <span class="slider-ball" style="position:absolute; content:''; height:14px; width:14px; left:3px; bottom:3px; background-color:white; transition:.4s; border-radius:50%;"></span>
+                <div style="display:flex; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:36px; height:36px; background:var(--bg-hover); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--text-muted);">${u.name?u.name[0].toUpperCase():'#'}</div>
+                        <div>
+                            <b style="color:var(--text-main); font-size:0.95rem; display:block;">${u.name||u.phone}</b>
+                            <div style="color:var(--text-muted); font-size:0.8rem;">${u.phone}</div>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)">
+                        <span class="slider"></span>
                     </label>
                 </div>`;
             });
             c.innerHTML = htmlBuffer;
-            if (!document.getElementById('toggle-style')) {
-                const style = document.createElement('style');
-                style.id = 'toggle-style';
-                style.innerHTML = `input:checked + .slider { background-color: var(--success); } input:checked + .slider + .slider-ball { transform: translateX(16px); }`;
-                document.head.appendChild(style);
-            }
         } catch (e) { console.error("Error cargando contactos:", e); }
     }
     function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
@@ -814,7 +1180,7 @@
         fetch(`${API_BASE}/api/simulate/text`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone: simPhone, text: txt }) });
     }
     function addMsg(txt, usr) { const d = document.createElement('div'); d.className = `msg ${usr?'user':'bot'}`; d.innerHTML = txt; document.getElementById('simMsgs').appendChild(d); scrollToBottomSim(); }
-    function restartSim() { document.getElementById('simMsgs').innerHTML=''; simState={step:'BIENVENIDA', history:{}}; showToast('Terminal Limpia'); }
+    function restartSim() { document.getElementById('simMsgs').innerHTML=''; simState={step:'BIENVENIDA', history:{}}; showToast('Chat Limpio'); }
     async function saveSettings() {
         const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
         await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
