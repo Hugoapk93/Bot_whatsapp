@@ -166,7 +166,7 @@
                 <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-cog"></i> Configuración</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-gamepad"></i> Simulador</div>
                 <div class="menu-item" id="installAppBtn" onclick="installPWA()"><i class="fas fa-download"></i> Instalar App</div>
-                <div class="menu-item logout" onclick="resetSession()"><i class="fas fa-power-off"></i> Salir</div>
+                <div class="menu-item logout" onclick="requestLogout()"><i class="fas fa-power-off"></i> Salir</div>
             </div>
         </div>
 
@@ -196,7 +196,7 @@
                 <div class="fab" onclick="createNewStepPrompt()"><i class="fas fa-plus"></i></div>
             </div>
 
-            <!-- VISTA: AGENDA (RESTAURADA) -->
+            <!-- VISTA: AGENDA -->
             <div id="view-agenda" class="view view-padding">
                 <div class="card" style="height: 100%; display: flex; flex-direction: column;">
                     <div class="calendar-header">
@@ -220,7 +220,7 @@
                 </div>
             </div>
 
-            <!-- VISTA: CONFIGURACIÓN (RESTAURADA) -->
+            <!-- VISTA: CONFIGURACIÓN -->
             <div id="view-settings" class="view view-padding">
                 <div class="card">
                     <h3>Horario de Atención</h3>
@@ -251,7 +251,35 @@
         </div>
     </div>
 
-    <!-- MODAL EDITOR (RESTAURADO COMPLETO) -->
+    <!-- MODAL NUEVO PASO (Personalizado) -->
+    <div class="modal" id="stepNameModal">
+        <div class="sheet" style="height:auto;">
+            <h3>Nuevo Paso</h3>
+            <label>Nombre del Paso (Único)</label>
+            <input type="text" id="newStepNameInput" placeholder="Ej: BIENVENIDA" style="text-transform:uppercase;">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="confirmCreateStep()" class="btn-primary" style="flex:1;">Crear</button>
+                <button onclick="document.getElementById('stepNameModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMACIÓN SALIR (Personalizado) -->
+    <div class="modal" id="logoutModal">
+        <div class="sheet" style="height:auto; text-align:center;">
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+                <i class="fas fa-power-off" style="font-size:1.5rem; color:var(--danger);"></i>
+            </div>
+            <h3>¿Cerrar Sesión?</h3>
+            <p style="color:var(--text-muted); margin-bottom:20px;">Se desconectará el monitor y dejarás de recibir alertas.</p>
+            <div style="display:flex; gap:10px;">
+                <button onclick="confirmLogout()" class="btn-primary" style="background:var(--danger); flex:1;">Sí, Salir</button>
+                <button onclick="document.getElementById('logoutModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITOR COMPLETO -->
     <div class="modal" id="editorModal">
         <div class="sheet">
             <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
@@ -259,7 +287,6 @@
                 <button onclick="document.getElementById('editorModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
             </div>
             <input type="hidden" id="stId">
-            
             <label>Tipo de Interacción</label>
             <select id="stType" onchange="renderFields()">
                 <option value="menu">🔘 Menú (Botones)</option>
@@ -269,23 +296,17 @@
                 <option value="cita">📅 Citas</option>
                 <option value="fin_bot">🏁 Finalizar</option>
             </select>
-
             <div id="wrapper-msg" style="margin-top:15px;">
                 <label>Mensaje del Bot</label>
                 <textarea id="stMsg" rows="3" placeholder="Hola {{nombre}}..."></textarea>
             </div>
-            
-            <!-- SECCIÓN MULTIMEDIA (RESTAURADA) -->
             <div id="wrapper-media" style="margin-top:15px; background:var(--bg-input); padding:10px; border-radius:8px;">
                 <label>Multimedia (Fotos/Videos)</label>
                 <div id="galleryContainer" style="display:flex; gap:10px; overflow-x:auto; padding:5px 0;"></div>
                 <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
                 <button onclick="document.getElementById('imgUpload').click()" class="admin-btn" style="width:100%; border-style:dashed; margin-top:5px;">+ Subir Archivo</button>
             </div>
-
-            <!-- CAMPOS DINÁMICOS -->
             <div id="dynFields" style="margin-top:15px;"></div>
-
             <div style="margin-top:20px; display:flex; gap:10px;">
                 <button onclick="saveStep()" class="btn-primary" style="flex:1;">Guardar</button>
                 <button onclick="delStep()" style="background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); padding:10px; border-radius:8px;"><i class="fas fa-trash"></i></button>
@@ -302,7 +323,6 @@
             </div>
             <div id="modalApptList" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
             <button onclick="document.getElementById('eventForm').style.display='block'; this.style.display='none'" id="btnAddEvent" class="admin-btn" style="width:100%; padding:15px; border-style:dashed;">+ Agendar Manualmente</button>
-            
             <div id="eventForm" style="display:none; background:var(--bg-input); padding:15px; border-radius:10px; margin-top:10px;">
                 <input type="hidden" id="evtOldTime">
                 <div style="display:flex; gap:10px;">
@@ -345,20 +365,14 @@
     socket.on('disconnect', () => { updateConnStatus(false); });
 
     socket.on('message', (data) => {
-        // Notificación In-App (Bonita) si la app está abierta
         if (!data.fromMe && document.visibilityState === 'visible') {
             showInAppNotify(data.text || "📷 Imagen recibida");
             const audio = document.getElementById('alertSound');
             if(audio) { audio.volume = 0.5; audio.play().catch(()=>{}); }
-        }
-        // Notificación Sistema si la app está cerrada/fondo
-        else if (!data.fromMe) {
+        } else if (!data.fromMe) {
             new Notification("Nuevo Mensaje", { body: data.text || "Archivo", icon: "logo.svg" });
         }
-
-        loadActivity(); // Actualizar monitor
-        
-        // Simulador
+        loadActivity(); 
         const simPhone = '5218991234567';
         const dest = (data.to||'').replace(/\D/g, ''), orig = (data.from||'').replace(/\D/g, '');
         if (dest.includes(simPhone) || orig.includes(simPhone)) addMsg(data.text, data.fromMe);
@@ -380,7 +394,7 @@
     // --- INIT ---
     window.onload = () => {
         document.getElementById('setupWizard').classList.remove('step-hidden');
-        Notification.requestPermission(); // Pedir permiso silenciosamente al inicio
+        Notification.requestPermission();
         
         const checkStatus = async () => {
             try {
@@ -421,7 +435,7 @@
     }
     async function crmAction(phone, step) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) }); }
 
-    // --- FLOW EDITOR (FULL) ---
+    // --- FLOW EDITOR ---
     function renderFlowList() {
         const c = document.getElementById('flowListContainer'); c.innerHTML='';
         Object.keys(flow).sort().forEach(k => {
@@ -485,10 +499,37 @@
         await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
         flow[id] = data; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
     }
-    function createNewStepPrompt() { const n = prompt("Nombre (MAYUSCULAS):"); if(n){ flow[n]={type:'message'}; renderFlowList(); edit(n); }}
+    
+    // --- NUEVA LÓGICA DE CREACIÓN DE PASOS CON MODAL ---
+    function createNewStepPrompt() { 
+        document.getElementById('newStepNameInput').value = '';
+        document.getElementById('stepNameModal').classList.add('active');
+        setTimeout(() => document.getElementById('newStepNameInput').focus(), 100);
+    }
+    function confirmCreateStep() {
+        const n = document.getElementById('newStepNameInput').value.toUpperCase().trim();
+        if(!n) return alert("El nombre es requerido");
+        if(flow[n]) return alert("Ya existe un paso con ese nombre");
+        flow[n] = {type:'message'}; 
+        renderFlowList(); 
+        document.getElementById('stepNameModal').classList.remove('active');
+        edit(n);
+    }
+    
+    // --- NUEVA LÓGICA DE SALIDA CON CONFIRMACIÓN ---
+    function requestLogout() {
+        document.getElementById('logoutModal').classList.add('active');
+    }
+    async function confirmLogout() {
+        await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); 
+        location.reload();
+    }
+    // Mantengo resetSession para compatibilidad, pero redirige al modal
+    function resetSession() { requestLogout(); }
+    
     async function delStep() { await fetch('/api/flow/step/'+document.getElementById('stId').value, {method:'DELETE'}); delete flow[document.getElementById('stId').value]; renderFlowList(); document.getElementById('editorModal').classList.remove('active'); }
 
-    // --- AGENDA RESTAURADA ---
+    // --- AGENDA ---
     async function renderCalendar() {
         const now = currentRefDate, m = now.getMonth(), y = now.getFullYear();
         document.getElementById('monthDisplay').innerText = `${["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]} ${y}`;
@@ -527,7 +568,6 @@
     function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebarOverlay').classList.toggle('active'); }
     function nav(v, btn) { document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); document.querySelectorAll('.menu-item').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+v).classList.add('active'); if(btn) btn.classList.add('active'); document.getElementById('sidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); if(v==='agenda') renderCalendar(); }
     function timeAgo(date) { if(!date) return '-'; const s = Math.floor((new Date()-new Date(date))/1000); if(s<60) return 'Ahora'; if(s<3600) return Math.floor(s/60)+'m'; return Math.floor(s/3600)+'h'; }
-    async function resetSession() { await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
     async function saveSettings() {
         const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
         await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
@@ -539,7 +579,6 @@
     function sendSim() { const t=document.getElementById('simInput'); if(!t.value)return; addMsg(t.value,true); fetch(`${API_BASE}/api/simulate/text`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:'5218991234567', text:t.value}) }); t.value=''; }
     function addMsg(t, me) { document.getElementById('simMsgs').innerHTML+=`<div class="msg ${me?'user':'bot'}">${t}</div>`; const c=document.querySelector('.chat-msgs'); c.scrollTop=c.scrollHeight; }
 
-    // Mobile PWA Install
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt=e; document.getElementById('installAppBtn').style.display='flex'; });
     async function installPWA() { if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt=null; } }
 </script>
