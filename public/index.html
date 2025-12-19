@@ -202,7 +202,7 @@
                     <h3 style="margin-top:0;">Monitor en Vivo</h3>
                     <div style="overflow-x:auto;">
                         <table class="act-table">
-                            <thead><tr><th>Cliente</th><th>Estado</th><th>Acción</th></tr></thead>
+                            <thead><tr><th>Cliente</th><th>Estado</th><th>Datos</th><th>Acción</th></tr></thead>
                             <tbody id="activityBody"></tbody>
                         </table>
                     </div>
@@ -454,15 +454,54 @@
             if (Object.keys(flow).length === 0) flow = await (await fetch(`${API_BASE}/api/flow`)).json();
             
             users = await (await fetch(`${API_BASE}/api/users`)).json();
-            const tb = document.getElementById('activityBody'); tb.innerHTML = '';
-            users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a,b) => new Date(b.last_active) - new Date(a.last_active)).forEach(u => {
-                const s = flow[u.current_step] || {};
-                let btns = '';
-                if(s.type === 'filtro' && s.options) s.options.forEach(o => btns += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${o.next_step}')" style="border-color:var(--primary); color:var(--primary); margin-top:5px;">${o.label}</button>`);
-                
-                tb.innerHTML += `<tr><td><b>${u.phone}</b><br><small>${timeAgo(u.last_active)}</small></td><td><span class="status-badge connected" style="background:var(--bg-input); color:var(--text-muted);">${u.current_step}</span></td><td>${btns}</td></tr>`;
+            const tb = document.getElementById('activityBody'); 
+            tb.innerHTML = '';
+
+            users.filter(u => u.phone !== 'TEST_SIMULADOR')
+                 .sort((a,b) => new Date(b.last_active) - new Date(a.last_active))
+                 .forEach(u => {
+                    const s = flow[u.current_step] || {};
+                    
+                    // --- LOGICA BOTONES (ACCIONES) ---
+                    let btns = '';
+                    if(s.type === 'filtro' && s.options) {
+                        s.options.forEach(o => {
+                            btns += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${o.next_step}')" style="border-color:var(--primary); color:var(--primary); margin-top:5px;">${o.label}</button>`;
+                        });
+                    }
+
+                    // --- LOGICA NUEVA: FORMATEAR VARIABLES ---
+                    let varsHtml = '<span style="color:var(--text-muted); font-size:0.8rem;">-</span>';
+                    
+                    // Verificamos si el usuario tiene variables guardadas
+                    if (u.variables && Object.keys(u.variables).length > 0) {
+                        varsHtml = '';
+                        Object.keys(u.variables).forEach(key => {
+                            // Muestra: Nombre: Juan (en pequeñito)
+                            varsHtml += `<div style="font-size:0.85rem; white-space:nowrap;">
+                                <span style="color:#64748b; font-weight:bold;">${key}:</span> 
+                                <span style="color:var(--text-main);">${u.variables[key]}</span>
+                            </div>`;
+                        });
+                    }
+
+                    // --- RENDERIZAR FILA ---
+                    // Agregamos la celda nueva <td>${varsHtml}</td> en medio
+                    tb.innerHTML += `
+                    <tr>
+                        <td>
+                            <b>${u.phone}</b><br>
+                            <small>${timeAgo(u.last_active)}</small>
+                        </td>
+                        <td>
+                            <span class="status-badge connected" style="background:var(--bg-input); color:var(--text-muted);">
+                                ${u.current_step}
+                            </span>
+                        </td>
+                        <td>${varsHtml}</td> <td>${btns}</td>
+                    </tr>`;
             });
-        } catch(e){}
+        } catch(e){ console.error(e); }
     }
     async function crmAction(phone, step) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) }); loadActivity(); }
     // --- VARIABLES DE NAVEGACIÓN ---

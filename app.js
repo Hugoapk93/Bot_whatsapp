@@ -271,19 +271,26 @@ async function connectToWhatsApp() {
             });
 
             if (isBlocked) {
-                // Contacto bloqueado detectado. Ignoramos.
                 continue; 
             }
 
             try {
                 await handleMessage(sock, msg);
+
+                if (global.io) {
+                    global.io.emit('message', { 
+                        fromMe: true, 
+                        text: 'UPDATE_MONITOR_TRIGGER',
+                        hidden: true 
+                    });
+                }
+
             } catch (err) {
                 console.error("Error procesando mensaje:", err);
             }
         }
     });
 }
-
 // ==========================================
 //             RUTAS API
 // ==========================================
