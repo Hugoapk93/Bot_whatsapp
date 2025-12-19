@@ -122,6 +122,8 @@
         .toast { background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border); padding: 10px 20px; border-radius: 20px; color: white; animation: fadeIn 0.3s; backdrop-filter: blur(4px); }
 
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 300; display: none; justify-content: center; align-items: flex-end; /* Mobile Bottom Sheet Style */ }
+        .modal.active { display: flex; } /* <-- ESTA ES LA LÍNEA QUE FALTABA PARA QUE SE VEAN */
+
         @media(min-width: 769px) { .modal { align-items: center; } }
         
         .sheet { background: var(--bg-card); width: 100%; max-width: 500px; padding: 25px; border-radius: 20px 20px 0 0; border-top: 1px solid var(--border); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; animation: slideUp 0.3s; }
@@ -518,6 +520,10 @@
     
     // --- NUEVA LÓGICA DE SALIDA CON CONFIRMACIÓN ---
     function requestLogout() {
+        // CERRAR MENU LATERAL EN MÓVIL AL DAR CLICK EN SALIR
+        document.getElementById('sidebar').classList.remove('active');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        
         document.getElementById('logoutModal').classList.add('active');
     }
     async function confirmLogout() {
