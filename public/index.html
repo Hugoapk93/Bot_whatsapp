@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CRM - Flow Studio</title>
     
-    <!-- PWA Manifest -->
+    <!-- PWA Manifest & Meta -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FlowCRM">
 
     <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -116,6 +117,10 @@
         }
         
         .menu-item.active i { color: #60a5fa; }
+        
+        /* Botón Instalar App (Oculto por defecto) */
+        #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: #34d399; margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
+        #installAppBtn:hover { background: rgba(16, 185, 129, 0.2); }
 
         .menu-item.logout { 
             color: var(--danger); 
@@ -501,10 +506,10 @@
                 <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Usuarios</div>
                 <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h"></i> Configuración</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal"></i> Simulador</div>
-                
-                <!-- BOTÓN NOTIFICACIONES (NUEVO) -->
-                <div class="menu-item" onclick="requestNotifyPermission()">
-                    <i class="fas fa-bell"></i> Activar Alertas
+
+                <!-- BOTÓN INSTALAR APP (Solo visible si es instalable) -->
+                <div class="menu-item" id="installAppBtn" onclick="installPWA()">
+                    <i class="fas fa-download"></i> Instalar App
                 </div>
 
                 <!-- BOTÓN CERRAR SESIÓN -->
@@ -651,11 +656,6 @@
                     
                     <button onclick="saveSettings()" class="btn-primary" style="width:100%; margin-top:10px;">
                         Guardar Configuración
-                    </button>
-
-                    <!-- BOTÓN TEST NOTIFICACIONES -->
-                    <button onclick="sendTestNotification()" class="w-btn" style="margin-top:20px; width:100%; background:transparent; border:1px dashed var(--primary); color:var(--primary); padding:10px; border-radius:8px;">
-                         <i class="fas fa-bell"></i> Probar Notificación Nativa
                     </button>
                 </div>
             </div>
@@ -813,12 +813,65 @@
     // Callbacks for modals
     let promptCallback = null;
     let confirmCallback = null;
+    
+    // PWA Install Event
+    let deferredPrompt;
 
      function cleanupAllIntervals() {
         if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
         if (activityInterval) { clearInterval(activityInterval); activityInterval = null; }
         isPollingActive = false;
     }
+
+    // --- REGISTRO DE SERVICE WORKER ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('SW registrado:', reg.scope))
+                .catch(err => console.log('SW falló:', err));
+        });
+    }
+
+    // --- MANEJO DE INSTALACIÓN PWA ---
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevenir que Chrome muestre el prompt nativo inmediatamente
+        e.preventDefault();
+        // Guardar el evento para dispararlo después
+        deferredPrompt = e;
+        // Mostrar el botón de instalación en la UI
+        document.getElementById('installAppBtn').style.display = 'flex';
+    });
+
+    async function installPWA() {
+        if (!deferredPrompt) return;
+        // Mostrar el prompt nativo
+        deferredPrompt.prompt();
+        // Esperar la respuesta del usuario
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to install prompt: ${outcome}`);
+        deferredPrompt = null;
+        // Ocultar botón tras acción
+        document.getElementById('installAppBtn').style.display = 'none';
+    }
+
+    // --- PERMISO DE NOTIFICACIONES AUTOMÁTICO AL PRIMER CLICK ---
+    document.addEventListener('click', function initAudioAndNotify() {
+        // Solo pedir si no se ha concedido o denegado
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+                if(permission === 'granted') {
+                    showToast('Notificaciones Activadas');
+                    new Notification("Sistema Listo", { 
+                        body: "Te avisaremos aquí cuando haya actividad.",
+                        icon: "https://cdn-icons-png.flaticon.com/512/9374/9374978.png"
+                    });
+                }
+            });
+        }
+        // Remover listener tras el primer click para no spamear
+        document.removeEventListener('click', initAudioAndNotify);
+    }, { once: true });
+
 
     window.onload = async () => {
         document.getElementById('setupWizard').classList.remove('step-hidden');
@@ -887,45 +940,6 @@
         if (v === 'sim') scrollToBottomSim(); 
         if (v === 'contacts') renderContacts();
     }
-
-    // --- LÓGICA DE NOTIFICACIONES ---
-    function requestNotifyPermission() {
-        if (!("Notification" in window)) {
-            return showToast("Este navegador no soporta notificaciones", "error");
-        }
-        Notification.requestPermission().then(permission => {
-            if (permission === "granted") {
-                showToast("¡Notificaciones Activas!");
-                sendNativeNotification("Sistema Listo", "Te avisaremos aquí cuando haya actividad.");
-            } else {
-                showToast("Permiso denegado", "error");
-            }
-        });
-    }
-
-    function sendNativeNotification(title, body) {
-        if (Notification.permission === "granted") {
-            // Icono genérico o logo de la app
-            const options = {
-                body: body,
-                icon: "https://cdn-icons-png.flaticon.com/512/9374/9374978.png",
-                vibrate: [200, 100, 200]
-            };
-            const notif = new Notification(title, options);
-            
-            notif.onclick = function(event) {
-                event.preventDefault(); // Previene focus automático del navegador a veces
-                window.focus(); // Intenta traer la ventana al frente
-                notif.close();
-                nav('activity'); // Navega a la vista de monitor
-            };
-        }
-    }
-
-    function sendTestNotification() {
-        sendNativeNotification("🔔 Prueba de CRM", "¡Si lees esto, las notificaciones funcionan en segundo plano!");
-    }
-    // --------------------------------
 
     document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); });
     
