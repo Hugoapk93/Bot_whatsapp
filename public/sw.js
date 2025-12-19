@@ -1,9 +1,9 @@
-const CACHE_NAME = 'flow-crm-v2'; // Cambié a v2 para forzar actualización
+const CACHE_NAME = 'flow-crm-v3';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
-  './logo.svg', // <--- Importante: El ícono local
+  './logo.svg',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js'
