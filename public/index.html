@@ -7,6 +7,7 @@
     
     <!-- PWA Manifest & Meta -->
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="logo.svg" type="image/svg+xml">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -23,27 +24,9 @@
     <style>
         /* --- TEMA PROFESIONAL (Slate Palette) --- */
         :root { 
-            /* Fondos */
-            --bg-body: #0f172a;       /* Slate 900 */
-            --bg-sidebar: #1e293b;    /* Slate 800 */
-            --bg-card: #1e293b;       /* Slate 800 */
-            --bg-hover: #334155;      /* Slate 700 */
-            --bg-input: #020617;      /* Slate 950 */
-            
-            /* Bordes */
-            --border: #334155;        /* Slate 700 */
-            
-            /* Textos */
-            --text-main: #f8fafc;     /* Slate 50 */
-            --text-muted: #94a3b8;    /* Slate 400 */
-            
-            /* Acentos */
-            --primary: #3b82f6;       /* Blue 500 */
-            --primary-hover: #2563eb; /* Blue 600 */
-            --success: #10b981;       /* Green 500 */
-            --danger: #ef4444;        /* Red 500 */
-            
-            /* UI */
+            --bg-body: #0f172a; --bg-sidebar: #1e293b; --bg-card: #1e293b; --bg-hover: #334155; --bg-input: #020617;
+            --border: #334155; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --primary: #3b82f6; --primary-hover: #2563eb; --success: #10b981; --danger: #ef4444;
             --radius: 12px;
             --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
@@ -53,276 +36,87 @@
         * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
         
         body { 
-            font-family: 'Inter', sans-serif; 
-            margin: 0; 
-            height: 100dvh; 
-            width: 100vw; 
-            background: var(--bg-body); 
-            color: var(--text-main); 
-            overflow: hidden; 
-            font-size: 14px;
+            font-family: 'Inter', sans-serif; margin: 0; height: 100dvh; width: 100vw; 
+            background: var(--bg-body); color: var(--text-main); overflow: hidden; font-size: 14px;
         }
 
         /* --- LAYOUT PRINCIPAL --- */
         #mainApp { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
         #mainApp.visible { opacity: 1; pointer-events: all; }
 
-        /* Sidebar Overlay (Fondo oscuro para cerrar menú en móvil) */
         .sidebar-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 150; /* Debajo del sidebar (200) */
-            display: none; opacity: 0; transition: opacity 0.3s;
+            background: rgba(0,0,0,0.5); z-index: 150; display: none; opacity: 0; transition: opacity 0.3s;
             backdrop-filter: blur(2px);
         }
         .sidebar-overlay.active { display: block; opacity: 1; }
 
-        /* Sidebar */
         .sidebar { 
-            width: 260px; 
-            background: var(--bg-sidebar); 
-            border-right: 1px solid var(--border); 
-            display: flex; 
-            flex-direction: column; 
-            z-index: 200; 
-            flex-shrink: 0; 
+            width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); 
+            display: flex; flex-direction: column; z-index: 200; flex-shrink: 0; 
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .brand { 
-            height: 64px; 
-            padding: 0 24px; 
-            display: flex; 
-            align-items: center; 
-            gap: 12px;
-            font-weight: 700; 
-            font-size: 1rem; 
-            letter-spacing: 1px; 
-            color: var(--text-main);
-            border-bottom: 1px solid var(--border);
-            background: rgba(0,0,0,0.2);
+            height: 64px; padding: 0 24px; display: flex; align-items: center; gap: 12px;
+            font-weight: 700; font-size: 1rem; letter-spacing: 1px; color: var(--text-main);
+            border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);
         }
 
         .menu { padding: 20px 12px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-
-        .menu-item { 
-            padding: 12px 16px; 
-            border-radius: 8px; 
-            font-size: 0.9rem; 
-            font-weight: 500; 
-            color: var(--text-muted); 
-            display: flex; 
-            align-items: center; 
-            gap: 12px; 
-            cursor: pointer; 
-            transition: all 0.2s; 
-        }
-
+        .menu-item { padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; }
         .menu-item:hover { background: var(--bg-hover); color: var(--text-main); }
-        
-        .menu-item.active { 
-            background: rgba(59, 130, 246, 0.15); 
-            color: #60a5fa; 
-            font-weight: 600; 
-        }
-        
+        .menu-item.active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-weight: 600; }
         .menu-item.active i { color: #60a5fa; }
         
-        /* Botón Instalar App (Oculto por defecto) */
         #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: #34d399; margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
         #installAppBtn:hover { background: rgba(16, 185, 129, 0.2); }
 
-        .menu-item.logout { 
-            color: var(--danger); 
-            margin-top: auto; 
-            border-top: 1px solid var(--border); 
-            border-radius: 0; 
-            padding-top: 20px;
-        }
+        .menu-item.logout { color: var(--danger); margin-top: auto; border-top: 1px solid var(--border); border-radius: 0; padding-top: 20px; }
         .menu-item.logout:hover { background: rgba(239, 68, 68, 0.1); }
+        .badge-count { background: var(--danger); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; margin-left: auto; font-weight: 700; display: none; }
 
-        .badge-count { 
-            background: var(--danger); 
-            color: white; 
-            font-size: 0.65rem; 
-            padding: 2px 8px; 
-            border-radius: 10px; 
-            margin-left: auto; 
-            font-weight: 700;
-            display: none; 
-        }
-
-        /* Content Area */
-        .content { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            position: relative; 
-            height: 100%; 
-            overflow: hidden; 
-            background: var(--bg-body); 
-        }
-
+        .content { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; overflow: hidden; background: var(--bg-body); }
         .view { display: none; flex: 1; flex-direction: column; height: 100%; position: relative; overflow: hidden; }
         .view.active { display: flex; animation: fadeIn 0.3s ease; }
         .view-padding { padding: 30px; overflow-y: auto; }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Mobile Header */
-        .mobile-header { 
-            display: none; 
-            background: var(--bg-sidebar); 
-            height: 60px; 
-            padding: 0 20px; 
-            align-items: center; 
-            justify-content: space-between; 
-            border-bottom: 1px solid var(--border); 
-            flex-shrink: 0; 
-        }
+        .mobile-header { display: none; background: var(--bg-sidebar); height: 60px; padding: 0 20px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 
-        /* --- COMPONENTES UI --- */
-        
-        /* Cards */
-        .card { 
-            background: var(--bg-card); 
-            padding: 24px; 
-            border-radius: var(--radius); 
-            border: 1px solid var(--border); 
-            box-shadow: var(--shadow-card);
-            margin-bottom: 24px; 
-        }
-
+        /* UI Components */
+        .card { background: var(--bg-card); padding: 24px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-card); margin-bottom: 24px; }
         h3 { color: var(--text-main); margin-bottom: 16px; font-weight: 600; letter-spacing: -0.5px; }
-
-        /* Tables */
         .act-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        .act-table th { 
-            text-align: left; 
-            padding: 16px; 
-            border-bottom: 1px solid var(--border); 
-            color: var(--text-muted); 
-            font-weight: 600; 
-            font-size: 0.75rem; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-        }
-        .act-table td { 
-            padding: 16px; 
-            border-bottom: 1px solid var(--border); 
-            vertical-align: middle; 
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
+        .act-table th { text-align: left; padding: 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .act-table td { padding: 16px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text-muted); font-size: 0.9rem; }
         .act-table tr:hover td { background: rgba(255,255,255,0.02); }
         .act-table tr:last-child td { border-bottom: none; }
-
-        /* Badges */
-        .status-badge { 
-            padding: 4px 12px; 
-            border-radius: 20px; 
-            font-size: 0.7rem; 
-            font-weight: 700; 
-            display: inline-flex; 
-            align-items: center; 
-            gap: 6px; 
-            letter-spacing: 0.5px; 
-        }
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.5px; }
         .status-badge.open { background: rgba(16, 185, 129, 0.15); color: #34d399; }
         .status-badge.closed { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 
-        /* Buttons */
         button, .admin-btn, .w-btn { font-family: 'Inter', sans-serif; transition: all 0.2s; }
-        
-        .admin-btn { 
-            padding: 6px 14px; 
-            border: 1px solid var(--border); 
-            background: var(--bg-body); 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-size: 0.8rem; 
-            font-weight: 500; 
-            color: var(--text-main); 
-            margin-right: 6px; 
-        }
+        .admin-btn { padding: 6px 14px; border: 1px solid var(--border); background: var(--bg-body); border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 500; color: var(--text-main); margin-right: 6px; }
         .admin-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(59, 130, 246, 0.1); }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-        }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
         .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
 
-        /* Inputs */
-        input, select, textarea { 
-            width: 100%; 
-            padding: 12px; 
-            background: var(--bg-input); 
-            border: 1px solid var(--border); 
-            border-radius: 8px; 
-            color: var(--text-main); 
-            font-size: 0.95rem; 
-            margin-bottom: 12px; 
-            font-family: inherit; 
-            transition: border-color 0.2s;
-        }
+        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; margin-bottom: 12px; font-family: inherit; transition: border-color 0.2s; }
         input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
 
         /* Calendar */
-        .calendar-header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            padding-bottom: 15px;
-        }
-
-        .calendar-nav-btn { 
-            background: var(--bg-body); 
-            border: 1px solid var(--border);
-            color: var(--primary); 
-            width: 36px; height: 36px;
-            border-radius: 8px; 
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-        }
+        .calendar-header { display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 15px; }
+        .calendar-nav-btn { background: var(--bg-body); border: 1px solid var(--border); color: var(--primary); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .calendar-nav-btn:hover { background: var(--bg-hover); }
-        
-        .calendar-grid { 
-            display: grid; 
-            grid-template-columns: repeat(7, 1fr); 
-            gap: 1px; 
-            background: var(--border); 
-            border: 1px solid var(--border); 
-            border-radius: var(--radius); 
-            overflow: hidden; 
-        }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
         .weekday { background: var(--bg-sidebar); padding: 12px 0; font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; text-align: center; }
-        .day { 
-            height: 110px; 
-            background: var(--bg-card); 
-            color: var(--text-muted); 
-            padding: 10px; 
-            position: relative; 
-            cursor: pointer; 
-            transition: background 0.2s; 
-        }
+        .day { height: 110px; background: var(--bg-card); color: var(--text-muted); padding: 10px; position: relative; cursor: pointer; transition: background 0.2s; }
         .day:hover { background: var(--bg-hover); color: var(--text-main); }
         .day.today { color: var(--primary); font-weight: 700; background: rgba(59, 130, 246, 0.05); }
-        .day-indicator { 
-            position: absolute; bottom: 10px; right: 10px; 
-            background: var(--primary); color: white; 
-            font-weight: 600; font-size: 0.75rem; 
-            width: 24px; height: 24px; border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
+        .day-indicator { position: absolute; bottom: 10px; right: 10px; background: var(--primary); color: white; font-weight: 600; font-size: 0.75rem; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
-        /* --- CHAT SIMULATOR --- */
+        /* Chat Sim */
         .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
         .chat-header { background: var(--bg-sidebar); padding: 16px 20px; color: var(--text-main); border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
         .chat-msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 20px 20px; background-opacity: 0.1; }
@@ -330,48 +124,15 @@
         .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid var(--border); }
         .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; border-bottom-right-radius: 2px; }
 
-        /* --- NUEVO: EDITOR DE LISTA (STACK VIEW) --- */
+        /* Flow List */
         #view-flow { background: var(--bg-body); padding: 20px; }
-        
-        .flow-list-container {
-            max-width: 800px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            padding-bottom: 80px; /* Space for FAB */
-        }
-
-        .flow-step-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .flow-step-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-card);
-        }
-
+        .flow-list-container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 80px; }
+        .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+        .flow-step-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-card); }
         .flow-step-content { flex: 1; }
         .flow-step-title { font-weight: 700; color: var(--text-main); font-size: 1rem; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
         .flow-step-subtitle { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
-        
-        .step-tag { 
-            font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; 
-            text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border: 1px solid transparent; 
-        }
-
-        /* Colores por tipo */
+        .step-tag { font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border: 1px solid transparent; }
         .type-menu { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
         .type-filtro { background: rgba(168, 85, 247, 0.1); color: #c084fc; border-color: rgba(168, 85, 247, 0.2); }
         .type-input { background: rgba(249, 115, 22, 0.1); color: #fb923c; border-color: rgba(249, 115, 22, 0.2); }
@@ -379,82 +140,31 @@
         .type-cita { background: rgba(236, 72, 153, 0.1); color: #f472b6; border-color: rgba(236, 72, 153, 0.2); }
         .type-fin_bot { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
 
-        .fab { 
-            position: fixed; bottom: 30px; right: 30px; 
-            background: var(--primary); color: white; 
-            width: 56px; height: 56px; 
-            border-radius: 16px; 
-            display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; 
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); 
-            z-index: 100; font-size: 28px; 
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
+        .fab { position: fixed; bottom: 30px; right: 30px; background: var(--primary); color: white; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 28px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
         .fab:hover { transform: scale(1.1) rotate(90deg); }
 
-        /* --- MODALES & Z-INDEX FIXES --- */
-        .modal { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.6); 
-            backdrop-filter: blur(8px); 
-            z-index: 200; /* Base modal level */
-            display: none; justify-content: center; align-items: center; 
-        }
-        
-        /* Prioridad de capas: Confirm > Prompt > Editor */
+        /* Modals */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 200; display: none; justify-content: center; align-items: center; }
         #modalConfirm, #modalPrompt { z-index: 220; } 
-        
         .modal.active { display: flex; animation: fadeIn 0.2s; }
-        
-        .sheet { 
-            background: var(--bg-card); 
-            border: 1px solid var(--border); 
-            width: 100%; max-width: 550px; 
-            border-radius: 16px; 
-            padding: 30px; 
-            display: flex; flex-direction: column; 
-            box-shadow: var(--shadow-modal); 
-            max-height: 85vh;
-        }
+        .sheet { background: var(--bg-card); border: 1px solid var(--border); width: 100%; max-width: 550px; border-radius: 16px; padding: 30px; display: flex; flex-direction: column; box-shadow: var(--shadow-modal); max-height: 85vh; }
 
-        /* --- TOASTS & NOTIFICACIONES --- */
-        #toast-container { 
-            position: fixed; top: 24px; right: 24px; z-index: 9999; 
-            display: flex; flex-direction: column; gap: 12px; pointer-events: none; 
-        }
-        .toast { 
-            background: var(--bg-card); border: 1px solid var(--border); padding: 14px 20px; 
-            border-radius: 12px; color: var(--text-main); font-size: 0.9rem; 
-            display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-modal);
-            animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: all; min-width: 250px;
-        }
+        /* Toasts */
+        #toast-container { position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
+        .toast { background: var(--bg-card); border: 1px solid var(--border); padding: 14px 20px; border-radius: 12px; color: var(--text-main); font-size: 0.9rem; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-modal); animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: all; min-width: 250px; }
         .toast.success i { color: var(--success); }
         .toast.error i { color: var(--danger); }
-        
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
-        /* --- TOGGLES (Fixed Deformation) --- */
-        .switch { 
-            position: relative; 
-            display: inline-block; 
-            width: 44px; 
-            height: 24px; 
-            flex-shrink: 0; /* IMPEDIR DEFORMACIÓN */
-        }
+        /* Toggles */
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { 
-            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
-            background-color: var(--bg-input); transition: .4s; 
-            border-radius: 34px; border: 1px solid var(--border); 
-        }
-        .slider:before { 
-            position: absolute; content: ""; height: 18px; width: 18px; 
-            left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; 
-        }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-input); transition: .4s; border-radius: 34px; border: 1px solid var(--border); }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--success); border-color: var(--success); }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* --- MEDIA QUERIES (CORRECCIÓN MÓVIL) --- */
+        /* Mobile */
         @media(max-width: 768px) { 
             #mainApp { flex-direction: column; } 
             .mobile-header { display: flex; }
@@ -463,35 +173,18 @@
             .sheet { border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; max-width: 100%; }
             #toast-container { top: 10px; right: 10px; left: 10px; }
             .fab { bottom: 20px; right: 20px; width: 50px; height: 50px; }
-            
-            /* --- FIX: MÁRGENES APRETADOS EN MÓVIL --- */
-            .view-padding { padding: 10px !important; } /* Mucho más espacio */
+            .view-padding { padding: 10px !important; }
             .card { padding: 16px !important; border-radius: 10px; margin-bottom: 15px; }
             #view-flow { padding: 10px !important; }
             .flow-step-card { padding: 14px; }
-            
-            /* --- FIX: TECLADO OCULTANDO CHAT --- */
-            /* En móvil, quitamos el padding del contenedor del chat para que ocupe todo */
-            /* IMPORTANTE: Usamos .active para que no se muestre si no está seleccionado */
             #view-sim.active.view-padding { padding: 0 !important; height: 100dvh; display: flex; flex-direction: column; }
-            
-            .chat-container-wrapper { 
-                border-radius: 0; 
-                border: none; 
-                border-top: 1px solid var(--border); 
-                height: 100%;
-            }
-            
-            /* Calendar Mobile Tweaks */
+            .chat-container-wrapper { border-radius: 0; border: none; border-top: 1px solid var(--border); height: 100%; }
             .day { height: 70px; font-size: 0.8rem; padding: 4px; }
             .day-indicator { width: 18px; height: 18px; bottom: 4px; right: 4px; font-size: 0.65rem; }
             .weekday { padding: 8px 0; font-size: 0.65rem; }
-            
-            /* Evitar zoom en Inputs (iPhone) */
             input, select, textarea { font-size: 16px !important; }
         }
         
-        /* Wizard Specific */
         #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
         .wizard-card { box-shadow: var(--shadow-modal); }
         .step-hidden { display: none !important; }
@@ -501,18 +194,14 @@
 
     <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
     <div id="toast-container"></div>
-    
-    <!-- OVERLAY SIDEBAR MÓVIL (NUEVO) -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <!-- PANTALLA DE INICIO / QR (WIZARD) -->
     <div id="setupWizard" class="step-hidden">
         <div id="stepLoading" class="wizard-card">
             <h2 style="color:var(--text-main); margin-top:0;">Iniciando Sistema</h2>
             <p style="color:var(--text-muted); font-size:0.9rem;">Estableciendo conexión segura...</p>
             <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--primary); margin-top:20px;"></i>
         </div>
-
         <div id="stepQR" class="wizard-card step-hidden">
             <h2 style="color:var(--text-main); margin-top:0;">Vincular Dispositivo</h2>
             <p style="color:var(--text-muted); font-size:0.85rem;">Escanea el código QR desde WhatsApp.</p>
@@ -522,7 +211,6 @@
         </div>
     </div>
 
-    <!-- APP PRINCIPAL (DASHBOARD) -->
     <div id="mainApp">
         <div class="sidebar" id="sidebar">
             <div class="brand">
@@ -539,18 +227,13 @@
                 <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Usuarios</div>
                 <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h"></i> Configuración</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal"></i> Simulador</div>
-
-                <!-- BOTÓN INSTALAR APP (Solo visible si es instalable) -->
                 <div class="menu-item" id="installAppBtn" onclick="installPWA()">
                     <i class="fas fa-download"></i> Instalar App
                 </div>
-
-                <!-- BOTÓN CERRAR SESIÓN -->
                 <div class="menu-item logout" onclick="openConfirm('¿Seguro que deseas cerrar sesión y desconectar el bot?', resetSession)">
                     <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
                 </div>
             </div>
-            
             <div style="padding: 24px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted);">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
                     <div style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success);"></div>
@@ -567,18 +250,12 @@
                 <div style="width:30px"></div>
             </div>
 
-            <!-- VISTA: LISTA DE PASOS (NUEVO) -->
+            <!-- VISTAS DEL SISTEMA -->
             <div id="view-flow" class="view active view-padding">
-                <div class="flow-list-container" id="flowListContainer">
-                    <!-- Cards will be injected here -->
-                </div>
-                
-                <div class="fab" onclick="openPrompt('Nombre del nuevo paso (ej: MENU_VENTAS):', createNewStep)">
-                    <i class="fas fa-plus"></i>
-                </div>
+                <div class="flow-list-container" id="flowListContainer"></div>
+                <div class="fab" onclick="openPrompt('Nombre del nuevo paso (ej: MENU_VENTAS):', createNewStep)"><i class="fas fa-plus"></i></div>
             </div>
 
-            <!-- VISTA: MONITOR -->
             <div id="view-activity" class="view view-padding">
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
@@ -588,25 +265,16 @@
                         </div>
                         <span id="crmStatusBadge" class="status-badge closed">● OFFLINE</span>
                     </div>
-                    <div style="overflow-x:auto; -webkit-overflow-scrolling: touch;">
+                    <div style="overflow-x:auto;">
                         <table class="act-table">
-                            <thead>
-                                <tr>
-                                    <th>Cliente</th>
-                                    <th>Contexto y Datos</th>
-                                    <th>Acciones Rápidas</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>Cliente</th><th>Contexto y Datos</th><th>Acciones Rápidas</th></tr></thead>
                             <tbody id="activityBody"></tbody>
                         </table>
                     </div>
                 </div>
-                <button class="btn-primary" onclick="loadActivity(); showToast('Actualizando...')" style="background: var(--bg-card); border:1px solid var(--border); color:var(--text-muted); width:100%;">
-                    <i class="fas fa-sync-alt"></i> Actualizar Lista
-                </button>
+                <button class="btn-primary" onclick="loadActivity(); showToast('Actualizando...')" style="background: var(--bg-card); border:1px solid var(--border); color:var(--text-muted); width:100%;"><i class="fas fa-sync-alt"></i> Actualizar Lista</button>
             </div>
 
-            <!-- VISTA: AGENDA -->
             <div id="view-agenda" class="view view-padding">
                 <div class="card" style="height: 100%; display: flex; flex-direction: column;">
                     <div class="calendar-header">
@@ -614,25 +282,16 @@
                         <h3 id="monthDisplay" style="margin:0; font-size:1.1rem;"></h3>
                         <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
                     </div>
-                    <div class="calendar-grid">
-                        <div class="weekday">DOM</div><div class="weekday">LUN</div><div class="weekday">MAR</div><div class="weekday">MIÉ</div>
-                        <div class="weekday">JUE</div><div class="weekday">VIE</div><div class="weekday">SÁB</div>
-                    </div>
+                    <div class="calendar-grid"><div class="weekday">DOM</div><div class="weekday">LUN</div><div class="weekday">MAR</div><div class="weekday">MIÉ</div><div class="weekday">JUE</div><div class="weekday">VIE</div><div class="weekday">SÁB</div></div>
                     <div id="calendarDays" class="calendar-grid" style="flex: 1; border-top: none; border-radius: 0 0 12px 12px; border-color: var(--border);"></div>
                 </div>
             </div>
 
-            <!-- VISTA: CONTACTOS -->
             <div id="view-contacts" class="view view-padding">
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <div>
-                            <h3 style="margin:0;">Base de Usuarios</h3>
-                            <p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Gestión de permisos y acceso al bot</p>
-                        </div>
-                        <button onclick="openContactModal()" class="btn-primary" style="padding: 8px 16px;">
-                            <i class="fas fa-user-plus"></i> Nuevo
-                        </button>
+                        <div><h3 style="margin:0;">Base de Usuarios</h3><p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Gestión de permisos y acceso al bot</p></div>
+                        <button onclick="openContactModal()" class="btn-primary" style="padding: 8px 16px;"><i class="fas fa-user-plus"></i> Nuevo</button>
                     </div>
                     <div style="position:relative; margin-bottom:15px;">
                         <i class="fas fa-search" style="position:absolute; left:12px; top:12px; color:var(--text-muted);"></i>
@@ -642,65 +301,42 @@
                 </div>
             </div>
 
-            <!-- VISTA: SIMULADOR -->
             <div id="view-sim" class="view view-padding">
                 <div class="chat-container-wrapper">
                     <div class="chat-header">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <div style="width:10px; height:10px; background:var(--success); border-radius:50%;"></div>
-                            <span>Simulador en vivo</span>
-                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;"><div style="width:10px; height:10px; background:var(--success); border-radius:50%;"></div><span>Simulador en vivo</span></div>
                         <i class="fas fa-trash-alt" onclick="openConfirm('¿Borrar historial del simulador?', restartSim)" style="cursor:pointer; color:var(--text-muted); transition:0.2s;" title="Limpiar Chat"></i>
                     </div>
                     <div class="chat-msgs" id="simMsgs"></div>
                     <div style="padding: 16px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border);">
                         <input type="text" id="simInput" placeholder="Escribe un mensaje..." style="margin:0; flex:1;" onkeypress="if(event.key==='Enter') sendSim()">
-                        <button onclick="sendSim()" class="btn-primary" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%;">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
+                        <button onclick="sendSim()" class="btn-primary" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%;"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
             </div>
 
-            <!-- VISTA: CONFIGURACIÓN -->
             <div id="view-settings" class="view view-padding">
                 <div class="card" style="max-width: 600px; margin: 0 auto;">
                     <h3 style="margin-top:0;">Configuración de Horario</h3>
                     <div style="padding:20px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); margin-bottom:24px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <label style="margin:0; font-size:0.95rem; color:var(--text-main); cursor:pointer;" for="schedActive">Restricción de Horario</label>
-                                <p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Activa la respuesta automática de ausencia.</p>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="schedActive">
-                                <span class="slider"></span>
-                            </label>
+                            <div><label style="margin:0; font-size:0.95rem; color:var(--text-main); cursor:pointer;" for="schedActive">Restricción de Horario</label><p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Activa la respuesta automática de ausencia.</p></div>
+                            <label class="switch"><input type="checkbox" id="schedActive"><span class="slider"></span></label>
                         </div>
                     </div>
-                    
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
                         <div><label>Hora Apertura</label><input type="time" id="schedStart"></div>
                         <div><label>Hora Cierre</label><input type="time" id="schedEnd"></div>
                     </div>
-                    
-                    <label>Mensaje de Ausencia</label>
-                    <textarea id="schedMsg" placeholder="Ej: Actualmente no estamos disponibles..." rows="4"></textarea>
-                    
-                    <button onclick="saveSettings()" class="btn-primary" style="width:100%; margin-top:10px;">
-                        Guardar Configuración
-                    </button>
-
-                    <!-- BOTÓN TEST NOTIFICACIONES -->
-                    <button onclick="sendTestNotification()" class="w-btn" style="margin-top:20px; width:100%; background:transparent; border:1px dashed var(--primary); color:var(--primary); padding:10px; border-radius:8px;">
-                         <i class="fas fa-bell"></i> Probar Notificación Nativa
-                    </button>
+                    <label>Mensaje de Ausencia</label><textarea id="schedMsg" placeholder="Ej: Actualmente no estamos disponibles..." rows="4"></textarea>
+                    <button onclick="saveSettings()" class="btn-primary" style="width:100%; margin-top:10px;">Guardar Configuración</button>
+                    <button onclick="requestNotifyPermission()" class="w-btn" style="margin-top:20px; width:100%; background:transparent; border:1px dashed var(--primary); color:var(--primary); padding:10px; border-radius:8px;"><i class="fas fa-bell"></i> Activar Notificaciones Reales</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: PROMPT (INPUT TEXT) -->
+    <!-- MODALES -->
     <div class="modal" id="modalPrompt">
         <div class="sheet" style="height:auto; max-width: 420px;">
             <h3 id="promptTitle" style="margin-top:0;">Entrada requerida</h3>
@@ -712,12 +348,9 @@
         </div>
     </div>
 
-    <!-- MODAL: CONFIRM (YES/NO) -->
     <div class="modal" id="modalConfirm">
         <div class="sheet" style="height:auto; max-width: 400px; text-align: center; align-items: center;">
-            <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin-bottom:20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: var(--danger);"></i>
-            </div>
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin-bottom:20px;"><i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: var(--danger);"></i></div>
             <h3 style="margin:0;">¿Estás seguro?</h3>
             <p id="confirmMsg" style="color:var(--text-muted); margin-bottom: 25px;">Esta acción requiere confirmación.</p>
             <div style="display:flex; gap:10px; width:100%;">
@@ -727,22 +360,15 @@
         </div>
     </div>
 
-    <!-- MODAL: DETALLES DÍA (AGENDA) -->
     <div class="modal" id="dayModal">
         <div class="sheet">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:20px; margin-bottom:20px;">
-                <div>
-                    <h3 id="modalDateTitle" style="margin:0; font-size:1.1rem;">Eventos</h3>
-                    <small id="modalDateSubtitle" style="color:var(--text-muted); display:block; margin-top:4px;">Gestiona las citas del día</small>
-                </div>
+                <div><h3 id="modalDateTitle" style="margin:0; font-size:1.1rem;">Eventos</h3><small id="modalDateSubtitle" style="color:var(--text-muted); display:block; margin-top:4px;">Gestiona las citas del día</small></div>
                 <button onclick="closeDayModal()" style="background:none; border:none; font-size:1.2rem; color:var(--text-muted); cursor:pointer;">✕</button>
             </div>
-            
             <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:12px; padding-right:5px;">
                 <div id="modalApptList"></div>
-                <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:14px; background:var(--bg-body); color:var(--primary); border:1px dashed var(--border); border-radius:8px; font-weight:600; cursor:pointer; transition:0.2s;">
-                    + Añadir Evento Manual
-                </button>
+                <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:14px; background:var(--bg-body); color:var(--primary); border:1px dashed var(--border); border-radius:8px; font-weight:600; cursor:pointer; transition:0.2s;">+ Añadir Evento Manual</button>
                 <div id="eventForm" style="display:none; background:var(--bg-body); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:10px;">
                     <h4 style="margin:0 0 15px 0; font-size:0.95rem; color:var(--text-main);">Nueva Cita</h4>
                     <input type="hidden" id="evtOldTime">
@@ -761,7 +387,6 @@
         </div>
     </div>
 
-    <!-- MODAL: NUEVO CONTACTO -->
     <div class="modal" id="contactModal">
         <div class="sheet" style="height:auto;">
             <h3 style="margin-top:0;">Añadir Usuario</h3>
@@ -770,10 +395,7 @@
             <label>WhatsApp (con código país)</label><input type="tel" id="newContPhone" placeholder="Ej: 521...">
             <div style="background:var(--bg-body); padding:16px; border-radius:8px; margin:10px 0 20px 0; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:0.9rem; font-weight:500;">Activar Bot Automático</span>
-                <label class="switch">
-                    <input type="checkbox" id="newContEnable" checked>
-                    <span class="slider"></span>
-                </label>
+                <label class="switch"><input type="checkbox" id="newContEnable" checked><span class="slider"></span></label>
             </div>
             <div style="display:flex; gap:10px;">
                 <button onclick="saveNewContact()" class="btn-primary" style="flex:1;">Registrar Usuario</button>
@@ -782,17 +404,12 @@
         </div>
     </div>
 
-    <!-- MODAL: EDITOR DE NODOS -->
     <div class="modal" id="editorModal">
         <div class="sheet">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:15px;">
-                <div>
-                    <h3 style="margin:0;">Editar Paso</h3>
-                    <small style="color:var(--text-muted);">Configura la respuesta del bot</small>
-                </div>
+                <div><h3 style="margin:0;">Editar Paso</h3><small style="color:var(--text-muted);">Configura la respuesta del bot</small></div>
                 <button onclick="closeEditor()" style="background:none; border:none; font-size:1.2rem; color:var(--text-muted); cursor:pointer;">✕</button>
             </div>
-            
             <div style="flex:1; overflow-y:auto; padding-right:5px;">
                 <input type="hidden" id="stId">
                 <label>Tipo de Interacción</label>
@@ -804,13 +421,11 @@
                     <option value="cita">📅 Módulo de Citas</option>
                     <option value="fin_bot">🏁 Finalizar Conversación</option>
                 </select>
-                
                 <div id="wrapper-msg" style="margin-top:20px;">
                     <label>Mensaje del Bot</label>
                     <textarea id="stMsg" rows="4" placeholder="Hola, ¿en qué puedo ayudarte hoy?"></textarea>
                     <small style="color:var(--text-muted); display:block; margin-top:-8px; margin-bottom:15px;">Puedes usar variables como {{nombre}}</small>
                 </div>
-                
                 <div id="wrapper-media" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);">
                     <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
                         <label style="margin:0;">Archivos Multimedia</label>
@@ -822,15 +437,11 @@
                         <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
                     </label>
                 </div>
-
                 <div id="dynFields" style="margin-top:25px; padding-top:15px; border-top:1px solid var(--border);"></div>
             </div>
-            
             <div style="margin-top:25px; display:flex; gap:12px;">
                 <button onclick="saveStep()" class="btn-primary" style="flex:1;">Guardar Cambios</button>
-                <button onclick="openConfirm('¿Seguro que deseas eliminar este paso? Esto podría romper el flujo.', delStep)" style="width: 50px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
+                <button onclick="openConfirm('¿Seguro que deseas eliminar este paso? Esto podría romper el flujo.', delStep)" style="width: 50px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-trash-alt"></i></button>
             </div>
         </div>
     </div>
@@ -847,21 +458,17 @@
     let lastQr = '';
     let isConnected = false;
     let isPollingActive = false;
-
-    // Callbacks for modals
     let promptCallback = null;
     let confirmCallback = null;
-    
-    // PWA Install Event
     let deferredPrompt;
 
-     function cleanupAllIntervals() {
+    function cleanupAllIntervals() {
         if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
         if (activityInterval) { clearInterval(activityInterval); activityInterval = null; }
         isPollingActive = false;
     }
 
-    // --- REGISTRO DE SERVICE WORKER ---
+    // --- PWA: SERVICE WORKER & INSTALL ---
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
@@ -870,47 +477,48 @@
         });
     }
 
-    // --- MANEJO DE INSTALACIÓN PWA ---
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Prevenir que Chrome muestre el prompt nativo inmediatamente
         e.preventDefault();
-        // Guardar el evento para dispararlo después
         deferredPrompt = e;
-        // Mostrar el botón de instalación en la UI
         document.getElementById('installAppBtn').style.display = 'flex';
     });
 
     async function installPWA() {
         if (!deferredPrompt) return;
-        // Mostrar el prompt nativo
         deferredPrompt.prompt();
-        // Esperar la respuesta del usuario
         const { outcome } = await deferredPrompt.userChoice;
-        console.log(`User response to install prompt: ${outcome}`);
+        if(outcome === 'accepted') document.getElementById('installAppBtn').style.display = 'none';
         deferredPrompt = null;
-        // Ocultar botón tras acción
-        document.getElementById('installAppBtn').style.display = 'none';
     }
 
-    // --- PERMISO DE NOTIFICACIONES AUTOMÁTICO AL PRIMER CLICK ---
+    // --- PERMISO DE NOTIFICACIONES ---
     document.addEventListener('click', function initAudioAndNotify() {
-        // Solo pedir si no se ha concedido o denegado
-        if (Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-                if(permission === 'granted') {
-                    showToast('Notificaciones Activadas');
-                    new Notification("Sistema Listo", { 
-                        body: "Te avisaremos aquí cuando haya actividad.",
-                        icon: "https://cdn-icons-png.flaticon.com/512/9374/9374978.png"
-                    });
-                }
-            });
-        }
-        // Remover listener tras el primer click para no spamear
+        if (Notification.permission === 'default') requestNotifyPermission();
         document.removeEventListener('click', initAudioAndNotify);
     }, { once: true });
 
+    function requestNotifyPermission() {
+        Notification.requestPermission().then(permission => {
+            if(permission === 'granted') {
+                showToast('Notificaciones Activadas');
+                new Notification("Sistema Listo", { body: "Te avisaremos aquí cuando haya actividad.", icon: "logo.svg" });
+            }
+        });
+    }
+    
+    // Función Helper para Notificaciones Reales
+    function sendNativeNotification(title, body) {
+        if (Notification.permission === "granted") {
+            const notif = new Notification(title, {
+                body: body,
+                icon: "logo.svg",
+                vibrate: [200, 100, 200]
+            });
+            notif.onclick = () => { window.focus(); notif.close(); };
+        }
+    }
 
+    // --- CORE LOGIC ---
     window.onload = async () => {
         document.getElementById('setupWizard').classList.remove('step-hidden');
         startPolling();
@@ -950,6 +558,7 @@
             } catch (e) { if (e.name !== 'AbortError') console.warn("Polling error (no crítico):", e); }
         }, 2000);
     }
+
     function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
     async function resetSession() { await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
 
@@ -975,7 +584,6 @@
         const titles = { flow: 'LISTA DE PASOS', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'SIMULADOR' };
         document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
         document.getElementById('sidebar').classList.remove('active');
-        // Cerrar también el overlay cuando se navega
         document.getElementById('sidebarOverlay').classList.remove('active');
         
         if (v === 'flow') renderFlowList();
@@ -986,7 +594,6 @@
     }
 
     document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); });
-    
     function showToast(msg, type='success') {
         const c = document.getElementById('toast-container');
         const t = document.createElement('div');
@@ -996,60 +603,19 @@
         setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
     }
 
-    // --- MODAL SYSTEM LOGIC ---
-    function openPrompt(title, callback) {
-        document.getElementById('promptTitle').innerText = title;
-        document.getElementById('promptInput').value = '';
-        promptCallback = callback;
-        document.getElementById('modalPrompt').classList.add('active');
-        setTimeout(()=>document.getElementById('promptInput').focus(), 100);
-    }
-    
-    document.getElementById('promptBtnConfirm').onclick = function() {
-        const val = document.getElementById('promptInput').value;
-        if(val && promptCallback) promptCallback(val);
-        closePrompt();
-    };
+    // --- MODAL HELPERS ---
+    function openPrompt(title, callback) { document.getElementById('promptTitle').innerText = title; document.getElementById('promptInput').value = ''; promptCallback = callback; document.getElementById('modalPrompt').classList.add('active'); setTimeout(()=>document.getElementById('promptInput').focus(), 100); }
+    document.getElementById('promptBtnConfirm').onclick = function() { const val = document.getElementById('promptInput').value; if(val && promptCallback) promptCallback(val); closePrompt(); };
+    function closePrompt() { document.getElementById('modalPrompt').classList.remove('active'); promptCallback = null; }
 
-    function closePrompt() {
-        document.getElementById('modalPrompt').classList.remove('active');
-        promptCallback = null;
-    }
+    function openConfirm(msg, callback) { document.getElementById('confirmMsg').innerText = msg; confirmCallback = callback; document.getElementById('modalConfirm').classList.add('active'); }
+    document.getElementById('confirmBtnYes').onclick = function() { if(confirmCallback) confirmCallback(); closeConfirm(); };
+    function closeConfirm() { document.getElementById('modalConfirm').classList.remove('active'); confirmCallback = null; }
 
-    function openConfirm(msg, callback) {
-        document.getElementById('confirmMsg').innerText = msg;
-        confirmCallback = callback;
-        document.getElementById('modalConfirm').classList.add('active');
-    }
-
-    document.getElementById('confirmBtnYes').onclick = function() {
-        if(confirmCallback) confirmCallback();
-        closeConfirm();
-    };
-
-    function closeConfirm() {
-        document.getElementById('modalConfirm').classList.remove('active');
-        confirmCallback = null;
-    }
-
+    // --- DATA LOADING ---
     async function loadAll() {
-        try {
-            const res = await fetch(`${API_BASE}/api/flow`);
-            flow = await res.json();
-            renderFlowList();
-        } catch(e) {
-            console.error("No se pudo cargar el flujo");
-            document.getElementById('flowListContainer').innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>';
-        }
-        try {
-            const set = await (await fetch(`${API_BASE}/api/settings`)).json();
-            if(set.schedule) {
-                document.getElementById('schedActive').checked = set.schedule.active;
-                document.getElementById('schedStart').value = set.schedule.start;
-                document.getElementById('schedEnd').value = set.schedule.end;
-                document.getElementById('schedMsg').value = set.schedule.offline_message;
-            }
-        } catch(e) {}
+        try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e) { document.getElementById('flowListContainer').innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>'; }
+        try { const set = await (await fetch(`${API_BASE}/api/settings`)).json(); if(set.schedule) { document.getElementById('schedActive').checked = set.schedule.active; document.getElementById('schedStart').value = set.schedule.start; document.getElementById('schedEnd').value = set.schedule.end; document.getElementById('schedMsg').value = set.schedule.offline_message; } } catch(e) {}
     }
 
     async function loadActivity() {
@@ -1074,235 +640,97 @@
             }
         } catch(e) { console.error(e); }
     }
-
-    function updateStatusUI() {
-        const badge = document.getElementById('crmStatusBadge');
-        badge.className = 'status-badge open'; 
-        badge.innerHTML = '● ONLINE';
-    }
-
+    function updateStatusUI() { const badge = document.getElementById('crmStatusBadge'); badge.className = 'status-badge open'; badge.innerHTML = '● ONLINE'; }
     async function crmAction(phone, nextStep) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-    // --- NUEVO RENDERIZADO TIPO LISTA ---
+    // --- FLOW EDITOR ---
     function renderFlowList() {
-        const container = document.getElementById('flowListContainer');
-        container.innerHTML = '';
-        
-        if (!flow || Object.keys(flow).length === 0) {
-            container.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:50px;">No hay pasos creados. Pulsa el botón +</div>`;
-            return;
-        }
-
-        const keys = Object.keys(flow).sort();
-
-        keys.forEach(key => {
+        const container = document.getElementById('flowListContainer'); container.innerHTML = '';
+        if (!flow || Object.keys(flow).length === 0) { container.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:50px;">No hay pasos creados. Pulsa el botón +</div>`; return; }
+        Object.keys(flow).sort().forEach(key => {
             const step = flow[key];
-            const div = document.createElement('div');
-            div.className = 'flow-step-card';
-            div.onclick = () => edit(key);
-
-            // Iconos y etiquetas por tipo
-            let icon = 'fa-comment-alt';
-            let labelType = 'Mensaje';
+            const div = document.createElement('div'); div.className = 'flow-step-card'; div.onclick = () => edit(key);
+            let icon = 'fa-comment-alt'; let labelType = 'Mensaje';
             if (step.type === 'menu') { icon = 'fa-list-ul'; labelType = 'Menú'; }
             if (step.type === 'filtro') { icon = 'fa-filter'; labelType = 'Filtro'; }
             if (step.type === 'input') { icon = 'fa-pen'; labelType = 'Entrada'; }
             if (step.type === 'cita') { icon = 'fa-calendar-check'; labelType = 'Cita'; }
             if (step.type === 'fin_bot') { icon = 'fa-flag-checkered'; labelType = 'Fin'; }
-
-            // Resumen de mensaje
-            let preview = step.message || "Sin mensaje configurado";
-            if (preview.length > 60) preview = preview.substring(0, 60) + "...";
-
-            div.innerHTML = `
-                <div class="flow-step-content">
-                    <div class="flow-step-title">
-                        <span class="step-tag type-${step.type}"><i class="fas ${icon}"></i> ${labelType}</span>
-                        ${key}
-                    </div>
-                    <div class="flow-step-subtitle">${preview}</div>
-                </div>
-                <i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>
-            `;
+            div.innerHTML = `<div class="flow-step-content"><div class="flow-step-title"><span class="step-tag type-${step.type}"><i class="fas ${icon}"></i> ${labelType}</span> ${key}</div><div class="flow-step-subtitle">${(step.message || "Sin mensaje").substring(0,60)}...</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>`;
             container.appendChild(div);
         });
     }
 
     let currentMediaList = [];
     function edit(id) { 
-        const d = flow[id]; 
-        document.getElementById('stId').value = id; 
-        document.getElementById('stType').value = d.type; 
+        const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type; 
         document.getElementById('stMsg').value = d.message || '';
         currentMediaList = Array.isArray(d.media) ? d.media : (d.media ? [d.media] : []);
-        renderGallery(); 
-        renderFields(); 
-        document.getElementById('editorModal').classList.add('active');
+        renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
     }
     function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
-        
     function renderFields() {
-        const type = document.getElementById('stType').value;
-        const container = document.getElementById('dynFields'); 
-        const id = document.getElementById('stId').value;
-        const d = flow[id] || {}; 
-        const wrapMsg = document.getElementById('wrapper-msg');
-        const wrapMedia = document.getElementById('wrapper-media');
-        wrapMsg.style.display = 'block';
-        wrapMedia.style.display = 'block';
-        if(type === 'cita') { wrapMsg.style.display = 'none'; wrapMedia.style.display = 'none'; }
-
-        let html = '';
-        const getOpts = (sel) => { let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); return s; };
-
+        const type = document.getElementById('stType').value; const container = document.getElementById('dynFields'); const id = document.getElementById('stId').value; const d = flow[id] || {}; 
+        const wrapMsg = document.getElementById('wrapper-msg'); const wrapMedia = document.getElementById('wrapper-media');
+        wrapMsg.style.display = 'block'; wrapMedia.style.display = 'block'; if(type === 'cita') { wrapMsg.style.display = 'none'; wrapMedia.style.display = 'none'; }
+        let html = ''; const getOpts = (sel) => { let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); return s; };
         if (type === 'menu') {
-            const keywordsVal = (d.keywords || []).join(', ');
-            html += `<label>🔑 Palabras Clave</label>
-                     <input type="text" id="stKeywords" value="${keywordsVal}" placeholder="Ej: hola, menu" style="margin-bottom:20px;">`;
-            html += `<div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Opciones del Menú</label>`;
-            (d.options||[]).forEach(o => {
-                html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;">
-                            <input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;">
-                            <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
-                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>
-                         </div>`;
-            });
+            html += `<label>🔑 Palabras Clave</label><input type="text" id="stKeywords" value="${(d.keywords||[]).join(', ')}" placeholder="Ej: hola, menu" style="margin-bottom:20px;"><div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Opciones del Menú</label>`;
+            (d.options||[]).forEach(o => html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;"><input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;"><select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button></div>`);
             html += `</div><button onclick="addOpt()" class="admin-btn" style="margin-top:10px; width:100%; border-style:dashed; color:var(--success);">+ Agregar Opción</button>`;
         } else if (type === 'filtro') {
-             html += `<div style="background:rgba(168, 85, 247, 0.1); padding:15px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:8px; margin-bottom:20px;">
-                        <label style="color:#a855f7; font-weight:bold;">👮 Teléfono Administrador</label>
-                        <input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3); margin-bottom:0;">
-                     </div>`;
-             html += `<div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Rutas de Decisión</label>`;
-            (d.options||[]).forEach(o => {
-                html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;">
-                            <input class="o-lbl" value="${o.label}" placeholder="Acción (ej: Aprobar)" style="flex:1;">
-                            <select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select>
-                            <button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>
-                         </div>`;
-            });
+             html += `<div style="background:rgba(168, 85, 247, 0.1); padding:15px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:8px; margin-bottom:20px;"><label style="color:#a855f7; font-weight:bold;">👮 Teléfono Administrador</label><input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3); margin-bottom:0;"></div><div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Rutas de Decisión</label>`;
+            (d.options||[]).forEach(o => html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;"><input class="o-lbl" value="${o.label}" placeholder="Acción (ej: Aprobar)" style="flex:1;"><select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button></div>`);
             html += `</div><button onclick="addOpt()" class="admin-btn" style="margin-top:10px; width:100%; border-style:dashed; color:var(--success);">+ Agregar Ruta</button>`;
         } else if (type === 'input') {
-            html += `<label style="margin-top:10px;">💾 Nombre Variable (donde guardar el dato)</label>
-                     <input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente">`;
-            html += `<label>➡️ Siguiente Paso</label>
-                     <select id="stNextStep">${getOpts(d.next_step)}</select>`;
+            html += `<label style="margin-top:10px;">💾 Nombre Variable</label><input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente"><label>➡️ Siguiente Paso</label><select id="stNextStep">${getOpts(d.next_step)}</select>`;
         } else if (type === 'cita') {
-             html += `<label>➡️ Siguiente Paso (Al agendar)</label>
-                      <select id="stNextStep">${getOpts(d.next_step)}</select>`;
-        } else {
-             if (type !== 'fin_bot') {
-                 html += `<label>➡️ Siguiente Paso</label>
-                          <select id="stNextStep">${getOpts(d.next_step)}</select>`;
-             }
+             html += `<label>➡️ Siguiente Paso (Al agendar)</label><select id="stNextStep">${getOpts(d.next_step)}</select>`;
+        } else if (type !== 'fin_bot') {
+             html += `<label>➡️ Siguiente Paso</label><select id="stNextStep">${getOpts(d.next_step)}</select>`;
         }
         container.innerHTML = html;
     }
-
-    function addOpt() {
-        const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:8px; margin-bottom:8px;";
-        let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}">${k}</option>`);
-        div.innerHTML=`<input class="o-lbl" placeholder="Texto Botón" style="flex:1;"><select class="o-nxt" style="flex:1;">${s}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>`;
-        document.getElementById('optList').appendChild(div);
-    }
-        
+    function addOpt() { const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:8px; margin-bottom:8px;"; let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}">${k}</option>`); div.innerHTML=`<input class="o-lbl" placeholder="Texto Botón" style="flex:1;"><select class="o-nxt" style="flex:1;">${s}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>`; document.getElementById('optList').appendChild(div); }
     async function saveStep() {
-        const id = document.getElementById('stId').value;
-        const type = document.getElementById('stType').value;
-        const stepData = { type };
+        const id = document.getElementById('stId').value, type = document.getElementById('stType').value, stepData = { type };
         const getVal = (eid) => { const el = document.getElementById(eid); return el ? el.value : null; };
-
         const msg = getVal('stMsg'); if(msg !== null) stepData.message = msg;
         stepData.media = currentMediaList;
         const kw = getVal('stKeywords'); if(kw !== null) stepData.keywords = kw.split(',').map(s=>s.trim()).filter(Boolean);
         const next = getVal('stNextStep'); if(next !== null) stepData.next_step = next;
         const saveVar = getVal('stSaveVar'); if(saveVar !== null) stepData.save_var = saveVar;
         const adminNum = getVal('stAdminNumber'); if(adminNum !== null) stepData.admin_number = adminNum;
-
         const optsContainer = document.getElementById('optList');
-        if (optsContainer) {
-            stepData.options = [];
-            optsContainer.querySelectorAll('div.row').forEach(row => {
-                const lbl = row.querySelector('.o-lbl')?.value;
-                const nxt = row.querySelector('.o-nxt')?.value;
-                if (lbl) stepData.options.push({ trigger: lbl, label: lbl, next_step: nxt });
-            });
-        } else if (type === 'cita') {
-            if(next) stepData.options = [ { internal_label: 'DISPONIBLE', next_step: next }, { internal_label: 'NO_DISPONIBLE', next_step: next } ];
-        }
-
-        try {
-            await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData }) });
-            flow[id] = stepData; // ACTUALIZACIÓN INSTANTÁNEA
-            renderFlowList(); 
-            closeEditor(); 
-            showToast('Guardado correctamente');
-        } catch (e) { console.error(e); showToast('Error al guardar', 'error'); }
+        if (optsContainer) { stepData.options = []; optsContainer.querySelectorAll('div.row').forEach(row => { const lbl = row.querySelector('.o-lbl')?.value; const nxt = row.querySelector('.o-nxt')?.value; if (lbl) stepData.options.push({ trigger: lbl, label: lbl, next_step: nxt }); }); } 
+        else if (type === 'cita' && next) stepData.options = [ { internal_label: 'DISPONIBLE', next_step: next }, { internal_label: 'NO_DISPONIBLE', next_step: next } ];
+        try { await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData }) }); flow[id] = stepData; renderFlowList(); closeEditor(); showToast('Guardado correctamente'); } catch (e) { showToast('Error al guardar', 'error'); }
     }
-
-    function createNewStep(id) {
-        if(id) { 
-            flow[id.toUpperCase()]={type:'menu'}; 
-            renderFlowList(); 
-            setTimeout(()=>edit(id.toUpperCase()),200); 
-        }
-    }
+    function createNewStep(id) { if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlowList(); setTimeout(()=>edit(id.toUpperCase()),200); } }
     async function delStep() { const id=document.getElementById('stId').value; await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); delete flow[id]; renderFlowList(); closeEditor(); showToast('Eliminado'); }
+    function renderGallery() { const c = document.getElementById('galleryContainer'); c.innerHTML=''; currentMediaList.forEach((u,i) => c.innerHTML += `<div style="position:relative; width:70px; height:70px;"><img src="${u}" style="width:100%; height:100%; border-radius:6px; object-fit:cover; border:1px solid var(--border);"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-6px; right:-6px; background:var(--danger); color:white; border-radius:50%; width:20px; height:20px; font-size:12px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button></div>`); document.getElementById('imgCount').innerText = currentMediaList.length + " archivos"; }
+    async function uploadImages(inp) { if(!inp.files.length) return; const fd = new FormData(); for(let f of inp.files) fd.append('images', f); const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json(); if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); } }
 
-    function renderGallery() {
-        const c = document.getElementById('galleryContainer'); c.innerHTML='';
-        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="position:relative; width:70px; height:70px;"><img src="${u}" style="width:100%; height:100%; border-radius:6px; object-fit:cover; border:1px solid var(--border);"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-6px; right:-6px; background:var(--danger); color:white; border-radius:50%; width:20px; height:20px; font-size:12px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button></div>`);
-        document.getElementById('imgCount').innerText = currentMediaList.length + " archivos";
-    }
-    async function uploadImages(inp) {
-        if(!inp.files.length) return;
-        const fd = new FormData(); for(let f of inp.files) fd.append('images', f);
-        const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json();
-        if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
-    }
-
+    // --- CALENDAR & CONTACTS ---
     async function renderCalendar() {
-        const now = currentRefDate;
-        const m = now.getMonth(), y = now.getFullYear();
-        const firstDay = new Date(y, m, 1).getDay();
-        const daysInMonth = new Date(y, m+1, 0).getDate();
-        const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        document.getElementById('monthDisplay').innerText = `${months[m]} ${y}`;
+        const now = currentRefDate, m = now.getMonth(), y = now.getFullYear();
+        document.getElementById('monthDisplay').innerText = `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][m]} ${y}`;
         const g = document.getElementById('calendarDays'); g.innerHTML = '';
         let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
+        const firstDay = new Date(y, m, 1).getDay(); const daysInMonth = new Date(y, m+1, 0).getDate();
         for(let i=0; i<firstDay; i++) g.innerHTML += `<div class="day empty" style="pointer-events:none;"></div>`;
-        for(let i=1; i<=daysInMonth; i++) {
-            const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
-            const count = (appts[k]||[]).length;
-            const isToday = new Date().toDateString() === new Date(y,m,i).toDateString();
-            g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}', [])">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`;
-        }
+        for(let i=1; i<=daysInMonth; i++) { const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`; const count = (appts[k]||[]).length; const isToday = new Date().toDateString() === new Date(y,m,i).toDateString(); g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}', [])">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`; }
     }
     function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
     function openDayModal(dateStr, _) { document.getElementById('modalDateTitle').innerText = dateStr; renderEventList(dateStr); document.getElementById('dayModal').classList.add('active'); }
     function closeDayModal() { document.getElementById('dayModal').classList.remove('active'); renderCalendar(); }
-
     async function renderEventList(dateKey) {
         const list = document.getElementById('modalApptList'); list.innerHTML = 'Cargando...';
-        const allAppts = await (await fetch(`${API_BASE}/api/agenda`)).json();
-        const appts = allAppts[dateKey] || [];
-        list.innerHTML = '';
+        const allAppts = await (await fetch(`${API_BASE}/api/agenda`)).json(); const appts = allAppts[dateKey] || []; list.innerHTML = '';
         if(!appts.length) list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted); font-style:italic; font-size:0.9rem;">No hay eventos para este día.</div>';
         appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
-            const row = document.createElement('div');
-            row.style.cssText = "background:var(--bg-body); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;";
-            row.innerHTML = `
-                <div>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-family:monospace; color:var(--primary); background:rgba(59, 130, 246, 0.1); padding:2px 6px; border-radius:4px; font-size:0.85rem; font-weight:600;">${c.time}</span>
-                        <span style="font-weight:600; font-size:0.95rem; color:var(--text-main);">${c.name}</span>
-                    </div>
-                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">
-                        <i class="fab fa-whatsapp" style="margin-right:4px;"></i>${c.phone||'Sin teléfono'}
-                    </div>
-                    ${c.note ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-style:italic; border-left:2px solid var(--border); padding-left:8px;">"${c.note}"</div>` : ''}
-                </div>
-                <button onclick="openConfirm('¿Eliminar esta cita?', () => deleteAppt('${dateKey}', '${c.time}'))" style="background:transparent; border:none; color:var(--danger); cursor:pointer; padding:5px; opacity:0.7; transition:0.2s;"><i class="fas fa-trash-alt"></i></button>`;
+            const row = document.createElement('div'); row.style.cssText = "background:var(--bg-body); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;";
+            row.innerHTML = `<div><div style="display:flex; align-items:center; gap:8px;"><span style="font-family:monospace; color:var(--primary); background:rgba(59, 130, 246, 0.1); padding:2px 6px; border-radius:4px; font-size:0.85rem; font-weight:600;">${c.time}</span><span style="font-weight:600; font-size:0.95rem; color:var(--text-main);">${c.name}</span></div><div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;"><i class="fab fa-whatsapp" style="margin-right:4px;"></i>${c.phone||'Sin teléfono'}</div>${c.note ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-style:italic; border-left:2px solid var(--border); padding-left:8px;">"${c.note}"</div>` : ''}</div><button onclick="openConfirm('¿Eliminar esta cita?', () => deleteAppt('${dateKey}', '${c.time}'))" style="background:transparent; border:none; color:var(--danger); cursor:pointer; padding:5px; opacity:0.7; transition:0.2s;"><i class="fas fa-trash-alt"></i></button>`;
             list.appendChild(row);
         });
         document.getElementById('evtOldTime').dataset.date = dateKey; 
@@ -1310,79 +738,47 @@
     function showEventForm() { document.getElementById('eventForm').style.display='block'; document.getElementById('btnAddEvent').style.display='none'; }
     function hideEventForm() { document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block'; }
     async function saveEvent() {
-        const date = document.getElementById('evtOldTime').dataset.date;
-        const time = document.getElementById('evtTime').value;
-        const name = document.getElementById('evtName').value;
-        const phone = document.getElementById('evtPhone').value;
-        const note = document.getElementById('evtNote').value;
+        const date = document.getElementById('evtOldTime').dataset.date, time = document.getElementById('evtTime').value, name = document.getElementById('evtName').value, phone = document.getElementById('evtPhone').value, note = document.getElementById('evtNote').value;
         if(!time || !name) return showToast('Falta hora o nombre', 'error');
         await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time, name, phone, note}) });
         hideEventForm(); renderEventList(date); showToast('Evento Guardado');
     }
-    async function deleteAppt(date, time) {
-        await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) });
-        renderEventList(date);
-    }
+    async function deleteAppt(date, time) { await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) }); renderEventList(date); }
     async function renderContacts() {
-        try {
-            const list = await (await fetch(`${API_BASE}/api/contacts`)).json();
-            const c = document.getElementById('contactsList');
-            let htmlBuffer = '';
-            list.forEach(u => {
-                htmlBuffer += `
-                <div style="display:flex; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="width:36px; height:36px; background:var(--bg-hover); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--text-muted);">${u.name?u.name[0].toUpperCase():'#'}</div>
-                        <div>
-                            <b style="color:var(--text-main); font-size:0.95rem; display:block;">${u.name||u.phone}</b>
-                            <div style="color:var(--text-muted); font-size:0.8rem;">${u.phone}</div>
-                        </div>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>`;
-            });
-            c.innerHTML = htmlBuffer;
-        } catch (e) { console.error("Error cargando contactos:", e); }
+        try { const list = await (await fetch(`${API_BASE}/api/contacts`)).json(); const c = document.getElementById('contactsList'); let htmlBuffer = ''; list.forEach(u => htmlBuffer += `<div style="display:flex; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row"><div style="display:flex; align-items:center; gap:12px;"><div style="width:36px; height:36px; background:var(--bg-hover); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--text-muted);">${u.name?u.name[0].toUpperCase():'#'}</div><div><b style="color:var(--text-main); font-size:0.95rem; display:block;">${u.name||u.phone}</b><div style="color:var(--text-muted); font-size:0.8rem;">${u.phone}</div></div></div><label class="switch"><input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)"><span class="slider"></span></label></div>`); c.innerHTML = htmlBuffer; } catch (e) {}
     }
     function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
     async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
     function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
-    async function saveNewContact() {
-        const name = document.getElementById('newContName').value;
-        const phone = document.getElementById('newContPhone').value;
-        const enable = document.getElementById('newContEnable').checked;
-        if(!phone) return;
-        await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})});
-        document.getElementById('contactModal').classList.remove('active');
-        renderContacts();
-    }
+    async function saveNewContact() { const name = document.getElementById('newContName').value, phone = document.getElementById('newContPhone').value, enable = document.getElementById('newContEnable').checked; if(!phone) return; await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})}); document.getElementById('contactModal').classList.remove('active'); renderContacts(); }
 
+    // --- SOCKET LOGIC OPTIMIZADA ---
     socket.on('message', (data) => {
+        // 1. Notificación Global (Para cualquier mensaje entrante que no sea mío)
+        if (!data.fromMe) {
+             const audio = document.getElementById('alertSound');
+             if(audio) { audio.volume = 0.5; audio.play().catch(e=>{}); }
+             
+             // Enviar notificación nativa si está oculto
+             if (document.visibilityState === 'hidden') {
+                 sendNativeNotification("Nuevo Mensaje", data.text || "Archivo recibido");
+             }
+        }
+
+        // 2. Lógica del Simulador (Solo si coincide el número)
         const destino = data.to.replace(/\D/g, '');
-        if (!destino.includes(simPhone)) return;
-        const loading = document.getElementById('msg-loading');
-        if (loading) loading.remove();
-        if (data.type === 'image') { addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false); } else { addMsg(data.text, false); }
+        if (destino.includes(simPhone)) {
+             const loading = document.getElementById('msg-loading');
+             if (loading) loading.remove();
+             if (data.type === 'image') { addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false); } else { addMsg(data.text, false); }
+        }
     });
 
     function scrollToBottomSim() { const c = document.getElementById('simMsgs'); if(c) c.scrollTop = c.scrollHeight; }
-    function sendSim() {
-        const t = document.getElementById('simInput'); const txt = t.value.trim(); if(!txt) return;
-        addMsg(txt, true); t.value=''; 
-        const d = document.createElement('div'); d.id = 'msg-loading'; d.className = 'msg bot'; d.innerHTML = '<em>Escribiendo...</em>'; 
-        document.getElementById('simMsgs').appendChild(d); scrollToBottomSim();
-        fetch(`${API_BASE}/api/simulate/text`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone: simPhone, text: txt }) });
-    }
+    function sendSim() { const t = document.getElementById('simInput'); const txt = t.value.trim(); if(!txt) return; addMsg(txt, true); t.value=''; const d = document.createElement('div'); d.id = 'msg-loading'; d.className = 'msg bot'; d.innerHTML = '<em>Escribiendo...</em>'; document.getElementById('simMsgs').appendChild(d); scrollToBottomSim(); fetch(`${API_BASE}/api/simulate/text`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone: simPhone, text: txt }) }); }
     function addMsg(txt, usr) { const d = document.createElement('div'); d.className = `msg ${usr?'user':'bot'}`; d.innerHTML = txt; document.getElementById('simMsgs').appendChild(d); scrollToBottomSim(); }
     function restartSim() { document.getElementById('simMsgs').innerHTML=''; simState={step:'BIENVENIDA', history:{}}; showToast('Chat Limpio'); }
-    async function saveSettings() {
-        const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
-        await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
-        showToast('Configuración Guardada');
-    }
+    async function saveSettings() { const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value }; await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})}); showToast('Configuración Guardada'); }
 </script>
 </body>
 </html>
