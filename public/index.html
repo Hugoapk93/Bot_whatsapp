@@ -417,6 +417,11 @@
             setTimeout(checkStatus, 3000);
         };
         checkStatus();
+
+        // --- PWA SERVICE WORKER REGISTRATION (Re-added) ---
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Fail', err));
+        }
     };
 
     // FIX: Pedir permisos de notificación en el primer clic/toque en la pantalla
@@ -627,8 +632,23 @@
     function sendSim() { const t=document.getElementById('simInput'); if(!t.value)return; addMsg(t.value,true); fetch(`${API_BASE}/api/simulate/text`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:'5218991234567', text:t.value}) }); t.value=''; }
     function addMsg(t, me) { document.getElementById('simMsgs').innerHTML+=`<div class="msg ${me?'user':'bot'}">${t}</div>`; const c=document.querySelector('.chat-msgs'); c.scrollTop=c.scrollHeight; }
 
-    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt=e; document.getElementById('installAppBtn').style.display='flex'; });
-    async function installPWA() { if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt=null; } }
+    // --- PWA INSTALLATION (Re-added & Improved) ---
+    window.addEventListener('beforeinstallprompt', (e) => { 
+        e.preventDefault(); 
+        deferredPrompt=e; 
+        document.getElementById('installAppBtn').style.display='flex'; 
+    });
+
+    async function installPWA() { 
+        if(deferredPrompt) { 
+            deferredPrompt.prompt(); 
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('installAppBtn').style.display='none';
+            }
+            deferredPrompt=null; 
+        } 
+    }
 </script>
 </body>
 </html>
