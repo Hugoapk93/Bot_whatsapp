@@ -5,13 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CRM - Flow Studio</title>
     
-    <!-- PWA Manifest & Meta -->
+    <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="logo.svg" type="image/svg+xml">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="FlowCRM">
 
     <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -22,172 +21,87 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
-        /* --- TEMA PROFESIONAL (Slate Palette) --- */
+        /* --- ESTILOS OPTIMIZADOS --- */
         :root { 
-            --bg-body: #0f172a; --bg-sidebar: #1e293b; --bg-card: #1e293b; --bg-hover: #334155; --bg-input: #020617;
+            --bg-body: #0f172a; --bg-sidebar: #1e293b; --bg-card: #1e293b; --bg-input: #020617;
             --border: #334155; --text-main: #f8fafc; --text-muted: #94a3b8;
-            --primary: #3b82f6; --primary-hover: #2563eb; --success: #10b981; --danger: #ef4444;
+            --primary: #3b82f6; --success: #10b981; --danger: #ef4444;
             --radius: 12px;
-            --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
         }
 
-        /* --- RESET & BASE --- */
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        
-        body { 
-            font-family: 'Inter', sans-serif; margin: 0; height: 100dvh; width: 100vw; 
-            background: var(--bg-body); color: var(--text-main); overflow: hidden; font-size: 14px;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; margin: 0; height: 100dvh; background: var(--bg-body); color: var(--text-main); overflow: hidden; font-size: 14px; }
 
-        /* --- LAYOUT PRINCIPAL --- */
+        /* Layout */
         #mainApp { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
         #mainApp.visible { opacity: 1; pointer-events: all; }
 
-        .sidebar-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); z-index: 150; display: none; opacity: 0; transition: opacity 0.3s;
-            backdrop-filter: blur(2px);
-        }
-        .sidebar-overlay.active { display: block; opacity: 1; }
-
-        .sidebar { 
-            width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); 
-            display: flex; flex-direction: column; z-index: 200; flex-shrink: 0; 
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .brand { 
-            height: 64px; padding: 0 24px; display: flex; align-items: center; gap: 12px;
-            font-weight: 700; font-size: 1rem; letter-spacing: 1px; color: var(--text-main);
-            border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);
-        }
-
+        /* Sidebar */
+        .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 200; transition: transform 0.3s; flex-shrink: 0; }
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; display: none; backdrop-filter: blur(2px); }
+        .sidebar-overlay.active { display: block; }
+        
+        .brand { height: 64px; padding: 0 24px; display: flex; align-items: center; gap: 12px; font-weight: 700; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); }
         .menu { padding: 20px 12px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-        .menu-item { padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s; }
-        .menu-item:hover { background: var(--bg-hover); color: var(--text-main); }
+        .menu-item { padding: 12px 16px; border-radius: 8px; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.2s; }
+        .menu-item:hover { background: var(--border); color: var(--text-main); }
         .menu-item.active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-weight: 600; }
-        .menu-item.active i { color: #60a5fa; }
         
         #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: #34d399; margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
-        #installAppBtn:hover { background: rgba(16, 185, 129, 0.2); }
 
-        .menu-item.logout { color: var(--danger); margin-top: auto; border-top: 1px solid var(--border); border-radius: 0; padding-top: 20px; }
-        .menu-item.logout:hover { background: rgba(239, 68, 68, 0.1); }
-        .badge-count { background: var(--danger); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; margin-left: auto; font-weight: 700; display: none; }
-
-        .content { flex: 1; display: flex; flex-direction: column; position: relative; height: 100%; overflow: hidden; background: var(--bg-body); }
-        .view { display: none; flex: 1; flex-direction: column; height: 100%; position: relative; overflow: hidden; }
+        /* Content */
+        .content { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
+        .mobile-header { display: none; background: var(--bg-sidebar); height: 60px; padding: 0 20px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        
+        /* Views */
+        .view { display: none; flex: 1; flex-direction: column; height: 100%; overflow: hidden; }
         .view.active { display: flex; animation: fadeIn 0.3s ease; }
         .view-padding { padding: 30px; overflow-y: auto; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .mobile-header { display: none; background: var(--bg-sidebar); height: 60px; padding: 0 20px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-
-        /* UI Components */
-        .card { background: var(--bg-card); padding: 24px; border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow-card); margin-bottom: 24px; }
-        h3 { color: var(--text-main); margin-bottom: 16px; font-weight: 600; letter-spacing: -0.5px; }
+        /* Components */
+        .card { background: var(--bg-card); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 20px; }
         .act-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        .act-table th { text-align: left; padding: 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .act-table td { padding: 16px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text-muted); font-size: 0.9rem; }
-        .act-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .act-table th, .act-table td { padding: 14px; border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted); }
         .act-table tr:last-child td { border-bottom: none; }
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.5px; }
-        .status-badge.open { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-        .status-badge.closed { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        
+        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+        .status-badge.connected { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .status-badge.disconnected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 
-        button, .admin-btn, .w-btn { font-family: 'Inter', sans-serif; transition: all 0.2s; }
-        .admin-btn { padding: 6px 14px; border: 1px solid var(--border); background: var(--bg-body); border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 500; color: var(--text-main); margin-right: 6px; }
-        .admin-btn:hover { border-color: var(--primary); color: var(--primary); background: rgba(59, 130, 246, 0.1); }
-        .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; }
+        .admin-btn { padding: 6px 12px; border: 1px solid var(--border); background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-main); margin-right: 5px; font-size: 0.8rem; }
+        
+        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; }
 
-        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; margin-bottom: 12px; font-family: inherit; transition: border-color 0.2s; }
-        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
-
-        /* Calendar */
-        .calendar-header { display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 15px; }
-        .calendar-nav-btn { background: var(--bg-body); border: 1px solid var(--border); color: var(--primary); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .calendar-nav-btn:hover { background: var(--bg-hover); }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-        .weekday { background: var(--bg-sidebar); padding: 12px 0; font-size: 0.75rem; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; text-align: center; }
-        .day { height: 110px; background: var(--bg-card); color: var(--text-muted); padding: 10px; position: relative; cursor: pointer; transition: background 0.2s; }
-        .day:hover { background: var(--bg-hover); color: var(--text-main); }
-        .day.today { color: var(--primary); font-weight: 700; background: rgba(59, 130, 246, 0.05); }
-        .day-indicator { position: absolute; bottom: 10px; right: 10px; background: var(--primary); color: white; font-weight: 600; font-size: 0.75rem; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-
-        /* Chat Sim */
-        .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-        .chat-header { background: var(--bg-sidebar); padding: 16px 20px; color: var(--text-main); border-bottom: 1px solid var(--border); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
-        .chat-msgs { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 20px 20px; background-opacity: 0.1; }
-        .msg { max-width: 80%; padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; line-height: 1.5; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-        .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; border: 1px solid var(--border); }
-        .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; border-bottom-right-radius: 2px; }
-
-        /* Flow List */
-        #view-flow { background: var(--bg-body); padding: 20px; }
-        .flow-list-container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 80px; }
-        .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
-        .flow-step-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-card); }
-        .flow-step-content { flex: 1; }
-        .flow-step-title { font-weight: 700; color: var(--text-main); font-size: 1rem; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
-        .flow-step-subtitle { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
-        .step-tag { font-size: 0.65rem; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; border: 1px solid transparent; }
-        .type-menu { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); }
-        .type-filtro { background: rgba(168, 85, 247, 0.1); color: #c084fc; border-color: rgba(168, 85, 247, 0.2); }
-        .type-input { background: rgba(249, 115, 22, 0.1); color: #fb923c; border-color: rgba(249, 115, 22, 0.2); }
-        .type-message { background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
-        .type-cita { background: rgba(236, 72, 153, 0.1); color: #f472b6; border-color: rgba(236, 72, 153, 0.2); }
-        .type-fin_bot { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
-
-        .fab { position: fixed; bottom: 30px; right: 30px; background: var(--primary); color: white; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 28px; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .fab:hover { transform: scale(1.1) rotate(90deg); }
-
-        /* Modals */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 200; display: none; justify-content: center; align-items: center; }
-        #modalConfirm, #modalPrompt { z-index: 220; } 
-        .modal.active { display: flex; animation: fadeIn 0.2s; }
-        .sheet { background: var(--bg-card); border: 1px solid var(--border); width: 100%; max-width: 550px; border-radius: 16px; padding: 30px; display: flex; flex-direction: column; box-shadow: var(--shadow-modal); max-height: 85vh; }
-
-        /* Toasts */
-        #toast-container { position: fixed; top: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 12px; pointer-events: none; }
-        .toast { background: var(--bg-card); border: 1px solid var(--border); padding: 14px 20px; border-radius: 12px; color: var(--text-main); font-size: 0.9rem; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-modal); animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: all; min-width: 250px; }
-        .toast.success i { color: var(--success); }
-        .toast.error i { color: var(--danger); }
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-
-        /* Toggles */
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-input); transition: .4s; border-radius: 34px; border: 1px solid var(--border); }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--success); border-color: var(--success); }
-        input:checked + .slider:before { transform: translateX(20px); }
-
-        /* Mobile */
+        /* Mobile Adjustments */
         @media(max-width: 768px) { 
             #mainApp { flex-direction: column; } 
             .mobile-header { display: flex; }
-            .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.8); z-index: 200; } 
+            .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.8); } 
             .sidebar.active { transform: translateX(0); }
-            .sheet { border-radius: 20px 20px 0 0; position: absolute; bottom: 0; width: 100%; max-width: 100%; }
-            #toast-container { top: 10px; right: 10px; left: 10px; }
-            .fab { bottom: 20px; right: 20px; width: 50px; height: 50px; }
             .view-padding { padding: 10px !important; }
-            .card { padding: 16px !important; border-radius: 10px; margin-bottom: 15px; }
-            #view-flow { padding: 10px !important; }
-            .flow-step-card { padding: 14px; }
-            #view-sim.active.view-padding { padding: 0 !important; height: 100dvh; display: flex; flex-direction: column; }
-            .chat-container-wrapper { border-radius: 0; border: none; border-top: 1px solid var(--border); height: 100%; }
-            .day { height: 70px; font-size: 0.8rem; padding: 4px; }
-            .day-indicator { width: 18px; height: 18px; bottom: 4px; right: 4px; font-size: 0.65rem; }
-            .weekday { padding: 8px 0; font-size: 0.65rem; }
-            input, select, textarea { font-size: 16px !important; }
+            .card { padding: 15px !important; }
         }
-        
-        #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
-        .wizard-card { box-shadow: var(--shadow-modal); }
+
+        /* Flow & Chat Styles */
+        .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-msgs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; }
+        .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; }
+        .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; }
+        .fab { position: fixed; bottom: 25px; right: 25px; background: var(--primary); color: white; width: 50px; height: 50px; border-radius: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 24px; }
+
+        /* Utils */
         .step-hidden { display: none !important; }
+        #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; pointer-events: none; }
+        .toast { background: var(--bg-card); border: 1px solid var(--border); padding: 12px 20px; border-radius: 10px; color: var(--text-main); margin-bottom: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: fadeIn 0.3s; }
+
+        /* Modals */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 300; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .sheet { background: var(--bg-card); width: 90%; max-width: 500px; padding: 25px; border-radius: 16px; border: 1px solid var(--border); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; }
     </style>
 </head>
 <body>
@@ -196,125 +110,99 @@
     <div id="toast-container"></div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
+    <!-- WIZARD INICIAL -->
     <div id="setupWizard" class="step-hidden">
-        <div id="stepLoading" class="wizard-card">
-            <h2 style="color:var(--text-main); margin-top:0;">Iniciando Sistema</h2>
-            <p style="color:var(--text-muted); font-size:0.9rem;">Estableciendo conexión segura...</p>
-            <i class="fas fa-circle-notch fa-spin" style="font-size:2rem; color:var(--primary); margin-top:20px;"></i>
+        <div id="stepLoading" style="text-align:center;">
+            <i class="fas fa-circle-notch fa-spin" style="font-size:2.5rem; color:var(--primary);"></i>
+            <p style="margin-top:20px; color:var(--text-muted);">Conectando con el Servidor...</p>
         </div>
-        <div id="stepQR" class="wizard-card step-hidden">
-            <h2 style="color:var(--text-main); margin-top:0;">Vincular Dispositivo</h2>
-            <p style="color:var(--text-muted); font-size:0.85rem;">Escanea el código QR desde WhatsApp.</p>
-            <div class="qr-container"><canvas id="qrCanvas"></canvas></div>
-            <p id="qrStatus" style="font-size:0.8rem; color:var(--success); font-weight:600; margin-bottom:15px;">Generando código...</p>
-            <button class="w-btn" onclick="openConfirm('¿Generar un nuevo código QR desconectará la sesión actual?', resetSession)" style="background:transparent; border:1px solid var(--border); color:var(--text-main);">Generar Nuevo Código</button>
+        <div id="stepQR" class="step-hidden" style="text-align:center;">
+            <h2 style="margin-top:0;">Vincular WhatsApp</h2>
+            <div style="background:white; padding:10px; display:inline-block; border-radius:10px; margin:15px 0;">
+                <canvas id="qrCanvas"></canvas>
+            </div>
+            <p style="color:var(--success);">Escanea el código para activar el Bot</p>
         </div>
     </div>
 
+    <!-- APLICACIÓN PRINCIPAL -->
     <div id="mainApp">
         <div class="sidebar" id="sidebar">
-            <div class="brand">
-                <i class="fas fa-layer-group" style="color: var(--primary);"></i> FLOW STUDIO
-                <button onclick="toggleMenu()" class="d-md-none" style="background:none; border:none; color:var(--text-main); margin-left:auto;">✕</button>
-            </div>
+            <div class="brand"><i class="fas fa-robot" style="color:var(--primary);"></i> FLOW CRM</div>
             <div class="menu">
-                <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-list-ul"></i> Pasos del Bot</div>
+                <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-project-diagram"></i> Flujo del Bot</div>
                 <div class="menu-item" onclick="nav('activity', this)">
-                    <i class="fas fa-chart-line"></i> Monitor
-                    <span id="notifyBadge" class="badge-count">0</span>
+                    <i class="fas fa-desktop"></i> Monitor
+                    <!-- Indicador visual de conexión en el menú -->
+                    <span id="socketDot" style="width:8px; height:8px; background:var(--danger); border-radius:50%; margin-left:auto; box-shadow:0 0 5px var(--danger);"></span>
                 </div>
                 <div class="menu-item" onclick="nav('agenda', this)"><i class="far fa-calendar-alt"></i> Agenda</div>
-                <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Usuarios</div>
-                <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-sliders-h"></i> Configuración</div>
-                <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-terminal"></i> Simulador</div>
-                <div class="menu-item" id="installAppBtn" onclick="installPWA()">
-                    <i class="fas fa-download"></i> Instalar App
-                </div>
-                <div class="menu-item logout" onclick="openConfirm('¿Seguro que deseas cerrar sesión y desconectar el bot?', resetSession)">
-                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                </div>
-            </div>
-            <div style="padding: 24px; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-muted);">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-                    <div style="width:8px; height:8px; background:var(--success); border-radius:50%; box-shadow:0 0 8px var(--success);"></div>
-                    <span style="font-weight:600; color:var(--text-main);">Sistema Online</span>
-                </div>
-                v3.0.0 PRO
+                <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
+                <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-gamepad"></i> Simulador</div>
+                
+                <div class="menu-item" id="installAppBtn" onclick="installPWA()"><i class="fas fa-download"></i> Instalar App</div>
+                <div class="menu-item logout" onclick="resetSession()"><i class="fas fa-power-off"></i> Desconectar</div>
             </div>
         </div>
 
         <div class="content">
             <div class="mobile-header">
-                <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.2rem;">☰</button>
-                <span id="pageTitle" style="font-size:0.95rem; font-weight:700; letter-spacing:0.5px;">LISTA DE PASOS</span>
-                <div style="width:30px"></div>
+                <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.4rem;">☰</button>
+                <span id="pageTitle" style="font-weight:700;">MONITOR</span>
+                <!-- Indicador visual de conexión en el header móvil -->
+                <div id="statusIndicator" class="status-badge disconnected">OFFLINE</div>
             </div>
 
-            <!-- VISTAS DEL SISTEMA -->
-            <div id="view-flow" class="view active view-padding">
-                <div class="flow-list-container" id="flowListContainer"></div>
-                <div class="fab" onclick="openPrompt('Nombre del nuevo paso (ej: MENU_VENTAS):', createNewStep)"><i class="fas fa-plus"></i></div>
-            </div>
-
+            <!-- VISTA: MONITOR DE ACTIVIDAD -->
             <div id="view-activity" class="view view-padding">
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-                        <div>
-                            <h3 style="margin:0;">Actividad en Tiempo Real</h3>
-                            <p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Monitoreo de interacciones con clientes</p>
-                        </div>
-                        <span id="crmStatusBadge" class="status-badge closed">● OFFLINE</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3>Monitor de Tráfico</h3>
+                        <!-- Botón de alertas eliminado de aquí también, ya es automático -->
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="act-table">
-                            <thead><tr><th>Cliente</th><th>Contexto y Datos</th><th>Acciones Rápidas</th></tr></thead>
+                            <thead><tr><th>Cliente</th><th>Estado Actual</th><th>Acción</th></tr></thead>
                             <tbody id="activityBody"></tbody>
                         </table>
                     </div>
                 </div>
-                <button class="btn-primary" onclick="loadActivity(); showToast('Actualizando...')" style="background: var(--bg-card); border:1px solid var(--border); color:var(--text-muted); width:100%;"><i class="fas fa-sync-alt"></i> Actualizar Lista</button>
             </div>
 
+            <!-- VISTA: FLUJO -->
+            <div id="view-flow" class="view active view-padding">
+                <div id="flowListContainer"></div>
+                <div class="fab" onclick="createNewStepPrompt()"><i class="fas fa-plus"></i></div>
+            </div>
+
+            <!-- VISTA: AGENDA -->
             <div id="view-agenda" class="view view-padding">
-                <div class="card" style="height: 100%; display: flex; flex-direction: column;">
-                    <div class="calendar-header">
-                        <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
-                        <h3 id="monthDisplay" style="margin:0; font-size:1.1rem;"></h3>
-                        <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <div class="calendar-grid"><div class="weekday">DOM</div><div class="weekday">LUN</div><div class="weekday">MAR</div><div class="weekday">MIÉ</div><div class="weekday">JUE</div><div class="weekday">VIE</div><div class="weekday">SÁB</div></div>
-                    <div id="calendarDays" class="calendar-grid" style="flex: 1; border-top: none; border-radius: 0 0 12px 12px; border-color: var(--border);"></div>
+                <div class="card" style="text-align:center;">
+                    <h3>Próximamente</h3>
+                    <p style="color:var(--text-muted);">Módulo de Calendario Simplificado</p>
                 </div>
             </div>
 
+            <!-- VISTA: CONTACTOS -->
             <div id="view-contacts" class="view view-padding">
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <div><h3 style="margin:0;">Base de Usuarios</h3><p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Gestión de permisos y acceso al bot</p></div>
-                        <button onclick="openContactModal()" class="btn-primary" style="padding: 8px 16px;"><i class="fas fa-user-plus"></i> Nuevo</button>
-                    </div>
-                    <div style="position:relative; margin-bottom:15px;">
-                        <i class="fas fa-search" style="position:absolute; left:12px; top:12px; color:var(--text-muted);"></i>
-                        <input type="text" placeholder="Buscar por nombre o teléfono..." oninput="delayedFilter(this.value)" style="padding-left:36px;">
-                    </div>
-                    <div id="contactsList" style="max-height: 60vh; overflow-y: auto;"></div>
+                    <h3>Base de Datos</h3>
+                    <div id="contactsList"></div>
                 </div>
             </div>
 
+            <!-- VISTA: SIMULADOR -->
             <div id="view-sim" class="view view-padding">
                 <div class="chat-container-wrapper">
-                    <div class="chat-header">
-                        <div style="display:flex; align-items:center; gap:10px;"><div style="width:10px; height:10px; background:var(--success); border-radius:50%;"></div><span>Simulador en vivo</span></div>
-                        <i class="fas fa-trash-alt" onclick="openConfirm('¿Borrar historial del simulador?', restartSim)" style="cursor:pointer; color:var(--text-muted); transition:0.2s;" title="Limpiar Chat"></i>
-                    </div>
                     <div class="chat-msgs" id="simMsgs"></div>
-                    <div style="padding: 16px; background: var(--bg-card); display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border);">
-                        <input type="text" id="simInput" placeholder="Escribe un mensaje..." style="margin:0; flex:1;" onkeypress="if(event.key==='Enter') sendSim()">
-                        <button onclick="sendSim()" class="btn-primary" style="width:44px; height:44px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%;"><i class="fas fa-paper-plane"></i></button>
+                    <div style="padding:15px; border-top:1px solid var(--border); display:flex; gap:10px;">
+                        <input type="text" id="simInput" placeholder="Escribe al bot..." style="margin:0;">
+                        <button onclick="sendSim()" class="btn-primary" style="width:auto;"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
             </div>
-
+            
+            <!-- VISTA: CONFIGURACIÓN -->
             <div id="view-settings" class="view view-padding">
                 <div class="card" style="max-width: 600px; margin: 0 auto;">
                     <h3 style="margin-top:0;">Configuración de Horario</h3>
@@ -330,153 +218,108 @@
                     </div>
                     <label>Mensaje de Ausencia</label><textarea id="schedMsg" placeholder="Ej: Actualmente no estamos disponibles..." rows="4"></textarea>
                     <button onclick="saveSettings()" class="btn-primary" style="width:100%; margin-top:10px;">Guardar Configuración</button>
-                    <button onclick="requestNotifyPermission()" class="w-btn" style="margin-top:20px; width:100%; background:transparent; border:1px dashed var(--primary); color:var(--primary); padding:10px; border-radius:8px;"><i class="fas fa-bell"></i> Activar Notificaciones Reales</button>
+                    <!-- BOTÓN ELIMINADO COMO SOLICITASTE -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODALES -->
-    <div class="modal" id="modalPrompt">
-        <div class="sheet" style="height:auto; max-width: 420px;">
-            <h3 id="promptTitle" style="margin-top:0;">Entrada requerida</h3>
-            <input type="text" id="promptInput" style="margin-top:10px;">
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <button id="promptBtnConfirm" class="btn-primary" style="flex:1;">Aceptar</button>
-                <button onclick="closePrompt()" style="padding:10px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer;">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal" id="modalConfirm">
-        <div class="sheet" style="height:auto; max-width: 400px; text-align: center; align-items: center;">
-            <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin-bottom:20px;"><i class="fas fa-exclamation-triangle" style="font-size: 1.5rem; color: var(--danger);"></i></div>
-            <h3 style="margin:0;">¿Estás seguro?</h3>
-            <p id="confirmMsg" style="color:var(--text-muted); margin-bottom: 25px;">Esta acción requiere confirmación.</p>
-            <div style="display:flex; gap:10px; width:100%;">
-                <button id="confirmBtnYes" class="btn-primary" style="background: var(--danger); border:none; flex:1;">Sí, continuar</button>
-                <button onclick="closeConfirm()" style="flex:1; padding:10px; background:transparent; border:1px solid var(--border); color:var(--text-main); border-radius:8px; cursor:pointer;">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal" id="dayModal">
-        <div class="sheet">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:20px; margin-bottom:20px;">
-                <div><h3 id="modalDateTitle" style="margin:0; font-size:1.1rem;">Eventos</h3><small id="modalDateSubtitle" style="color:var(--text-muted); display:block; margin-top:4px;">Gestiona las citas del día</small></div>
-                <button onclick="closeDayModal()" style="background:none; border:none; font-size:1.2rem; color:var(--text-muted); cursor:pointer;">✕</button>
-            </div>
-            <div style="flex:1; overflow-y: auto; display:flex; flex-direction:column; gap:12px; padding-right:5px;">
-                <div id="modalApptList"></div>
-                <button id="btnAddEvent" onclick="showEventForm()" style="width:100%; padding:14px; background:var(--bg-body); color:var(--primary); border:1px dashed var(--border); border-radius:8px; font-weight:600; cursor:pointer; transition:0.2s;">+ Añadir Evento Manual</button>
-                <div id="eventForm" style="display:none; background:var(--bg-body); padding:20px; border-radius:12px; border:1px solid var(--border); margin-top:10px;">
-                    <h4 style="margin:0 0 15px 0; font-size:0.95rem; color:var(--text-main);">Nueva Cita</h4>
-                    <input type="hidden" id="evtOldTime">
-                    <div style="display:flex; gap:15px;">
-                        <div style="flex:1"><label>Hora</label><input type="time" id="evtTime"></div>
-                        <div style="flex:1"><label>Teléfono</label><input type="text" id="evtPhone" placeholder="55..."></div>
-                    </div>
-                    <label>Nombre del Cliente</label><input type="text" id="evtName" placeholder="Ej: Juan Pérez">
-                    <label>Notas Adicionales</label><textarea id="evtNote" rows="2" placeholder="Detalles..."></textarea>
-                    <div style="display:flex; gap:10px; margin-top:15px;">
-                        <button onclick="saveEvent()" class="btn-primary" style="flex:1;">Guardar</button>
-                        <button onclick="hideEventForm()" style="padding:10px 20px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer; font-weight:500;">Cancelar</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal" id="contactModal">
-        <div class="sheet" style="height:auto;">
-            <h3 style="margin-top:0;">Añadir Usuario</h3>
-            <p style="color:var(--text-muted); font-size:0.9rem; margin-top:-10px; margin-bottom:20px;">Registra manualmente a un cliente para el bot.</p>
-            <label>Nombre / Alias</label><input type="text" id="newContName">
-            <label>WhatsApp (con código país)</label><input type="tel" id="newContPhone" placeholder="Ej: 521...">
-            <div style="background:var(--bg-body); padding:16px; border-radius:8px; margin:10px 0 20px 0; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.9rem; font-weight:500;">Activar Bot Automático</span>
-                <label class="switch"><input type="checkbox" id="newContEnable" checked><span class="slider"></span></label>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button onclick="saveNewContact()" class="btn-primary" style="flex:1;">Registrar Usuario</button>
-                <button onclick="document.getElementById('contactModal').classList.remove('active')" style="padding:12px; background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; cursor:pointer;">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- MODAL EDITOR -->
     <div class="modal" id="editorModal">
         <div class="sheet">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:15px; margin-bottom:15px;">
-                <div><h3 style="margin:0;">Editar Paso</h3><small style="color:var(--text-muted);">Configura la respuesta del bot</small></div>
-                <button onclick="closeEditor()" style="background:none; border:none; font-size:1.2rem; color:var(--text-muted); cursor:pointer;">✕</button>
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <h3>Editar Paso</h3>
+                <button onclick="document.getElementById('editorModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.2rem;">✕</button>
             </div>
-            <div style="flex:1; overflow-y:auto; padding-right:5px;">
-                <input type="hidden" id="stId">
-                <label>Tipo de Interacción</label>
-                <select id="stType" onchange="renderFields()">
-                    <option value="menu">🔘 Menú con Botones</option>
-                    <option value="filtro">👮 Filtro / Aprobación Admin</option>
-                    <option value="input">💾 Solicitar & Guardar Dato</option>
-                    <option value="message">💬 Enviar Mensaje Simple</option>
-                    <option value="cita">📅 Módulo de Citas</option>
-                    <option value="fin_bot">🏁 Finalizar Conversación</option>
-                </select>
-                <div id="wrapper-msg" style="margin-top:20px;">
-                    <label>Mensaje del Bot</label>
-                    <textarea id="stMsg" rows="4" placeholder="Hola, ¿en qué puedo ayudarte hoy?"></textarea>
-                    <small style="color:var(--text-muted); display:block; margin-top:-8px; margin-bottom:15px;">Puedes usar variables como {{nombre}}</small>
-                </div>
-                <div id="wrapper-media" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <label style="margin:0;">Archivos Multimedia</label>
-                        <span id="imgCount" style="font-size:0.75rem; color:var(--primary);">0 archivos</span>
-                    </div>
-                    <div id="galleryContainer" style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:15px;"></div>
-                    <label class="admin-btn" style="display:block; text-align:center; border-style:dashed; color:var(--text-muted);">
-                        <i class="fas fa-cloud-upload-alt"></i> Subir Imagen/Video
-                        <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
-                    </label>
-                </div>
-                <div id="dynFields" style="margin-top:25px; padding-top:15px; border-top:1px solid var(--border);"></div>
-            </div>
-            <div style="margin-top:25px; display:flex; gap:12px;">
-                <button onclick="saveStep()" class="btn-primary" style="flex:1;">Guardar Cambios</button>
-                <button onclick="openConfirm('¿Seguro que deseas eliminar este paso? Esto podría romper el flujo.', delStep)" style="width: 50px; background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.3); border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-trash-alt"></i></button>
-            </div>
+            <input type="hidden" id="stId">
+            <label>Tipo</label>
+            <select id="stType" onchange="renderFields()">
+                <option value="menu">Menú</option>
+                <option value="filtro">Filtro Admin</option>
+                <option value="input">Guardar Dato</option>
+                <option value="message">Mensaje</option>
+                <option value="fin_bot">Finalizar</option>
+            </select>
+            <div id="dynFields"></div>
+            <button onclick="saveStep()" class="btn-primary" style="margin-top:20px;">Guardar Cambios</button>
+            <button onclick="delStep()" style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:10px; border-radius:8px; margin-top:10px; width:100%;">Eliminar Paso</button>
         </div>
     </div>
 
 <script>
-    const API_BASE = (() => {
-        const { protocol } = window.location;
-        if (protocol === 'file:' || protocol === 'blob:' || protocol === 'data:') return 'http://localhost:3000';
-        return ''; 
-    })();
- 
+    const API_BASE = ''; 
+    let flow = {};
+    let users = [];
     let pollingInterval = null;
-    let activityInterval = null;
-    let lastQr = '';
-    let isConnected = false;
-    let isPollingActive = false;
-    let promptCallback = null;
-    let confirmCallback = null;
     let deferredPrompt;
 
-    function cleanupAllIntervals() {
-        if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
-        if (activityInterval) { clearInterval(activityInterval); activityInterval = null; }
-        isPollingActive = false;
+    // --- SOCKET.IO (EL CORAZÓN DEL TIEMPO REAL) ---
+    const socket = io({
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: Infinity
+    });
+
+    socket.on('connect', () => {
+        updateConnStatus(true);
+        loadActivity(); // Cargar datos al reconectar
+    });
+
+    socket.on('disconnect', () => {
+        updateConnStatus(false);
+    });
+
+    // ¡AQUÍ ESTÁ LA LÓGICA DE ACTUALIZACIÓN INSTANTÁNEA!
+    socket.on('message', (data) => {
+        // 1. Reproducir sonido si es mensaje nuevo de cliente
+        if (!data.fromMe) {
+            try {
+                const audio = document.getElementById('alertSound');
+                audio.volume = 0.5;
+                audio.play().catch(e => console.log("Audio bloqueado por navegador"));
+                
+                // Notificación nativa (Background)
+                if (document.visibilityState === 'hidden') {
+                    new Notification("CRM: Nuevo Mensaje", { 
+                        body: data.text || "Archivo recibido", 
+                        icon: "logo.svg",
+                        vibrate: [200, 100, 200]
+                    });
+                }
+            } catch(e){}
+        }
+
+        // 2. ACTUALIZAR EL MONITOR INSTANTÁNEAMENTE
+        loadActivity();
+
+        // 3. Si es el simulador, pintar el chat
+        const simPhone = '5218991234567';
+        const destino = (data.to || '').replace(/\D/g, '');
+        const origen = (data.from || '').replace(/\D/g, '');
+        
+        if (destino.includes(simPhone) || origen.includes(simPhone)) {
+             addMsg(data.text, data.fromMe);
+        }
+    });
+
+    function updateConnStatus(online) {
+        const dot = document.getElementById('socketDot');
+        const badge = document.getElementById('statusIndicator');
+        
+        if(online) {
+            dot.style.background = 'var(--success)';
+            dot.style.boxShadow = '0 0 5px var(--success)';
+            badge.className = 'status-badge connected';
+            badge.innerText = 'ONLINE';
+        } else {
+            dot.style.background = 'var(--danger)';
+            dot.style.boxShadow = '0 0 5px var(--danger)';
+            badge.className = 'status-badge disconnected';
+            badge.innerText = 'OFFLINE';
+        }
     }
 
-    // --- PWA: SERVICE WORKER & INSTALL ---
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('SW registrado:', reg.scope))
-                .catch(err => console.log('SW falló:', err));
-        });
-    }
-
+    // --- PWA INSTALL ---
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
@@ -486,299 +329,209 @@
     async function installPWA() {
         if (!deferredPrompt) return;
         deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if(outcome === 'accepted') document.getElementById('installAppBtn').style.display = 'none';
         deferredPrompt = null;
     }
 
-    // --- PERMISO DE NOTIFICACIONES ---
+    // --- PERMISO DE NOTIFICACIONES (AUTOMÁTICO AL CLIC) ---
     document.addEventListener('click', function initAudioAndNotify() {
-        if (Notification.permission === 'default') requestNotifyPermission();
+        if (Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+                if(permission === 'granted') {
+                    showToast('Alertas Activadas');
+                }
+            });
+        }
         document.removeEventListener('click', initAudioAndNotify);
     }, { once: true });
 
-    function requestNotifyPermission() {
-        Notification.requestPermission().then(permission => {
-            if(permission === 'granted') {
-                showToast('Notificaciones Activadas');
-                new Notification("Sistema Listo", { body: "Te avisaremos aquí cuando haya actividad.", icon: "logo.svg" });
-            }
-        });
-    }
-    
-    // Función Helper para Notificaciones Reales
-    function sendNativeNotification(title, body) {
-        if (Notification.permission === "granted") {
-            const notif = new Notification(title, {
-                body: body,
-                icon: "logo.svg",
-                vibrate: [200, 100, 200]
-            });
-            notif.onclick = () => { window.focus(); notif.close(); };
-        }
-    }
-
-    // --- CORE LOGIC ---
-    window.onload = async () => {
-        document.getElementById('setupWizard').classList.remove('step-hidden');
-        startPolling();
-        loadAll();
-        activityInterval = setInterval(() => {
-            if (document.getElementById('view-activity').classList.contains('active')) loadActivity();
-        }, 8000);
-    };
-
-    function startPolling() {
-        cleanupAllIntervals();
-        isPollingActive = true;
-        pollingInterval = setInterval(async () => {
-            if (!isPollingActive) { clearInterval(pollingInterval); return; }
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                const res = await fetch(`${API_BASE}/api/status`, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                const data = await res.json();
-                if (data.status === 'connected') {
-                    isConnected = true;
-                    cleanupAllIntervals(); 
-                    document.getElementById('setupWizard').classList.add('step-hidden');
-                    document.getElementById('mainApp').classList.add('visible');
-                    showToast('Conectado exitosamente');
-                    updateStatusUI();
-                } else if (data.qr) {
-                    document.getElementById('stepLoading').classList.add('step-hidden');
-                    document.getElementById('stepQR').classList.remove('step-hidden');
-                    if (data.qr !== lastQr) { lastQr = data.qr; renderQR(data.qr); document.getElementById('qrStatus').innerText = "Listo para escanear"; }
-                } else {
-                    if (data.status === 'disconnected') fetch(`${API_BASE}/api/auth/init`, { method: 'POST' }).catch(e => console.warn("Init error:", e));
-                    document.getElementById('stepLoading').classList.remove('step-hidden');
-                    document.getElementById('stepQR').classList.add('step-hidden');
-                }
-            } catch (e) { if (e.name !== 'AbortError') console.warn("Polling error (no crítico):", e); }
-        }, 2000);
-    }
-
-    function renderQR(qrString) { new QRious({ element: document.getElementById('qrCanvas'), value: qrString, size: 220, level: 'H' }); }
-    async function resetSession() { await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
-
-    let simPhone = '5218991234567';
-    let simState = { step: 'BIENVENIDA', history: {} };
-    let flow={}, users=[];
-    let currentRefDate = new Date();
-    let wakeLock = null;
-    const socket = io(API_BASE);
-    const delayedFilter = debounce(filterContacts, 300);
-
-    function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
-    function toggleMenu() {
-        document.getElementById('sidebar').classList.toggle('active');
-        document.getElementById('sidebarOverlay').classList.toggle('active');
-    }
-        
-    function nav(v, btn) {
-        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
-        document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
-        document.getElementById('view-' + v).classList.add('active');
-        if (btn) btn.classList.add('active');
-        const titles = { flow: 'LISTA DE PASOS', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'SIMULADOR' };
-        document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
-        document.getElementById('sidebar').classList.remove('active');
-        document.getElementById('sidebarOverlay').classList.remove('active');
-        
-        if (v === 'flow') renderFlowList();
-        if (v === 'activity') loadActivity();
-        if (v === 'agenda') renderCalendar();
-        if (v === 'sim') scrollToBottomSim(); 
-        if (v === 'contacts') renderContacts();
-    }
-
-    document.addEventListener('visibilitychange', async () => { if (wakeLock !== null && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); });
-    function showToast(msg, type='success') {
-        const c = document.getElementById('toast-container');
-        const t = document.createElement('div');
-        t.className = `toast ${type}`;
-        t.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> <span>${msg}</span>`;
-        c.appendChild(t);
-        setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
-    }
-
-    // --- MODAL HELPERS ---
-    function openPrompt(title, callback) { document.getElementById('promptTitle').innerText = title; document.getElementById('promptInput').value = ''; promptCallback = callback; document.getElementById('modalPrompt').classList.add('active'); setTimeout(()=>document.getElementById('promptInput').focus(), 100); }
-    document.getElementById('promptBtnConfirm').onclick = function() { const val = document.getElementById('promptInput').value; if(val && promptCallback) promptCallback(val); closePrompt(); };
-    function closePrompt() { document.getElementById('modalPrompt').classList.remove('active'); promptCallback = null; }
-
-    function openConfirm(msg, callback) { document.getElementById('confirmMsg').innerText = msg; confirmCallback = callback; document.getElementById('modalConfirm').classList.add('active'); }
-    document.getElementById('confirmBtnYes').onclick = function() { if(confirmCallback) confirmCallback(); closeConfirm(); };
-    function closeConfirm() { document.getElementById('modalConfirm').classList.remove('active'); confirmCallback = null; }
-
-    // --- DATA LOADING ---
+    // --- LOGICA DE DATOS ---
     async function loadAll() {
-        try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e) { document.getElementById('flowListContainer').innerHTML = '<div style="color:var(--text-muted); text-align:center; padding-top:50px;">No hay conexión con el servidor de Flujos</div>'; }
+        try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e){}
         try { const set = await (await fetch(`${API_BASE}/api/settings`)).json(); if(set.schedule) { document.getElementById('schedActive').checked = set.schedule.active; document.getElementById('schedStart').value = set.schedule.start; document.getElementById('schedEnd').value = set.schedule.end; document.getElementById('schedMsg').value = set.schedule.offline_message; } } catch(e) {}
     }
 
     async function loadActivity() {
+        // Esta función ahora es llamada por el Socket cada vez que alguien escribe
         try {
-            flow = await (await fetch(`${API_BASE}/api/flow`)).json();
             users = await (await fetch(`${API_BASE}/api/users`)).json();
-            updateStatusUI();
-            const tb = document.getElementById('activityBody'); tb.innerHTML = ''; 
-            let allToShow = users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a, b) => new Date(b.last_active||0) - new Date(a.last_active||0));
-            if (allToShow.length === 0) tb.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px; color:var(--text-muted); font-size:0.85rem;">Esperando actividad...</td></tr>';
-            else {
-                allToShow.forEach(u => {
-                    const s = flow[u.current_step] || { type: 'unknown' };
-                    let actionsHtml = `<div style="margin-bottom:5px;"><span style="font-size:0.7rem; background:var(--bg-body); padding:2px 8px; border:1px solid var(--border); border-radius:12px; color:var(--text-muted); font-weight:600;">${u.current_step}</span></div>`;
-                    if (s.type === 'filtro' && s.options) { s.options.forEach(opt => { actionsHtml += `<button class="admin-btn" onclick="openConfirm('¿Mover a ${opt.next_step}?', () => crmAction('${u.phone}', '${opt.next_step}'))">${opt.label}</button>`; }); }
-                    let dataHtml = '';
-                    if(u.history) Object.entries(u.history).forEach(([k,v]) => dataHtml += `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:2px;"><strong style="color:var(--text-main); text-transform:capitalize;">${k.replace('_',' ')}:</strong> ${v}</div>`);
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td><div style="font-weight:600; font-size:0.95rem;">${u.phone}</div><small style="color:var(--text-muted); font-size:0.75rem;">Hace ${Math.floor((new Date() - new Date(u.last_active))/60000)} min</small></td><td>${dataHtml || '<span style="color:var(--text-muted); font-style:italic;">Sin datos capturados</span>'}</td><td>${actionsHtml}</td>`;
-                    tb.appendChild(row);
-                });
+            const tb = document.getElementById('activityBody');
+            tb.innerHTML = '';
+            
+            // Filtrar y ordenar
+            let activeUsers = users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a,b) => new Date(b.last_active) - new Date(a.last_active));
+            
+            if(activeUsers.length === 0) {
+                tb.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">Sin actividad reciente</td></tr>';
+                return;
             }
-        } catch(e) { console.error(e); }
-    }
-    function updateStatusUI() { const badge = document.getElementById('crmStatusBadge'); badge.className = 'status-badge open'; badge.innerHTML = '● ONLINE'; }
-    async function crmAction(phone, nextStep) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: nextStep }) }); loadActivity(); }
 
-    // --- FLOW EDITOR ---
+            activeUsers.forEach(u => {
+                const s = flow[u.current_step] || { type: 'unknown' };
+                let btns = '';
+                if(s.type === 'filtro' && s.options) {
+                    s.options.forEach(o => {
+                        btns += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${o.next_step}')" style="border-color:var(--primary); color:var(--primary);">${o.label}</button>`;
+                    });
+                } else {
+                    btns = `<span style="font-size:0.8rem; color:var(--text-muted);">Esperando usuario...</span>`;
+                }
+
+                tb.innerHTML += `
+                    <tr>
+                        <td>
+                            <div style="font-weight:bold;">${u.phone}</div>
+                            <small style="color:var(--text-muted);">${timeAgo(u.last_active)}</small>
+                        </td>
+                        <td><span class="status-badge connected" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-muted);">${u.current_step}</span></td>
+                        <td>${btns}</td>
+                    </tr>
+                `;
+            });
+        } catch(e) {}
+    }
+
+    async function crmAction(phone, step) {
+        await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) });
+        loadActivity(); // Actualizar UI manual tras acción
+    }
+
+    // --- FLOW EDITOR LITE ---
     function renderFlowList() {
-        const container = document.getElementById('flowListContainer'); container.innerHTML = '';
-        if (!flow || Object.keys(flow).length === 0) { container.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:50px;">No hay pasos creados. Pulsa el botón +</div>`; return; }
-        Object.keys(flow).sort().forEach(key => {
-            const step = flow[key];
-            const div = document.createElement('div'); div.className = 'flow-step-card'; div.onclick = () => edit(key);
-            let icon = 'fa-comment-alt'; let labelType = 'Mensaje';
-            if (step.type === 'menu') { icon = 'fa-list-ul'; labelType = 'Menú'; }
-            if (step.type === 'filtro') { icon = 'fa-filter'; labelType = 'Filtro'; }
-            if (step.type === 'input') { icon = 'fa-pen'; labelType = 'Entrada'; }
-            if (step.type === 'cita') { icon = 'fa-calendar-check'; labelType = 'Cita'; }
-            if (step.type === 'fin_bot') { icon = 'fa-flag-checkered'; labelType = 'Fin'; }
-            div.innerHTML = `<div class="flow-step-content"><div class="flow-step-title"><span class="step-tag type-${step.type}"><i class="fas ${icon}"></i> ${labelType}</span> ${key}</div><div class="flow-step-subtitle">${(step.message || "Sin mensaje").substring(0,60)}...</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);"></i>`;
-            container.appendChild(div);
+        const c = document.getElementById('flowListContainer'); c.innerHTML='';
+        Object.keys(flow).sort().forEach(k => {
+            const step = flow[k];
+            c.innerHTML += `<div class="flow-step-card" onclick="edit('${k}')"><div><strong>${k}</strong><br><small style="color:var(--text-muted);">${step.type}</small></div><i class="fas fa-chevron-right"></i></div>`;
         });
     }
-
-    let currentMediaList = [];
-    function edit(id) { 
-        const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type; 
-        document.getElementById('stMsg').value = d.message || '';
-        currentMediaList = Array.isArray(d.media) ? d.media : (d.media ? [d.media] : []);
-        renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
+    
+    function edit(id) {
+        const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type;
+        renderFields(); document.getElementById('editorModal').classList.add('active');
     }
-    function closeEditor() { document.getElementById('editorModal').classList.remove('active'); }
+
     function renderFields() {
-        const type = document.getElementById('stType').value; const container = document.getElementById('dynFields'); const id = document.getElementById('stId').value; const d = flow[id] || {}; 
-        const wrapMsg = document.getElementById('wrapper-msg'); const wrapMedia = document.getElementById('wrapper-media');
-        wrapMsg.style.display = 'block'; wrapMedia.style.display = 'block'; if(type === 'cita') { wrapMsg.style.display = 'none'; wrapMedia.style.display = 'none'; }
-        let html = ''; const getOpts = (sel) => { let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}" ${k===sel?'selected':''}>${k}</option>`); return s; };
-        if (type === 'menu') {
-            html += `<label>🔑 Palabras Clave</label><input type="text" id="stKeywords" value="${(d.keywords||[]).join(', ')}" placeholder="Ej: hola, menu" style="margin-bottom:20px;"><div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Opciones del Menú</label>`;
-            (d.options||[]).forEach(o => html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;"><input class="o-lbl" value="${o.label}" placeholder="Texto Botón" style="flex:1;"><select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button></div>`);
-            html += `</div><button onclick="addOpt()" class="admin-btn" style="margin-top:10px; width:100%; border-style:dashed; color:var(--success);">+ Agregar Opción</button>`;
-        } else if (type === 'filtro') {
-             html += `<div style="background:rgba(168, 85, 247, 0.1); padding:15px; border:1px solid rgba(168, 85, 247, 0.3); border-radius:8px; margin-bottom:20px;"><label style="color:#a855f7; font-weight:bold;">👮 Teléfono Administrador</label><input type="text" id="stAdminNumber" value="${d.admin_number||''}" placeholder="521..." style="border-color:rgba(168, 85, 247, 0.3); margin-bottom:0;"></div><div id="optList" style="background:var(--bg-body); padding:15px; border-radius:8px; border:1px solid var(--border);"><label style="margin-bottom:10px;">Rutas de Decisión</label>`;
-            (d.options||[]).forEach(o => html += `<div class="row" style="display:flex; gap:8px; margin-bottom:8px;"><input class="o-lbl" value="${o.label}" placeholder="Acción (ej: Aprobar)" style="flex:1;"><select class="o-nxt" style="flex:1;">${getOpts(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button></div>`);
-            html += `</div><button onclick="addOpt()" class="admin-btn" style="margin-top:10px; width:100%; border-style:dashed; color:var(--success);">+ Agregar Ruta</button>`;
-        } else if (type === 'input') {
-            html += `<label style="margin-top:10px;">💾 Nombre Variable</label><input id="stSaveVar" value="${d.save_var||''}" placeholder="ej: nombreCliente"><label>➡️ Siguiente Paso</label><select id="stNextStep">${getOpts(d.next_step)}</select>`;
-        } else if (type === 'cita') {
-             html += `<label>➡️ Siguiente Paso (Al agendar)</label><select id="stNextStep">${getOpts(d.next_step)}</select>`;
-        } else if (type !== 'fin_bot') {
-             html += `<label>➡️ Siguiente Paso</label><select id="stNextStep">${getOpts(d.next_step)}</select>`;
+        const type = document.getElementById('stType').value;
+        const id = document.getElementById('stId').value;
+        const d = flow[id] || {};
+        const c = document.getElementById('dynFields');
+        let html = `<label>Mensaje</label><textarea id="stMsg" rows="3">${d.message||''}</textarea>`;
+        
+        if(type === 'menu' || type === 'filtro') {
+            html += `<label>Opciones (Texto Botón, Siguiente Paso)</label><div id="optsList">`;
+            (d.options||[]).forEach(o => {
+                 html += `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}"><input class="o-nxt" value="${o.next_step}"></div>`;
+            });
+            html += `</div><button class="admin-btn" onclick="addOptRow()">+ Opción</button>`;
+        } else {
+            html += `<label>Siguiente Paso</label><input id="stNext" value="${d.next_step||''}">`;
         }
-        container.innerHTML = html;
+        c.innerHTML = html;
     }
-    function addOpt() { const div = document.createElement('div'); div.className='row'; div.style.cssText="display:flex; gap:8px; margin-bottom:8px;"; let s='<option value="">-- Seleccionar --</option>'; Object.keys(flow).forEach(k=>s+=`<option value="${k}">${k}</option>`); div.innerHTML=`<input class="o-lbl" placeholder="Texto Botón" style="flex:1;"><select class="o-nxt" style="flex:1;">${s}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:var(--bg-card); border:1px solid var(--border); border-radius:6px; cursor:pointer; width:36px;"><i class="fas fa-times"></i></button>`; document.getElementById('optList').appendChild(div); }
+    
+    function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><input class="o-nxt" placeholder="Sig. Paso"></div>`); }
+
     async function saveStep() {
-        const id = document.getElementById('stId').value, type = document.getElementById('stType').value, stepData = { type };
-        const getVal = (eid) => { const el = document.getElementById(eid); return el ? el.value : null; };
-        const msg = getVal('stMsg'); if(msg !== null) stepData.message = msg;
-        stepData.media = currentMediaList;
-        const kw = getVal('stKeywords'); if(kw !== null) stepData.keywords = kw.split(',').map(s=>s.trim()).filter(Boolean);
-        const next = getVal('stNextStep'); if(next !== null) stepData.next_step = next;
-        const saveVar = getVal('stSaveVar'); if(saveVar !== null) stepData.save_var = saveVar;
-        const adminNum = getVal('stAdminNumber'); if(adminNum !== null) stepData.admin_number = adminNum;
-        const optsContainer = document.getElementById('optList');
-        if (optsContainer) { stepData.options = []; optsContainer.querySelectorAll('div.row').forEach(row => { const lbl = row.querySelector('.o-lbl')?.value; const nxt = row.querySelector('.o-nxt')?.value; if (lbl) stepData.options.push({ trigger: lbl, label: lbl, next_step: nxt }); }); } 
-        else if (type === 'cita' && next) stepData.options = [ { internal_label: 'DISPONIBLE', next_step: next }, { internal_label: 'NO_DISPONIBLE', next_step: next } ];
-        try { await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData }) }); flow[id] = stepData; renderFlowList(); closeEditor(); showToast('Guardado correctamente'); } catch (e) { showToast('Error al guardar', 'error'); }
-    }
-    function createNewStep(id) { if(id) { flow[id.toUpperCase()]={type:'menu'}; renderFlowList(); setTimeout(()=>edit(id.toUpperCase()),200); } }
-    async function delStep() { const id=document.getElementById('stId').value; await fetch(`${API_BASE}/api/flow/step/`+id, {method:'DELETE'}); delete flow[id]; renderFlowList(); closeEditor(); showToast('Eliminado'); }
-    function renderGallery() { const c = document.getElementById('galleryContainer'); c.innerHTML=''; currentMediaList.forEach((u,i) => c.innerHTML += `<div style="position:relative; width:70px; height:70px;"><img src="${u}" style="width:100%; height:100%; border-radius:6px; object-fit:cover; border:1px solid var(--border);"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-6px; right:-6px; background:var(--danger); color:white; border-radius:50%; width:20px; height:20px; font-size:12px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button></div>`); document.getElementById('imgCount').innerText = currentMediaList.length + " archivos"; }
-    async function uploadImages(inp) { if(!inp.files.length) return; const fd = new FormData(); for(let f of inp.files) fd.append('images', f); const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json(); if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); } }
-
-    // --- CALENDAR & CONTACTS ---
-    async function renderCalendar() {
-        const now = currentRefDate, m = now.getMonth(), y = now.getFullYear();
-        document.getElementById('monthDisplay').innerText = `${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][m]} ${y}`;
-        const g = document.getElementById('calendarDays'); g.innerHTML = '';
-        let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
-        const firstDay = new Date(y, m, 1).getDay(); const daysInMonth = new Date(y, m+1, 0).getDate();
-        for(let i=0; i<firstDay; i++) g.innerHTML += `<div class="day empty" style="pointer-events:none;"></div>`;
-        for(let i=1; i<=daysInMonth; i++) { const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`; const count = (appts[k]||[]).length; const isToday = new Date().toDateString() === new Date(y,m,i).toDateString(); g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}', [])">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`; }
-    }
-    function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
-    function openDayModal(dateStr, _) { document.getElementById('modalDateTitle').innerText = dateStr; renderEventList(dateStr); document.getElementById('dayModal').classList.add('active'); }
-    function closeDayModal() { document.getElementById('dayModal').classList.remove('active'); renderCalendar(); }
-    async function renderEventList(dateKey) {
-        const list = document.getElementById('modalApptList'); list.innerHTML = 'Cargando...';
-        const allAppts = await (await fetch(`${API_BASE}/api/agenda`)).json(); const appts = allAppts[dateKey] || []; list.innerHTML = '';
-        if(!appts.length) list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted); font-style:italic; font-size:0.9rem;">No hay eventos para este día.</div>';
-        appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
-            const row = document.createElement('div'); row.style.cssText = "background:var(--bg-body); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;";
-            row.innerHTML = `<div><div style="display:flex; align-items:center; gap:8px;"><span style="font-family:monospace; color:var(--primary); background:rgba(59, 130, 246, 0.1); padding:2px 6px; border-radius:4px; font-size:0.85rem; font-weight:600;">${c.time}</span><span style="font-weight:600; font-size:0.95rem; color:var(--text-main);">${c.name}</span></div><div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;"><i class="fab fa-whatsapp" style="margin-right:4px;"></i>${c.phone||'Sin teléfono'}</div>${c.note ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-style:italic; border-left:2px solid var(--border); padding-left:8px;">"${c.note}"</div>` : ''}</div><button onclick="openConfirm('¿Eliminar esta cita?', () => deleteAppt('${dateKey}', '${c.time}'))" style="background:transparent; border:none; color:var(--danger); cursor:pointer; padding:5px; opacity:0.7; transition:0.2s;"><i class="fas fa-trash-alt"></i></button>`;
-            list.appendChild(row);
-        });
-        document.getElementById('evtOldTime').dataset.date = dateKey; 
-    }
-    function showEventForm() { document.getElementById('eventForm').style.display='block'; document.getElementById('btnAddEvent').style.display='none'; }
-    function hideEventForm() { document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block'; }
-    async function saveEvent() {
-        const date = document.getElementById('evtOldTime').dataset.date, time = document.getElementById('evtTime').value, name = document.getElementById('evtName').value, phone = document.getElementById('evtPhone').value, note = document.getElementById('evtNote').value;
-        if(!time || !name) return showToast('Falta hora o nombre', 'error');
-        await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time, name, phone, note}) });
-        hideEventForm(); renderEventList(date); showToast('Evento Guardado');
-    }
-    async function deleteAppt(date, time) { await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date, time}) }); renderEventList(date); }
-    async function renderContacts() {
-        try { const list = await (await fetch(`${API_BASE}/api/contacts`)).json(); const c = document.getElementById('contactsList'); let htmlBuffer = ''; list.forEach(u => htmlBuffer += `<div style="display:flex; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row"><div style="display:flex; align-items:center; gap:12px;"><div style="width:36px; height:36px; background:var(--bg-hover); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--text-muted);">${u.name?u.name[0].toUpperCase():'#'}</div><div><b style="color:var(--text-main); font-size:0.95rem; display:block;">${u.name||u.phone}</b><div style="color:var(--text-muted); font-size:0.8rem;">${u.phone}</div></div></div><label class="switch"><input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)"><span class="slider"></span></label></div>`); c.innerHTML = htmlBuffer; } catch (e) {}
-    }
-    function filterContacts(v) { const rows = document.querySelectorAll('.toggle-row'); rows.forEach(r => { r.style.display = r.innerText.toLowerCase().includes(v.toLowerCase()) ? 'flex' : 'none'; }); }
-    async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Bot ' + (en?'Activado':'Desactivado')); }
-    function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
-    async function saveNewContact() { const name = document.getElementById('newContName').value, phone = document.getElementById('newContPhone').value, enable = document.getElementById('newContEnable').checked; if(!phone) return; await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})}); document.getElementById('contactModal').classList.remove('active'); renderContacts(); }
-
-    // --- SOCKET LOGIC OPTIMIZADA ---
-    socket.on('message', (data) => {
-        // 1. Notificación Global (Para cualquier mensaje entrante que no sea mío)
-        if (!data.fromMe) {
-             const audio = document.getElementById('alertSound');
-             if(audio) { audio.volume = 0.5; audio.play().catch(e=>{}); }
-             
-             // Enviar notificación nativa si está oculto
-             if (document.visibilityState === 'hidden') {
-                 sendNativeNotification("Nuevo Mensaje", data.text || "Archivo recibido");
-             }
+        const id = document.getElementById('stId').value;
+        const type = document.getElementById('stType').value;
+        const msg = document.getElementById('stMsg').value;
+        const data = { type, message: msg };
+        
+        if(document.getElementById('stNext')) data.next_step = document.getElementById('stNext').value;
+        if(document.getElementById('optsList')) {
+            data.options = [];
+            document.querySelectorAll('#optsList div').forEach(row => {
+                const l = row.querySelector('.o-lbl').value;
+                const n = row.querySelector('.o-nxt').value;
+                if(l && n) data.options.push({label:l, trigger:l, next_step:n});
+            });
         }
-
-        // 2. Lógica del Simulador (Solo si coincide el número)
-        const destino = data.to.replace(/\D/g, '');
-        if (destino.includes(simPhone)) {
-             const loading = document.getElementById('msg-loading');
-             if (loading) loading.remove();
-             if (data.type === 'image') { addMsg(`<img src="${data.mediaUrl}" style="max-width:100%; border-radius:8px;"><br>${data.text || ''}`, false); } else { addMsg(data.text, false); }
+        
+        await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
+        flow[id] = data; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
+    }
+    
+    function createNewStepPrompt() {
+        const name = prompt("Nombre del paso (MAYUSCULAS):");
+        if(name) { flow[name] = {type:'message'}; renderFlowList(); edit(name); }
+    }
+    
+    async function delStep() {
+        const id = document.getElementById('stId').value;
+        if(confirm("¿Eliminar?")) {
+            await fetch('/api/flow/step/'+id, {method:'DELETE'});
+            delete flow[id]; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
         }
-    });
+    }
 
-    function scrollToBottomSim() { const c = document.getElementById('simMsgs'); if(c) c.scrollTop = c.scrollHeight; }
-    function sendSim() { const t = document.getElementById('simInput'); const txt = t.value.trim(); if(!txt) return; addMsg(txt, true); t.value=''; const d = document.createElement('div'); d.id = 'msg-loading'; d.className = 'msg bot'; d.innerHTML = '<em>Escribiendo...</em>'; document.getElementById('simMsgs').appendChild(d); scrollToBottomSim(); fetch(`${API_BASE}/api/simulate/text`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone: simPhone, text: txt }) }); }
-    function addMsg(txt, usr) { const d = document.createElement('div'); d.className = `msg ${usr?'user':'bot'}`; d.innerHTML = txt; document.getElementById('simMsgs').appendChild(d); scrollToBottomSim(); }
-    function restartSim() { document.getElementById('simMsgs').innerHTML=''; simState={step:'BIENVENIDA', history:{}}; showToast('Chat Limpio'); }
-    async function saveSettings() { const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value }; await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})}); showToast('Configuración Guardada'); }
+    // --- UTILS ---
+    function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebarOverlay').classList.toggle('active'); }
+    function nav(v, btn) { 
+        document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
+        document.querySelectorAll('.menu-item').forEach(e=>e.classList.remove('active')); 
+        document.getElementById('view-'+v).classList.add('active');
+        if(btn) btn.classList.add('active');
+        document.getElementById('sidebar').classList.remove('active');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        if(v === 'activity') loadActivity();
+    }
+    function timeAgo(date) { 
+        if(!date) return '-'; 
+        const s = Math.floor((new Date() - new Date(date)) / 1000);
+        if(s < 60) return 'Ahora';
+        if(s < 3600) return Math.floor(s/60) + 'm';
+        return Math.floor(s/3600) + 'h';
+    }
+
+    // --- INIT ---
+    window.onload = () => {
+        document.getElementById('setupWizard').classList.remove('step-hidden');
+        
+        // Polling para status de conexión inicial (QR)
+        const checkStatus = async () => {
+            try {
+                const res = await (await fetch(`${API_BASE}/api/status`)).json();
+                if(res.status === 'connected') {
+                    document.getElementById('setupWizard').classList.add('step-hidden');
+                    document.getElementById('mainApp').classList.add('visible');
+                    loadAll();
+                    loadActivity();
+                } else if(res.qr) {
+                    document.getElementById('stepLoading').classList.add('step-hidden');
+                    document.getElementById('stepQR').classList.remove('step-hidden');
+                    new QRious({element: document.getElementById('qrCanvas'), value: res.qr, size:200});
+                }
+            } catch(e){}
+            if(document.getElementById('setupWizard').classList.contains('step-hidden')) return;
+            setTimeout(checkStatus, 3000);
+        };
+        checkStatus();
+    };
+    
+    // --- SIMULATOR ---
+    function sendSim() { 
+        const txt = document.getElementById('simInput').value; 
+        if(!txt) return;
+        addMsg(txt, true);
+        document.getElementById('simInput').value = '';
+        fetch(`${API_BASE}/api/simulate/text`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone: '5218991234567', text: txt }) });
+    }
+    function addMsg(txt, me) {
+        document.getElementById('simMsgs').innerHTML += `<div class="msg ${me?'user':'bot'}">${txt}</div>`;
+        const c = document.querySelector('.chat-msgs'); c.scrollTop = c.scrollHeight;
+    }
+    function resetSession() { fetch(`${API_BASE}/api/logout`, { method: 'POST' }).then(() => location.reload()); }
+    function saveSettings() {
+        const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
+        fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})}).then(()=>showToast('Configuración Guardada'));
+    }
+    function showToast(msg) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast success`;
+        t.innerHTML = `<span>${msg}</span>`;
+        c.appendChild(t);
+        setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
+    }
 </script>
 </body>
 </html>
