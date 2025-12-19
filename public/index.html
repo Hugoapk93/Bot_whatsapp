@@ -67,6 +67,15 @@
         #mainApp { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
         #mainApp.visible { opacity: 1; pointer-events: all; }
 
+        /* Sidebar Overlay (Fondo oscuro para cerrar menú en móvil) */
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 150; /* Debajo del sidebar (200) */
+            display: none; opacity: 0; transition: opacity 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.active { display: block; opacity: 1; }
+
         /* Sidebar */
         .sidebar { 
             width: 260px; 
@@ -74,7 +83,7 @@
             border-right: 1px solid var(--border); 
             display: flex; 
             flex-direction: column; 
-            z-index: 50; 
+            z-index: 200; 
             flex-shrink: 0; 
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -463,7 +472,9 @@
             
             /* --- FIX: TECLADO OCULTANDO CHAT --- */
             /* En móvil, quitamos el padding del contenedor del chat para que ocupe todo */
-            #view-sim.view-padding { padding: 0 !important; height: 100dvh; display: flex; flex-direction: column; }
+            /* IMPORTANTE: Usamos .active para que no se muestre si no está seleccionado */
+            #view-sim.active.view-padding { padding: 0 !important; height: 100dvh; display: flex; flex-direction: column; }
+            
             .chat-container-wrapper { 
                 border-radius: 0; 
                 border: none; 
@@ -490,6 +501,9 @@
 
     <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
     <div id="toast-container"></div>
+    
+    <!-- OVERLAY SIDEBAR MÓVIL (NUEVO) -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
     <!-- PANTALLA DE INICIO / QR (WIZARD) -->
     <div id="setupWizard" class="step-hidden">
@@ -948,7 +962,10 @@
     const delayedFilter = debounce(filterContacts, 300);
 
     function debounce(func, delay) { let timeout; return function(...args) { clearTimeout(timeout); timeout = setTimeout(() => func.apply(this, args), delay); }; }
-    function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); }
+    function toggleMenu() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
         
     function nav(v, btn) {
         document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
@@ -958,6 +975,9 @@
         const titles = { flow: 'LISTA DE PASOS', activity: 'MONITOR EN VIVO', agenda: 'CALENDARIO', contacts: 'USUARIOS', settings: 'AJUSTES', sim: 'SIMULADOR' };
         document.getElementById('pageTitle').innerText = titles[v] || v.toUpperCase();
         document.getElementById('sidebar').classList.remove('active');
+        // Cerrar también el overlay cuando se navega
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        
         if (v === 'flow') renderFlowList();
         if (v === 'activity') loadActivity();
         if (v === 'agenda') renderCalendar();
