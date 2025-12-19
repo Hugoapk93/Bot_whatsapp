@@ -465,21 +465,17 @@
         } catch(e){}
     }
     async function crmAction(phone, step) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) }); loadActivity(); }
+    // --- VARIABLES DE NAVEGACIÓN ---
+    let flowPath = []; 
 
-    // --- NUEVAS VARIABLES DE NAVEGACIÓN ---
-    let flowPath = []; // Pila de navegación (Historial)
-    let clickTimer = null; // Para manejar el doble click
-
-    // --- REEMPLAZA TU FUNCIÓN renderFlowList CON ESTO ---
     function renderFlowList() {
         const c = document.getElementById('flowListContainer'); 
         c.innerHTML = '';
 
-        // 1. Mostrar barra de navegación (Breadcrumbs)
+        // 1. Barra de Navegación (Breadcrumbs)
         if (flowPath.length > 0) {
             let navHtml = `<div class="flow-nav"><span onclick="resetFlowNav()">Inicio</span>`;
             flowPath.forEach((step, index) => {
-                // Si es el último, no es clickeable
                 if(index === flowPath.length - 1) navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.8rem"></i> <span>${step}</span>`;
                 else navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.8rem"></i> <span onclick="jumpToStep(${index})">${step}</span>`;
             });
@@ -487,71 +483,71 @@
             c.innerHTML += navHtml;
         }
 
-        // 2. Determinar qué pasos mostrar
+        // 2. Lógica de Jerarquía: ¿Qué mostramos?
         let stepsToShow = [];
         
         if (flowPath.length === 0) {
-            // Nivel Raíz: Buscar pasos "huérfanos" (que nadie apunta a ellos)
+            // Estamos en el inicio: Buscar raíces
             stepsToShow = findFlowRoots();
-            // Si no encuentra raíces (ej. flujo circular), muestra todo o el primero alfabético
+            
+            // FALLBACK: Si hay pasos creados pero NO están conectados entre sí, 
+            // findFlowRoots devolverá TODOS (porque todos parecen inicios).
+            // Esto es normal hasta que los vincules.
             if(stepsToShow.length === 0 && Object.keys(flow).length > 0) {
                 stepsToShow = [Object.keys(flow).sort()[0]]; 
             }
         } else {
-            // Nivel Hijo: Mostrar opciones configuradas en el paso padre actual
+            // Estamos dentro de un paso: Mostrar sus hijos
             const parentId = flowPath[flowPath.length - 1];
             stepsToShow = getChildrenSteps(parentId);
         }
 
         if(stepsToShow.length === 0 && flowPath.length > 0) {
-            c.innerHTML += `<div style="text-align:center; padding:20px; color:var(--text-muted);">No hay pasos siguientes vinculados. <br><button class="admin-btn" style="margin-top:10px" onclick="edit('${flowPath[flowPath.length-1]}')">Editar Padre para agregar</button></div>`;
+            c.innerHTML += `<div style="text-align:center; padding:20px; color:var(--text-muted);">
+                <p>Este paso no tiene salidas configuradas.</p>
+                <button class="admin-btn" style="margin-top:10px; border-color:var(--primary); color:var(--primary);" onclick="edit('${flowPath[flowPath.length-1]}')">
+                    <i class="fas fa-pen"></i> Editar "${flowPath[flowPath.length-1]}"
+                </button>
+            </div>`;
         }
 
         // 3. Renderizar Tarjetas
         stepsToShow.forEach(k => {
             const step = flow[k];
-            if(!step) return; // Si el paso apuntado no existe
+            if(!step) return; 
 
-            // Validación: ¿Está incompleto?
+            // Validar si está incompleto (sin salida y sin botones)
             let isInc = false;
-            // Incompleto si no es fin_bot Y (no tiene next_step definido Y no tiene botones)
             if (step.type !== 'fin_bot' && !step.next_step && (!step.options || step.options.length === 0)) {
                 isInc = true;
             }
 
-            // HTML de la tarjeta con eventos separados
+            // HTML ACTUALIZADO: Eventos separados y botón de editar explícito
             c.innerHTML += `
             <div class="flow-step-card ${isInc ? 'card-incomplete' : ''}" 
-                 onclick="handleCardClick('${k}')">
-                <div>
+                 onclick="enterStep('${k}')" 
+                 style="position:relative; padding-right:50px;"> <div style="flex:1">
                     <strong>${k}</strong> ${isInc ? '<i class="fas fa-exclamation-circle warning-icon" title="Paso incompleto"></i>' : ''}
                     <br><small style="color:var(--text-muted);">${step.type}</small>
                     ${step.message ? `<div style="font-size:0.85em; color:#64748b; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${step.message}</div>` : ''}
                 </div>
-                <i class="fas fa-chevron-right"></i>
+
+                <i class="fas fa-chevron-right" style="opacity:0.5;"></i>
+
+                <button onclick="event.stopPropagation(); edit('${k}')" 
+                        style="position:absolute; right:10px; top:50%; transform:translateY(-50%); 
+                               background:var(--bg-input); border:1px solid var(--border); 
+                               color:var(--text-muted); width:32px; height:32px; border-radius:6px; cursor:pointer; z-index:10;">
+                    <i class="fas fa-pen" style="font-size:12px;"></i>
+                </button>
             </div>`;
         });
     }
 
-    // --- FUNCIONES AUXILIARES DE NAVEGACIÓN ---
-
-    // Maneja la diferencia entre click (navegar) y doble click (editar)
-    function handleCardClick(stepId) {
-        if (clickTimer) {
-            clearTimeout(clickTimer);
-            clickTimer = null;
-            // Doble Click detectado: Editar
-            edit(stepId);
-        } else {
-            clickTimer = setTimeout(() => {
-                clickTimer = null;
-                // Click simple: Navegar (Entrar al paso)
-                enterStep(stepId);
-            }, 250); // 250ms de espera para detectar el segundo click
-        }
-    }
+    // --- FUNCIONES AUXILIARES ---
 
     function enterStep(stepId) {
+        // Solo navega, no edita
         flowPath.push(stepId);
         renderFlowList();
     }
@@ -562,21 +558,15 @@
     }
 
     function jumpToStep(index) {
-        // Cortar el array hasta el índice deseado
         flowPath = flowPath.slice(0, index + 1);
         renderFlowList();
     }
 
-    // Encuentra los pasos hijos basados en la configuración del padre
     function getChildrenSteps(parentId) {
         const parent = flow[parentId];
         if (!parent) return [];
         let kids = [];
-        
-        // 1. Si tiene next_step directo
         if (parent.next_step && flow[parent.next_step]) kids.push(parent.next_step);
-        
-        // 2. Si tiene opciones (botones/menu)
         if (parent.options && Array.isArray(parent.options)) {
             parent.options.forEach(opt => {
                 if (opt.next_step && flow[opt.next_step] && !kids.includes(opt.next_step)) {
@@ -587,19 +577,24 @@
         return kids;
     }
 
-    // Encuentra pasos que NO son destino de ningún otro (Las Raíces)
     function findFlowRoots() {
         const allSteps = Object.keys(flow);
-        const targetedSteps = new Set();
+        // Si no hay pasos, retornar vacío
+        if(allSteps.length === 0) return [];
 
+        const targetedSteps = new Set();
         allSteps.forEach(k => {
             const s = flow[k];
             if (s.next_step) targetedSteps.add(s.next_step);
             if (s.options) s.options.forEach(o => { if(o.next_step) targetedSteps.add(o.next_step); });
         });
-
-        // Retornar los que están en allSteps pero NO en targetedSteps
-        return allSteps.filter(s => !targetedSteps.has(s));
+        
+        // Pasos que nadie apunta a ellos
+        const roots = allSteps.filter(s => !targetedSteps.has(s));
+        
+        // IMPORTANTE: Si roots tiene muchos elementos, es porque esos pasos NO están conectados aún.
+        // Si todos están desconectados, todos son roots.
+        return roots;
     }
     let currentMediaList = [];
     function edit(id) {
