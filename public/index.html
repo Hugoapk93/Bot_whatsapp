@@ -21,7 +21,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
-        /* --- ESTILOS OPTIMIZADOS --- */
+        /* --- ESTILOS --- */
         :root { 
             --bg-body: #0f172a; --bg-sidebar: #1e293b; --bg-card: #1e293b; --bg-input: #020617;
             --border: #334155; --text-main: #f8fafc; --text-muted: #94a3b8;
@@ -29,14 +29,13 @@
             --radius: 12px;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { font-family: 'Inter', sans-serif; margin: 0; height: 100dvh; background: var(--bg-body); color: var(--text-main); overflow: hidden; font-size: 14px; }
 
         /* Layout */
         #mainApp { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
         #mainApp.visible { opacity: 1; pointer-events: all; }
 
-        /* Sidebar */
         .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 200; transition: transform 0.3s; flex-shrink: 0; }
         .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; display: none; backdrop-filter: blur(2px); }
         .sidebar-overlay.active { display: block; }
@@ -49,17 +48,15 @@
         
         #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: #34d399; margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
 
-        /* Content */
         .content { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
         .mobile-header { display: none; background: var(--bg-sidebar); height: 60px; padding: 0 20px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
         
-        /* Views */
         .view { display: none; flex: 1; flex-direction: column; height: 100%; overflow: hidden; }
         .view.active { display: flex; animation: fadeIn 0.3s ease; }
         .view-padding { padding: 30px; overflow-y: auto; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Components */
+        /* UI Elements */
         .card { background: var(--bg-card); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 20px; }
         .act-table { width: 100%; border-collapse: separate; border-spacing: 0; }
         .act-table th, .act-table td { padding: 14px; border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted); }
@@ -69,10 +66,28 @@
         .status-badge.connected { background: rgba(16, 185, 129, 0.15); color: #34d399; }
         .status-badge.disconnected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 
-        .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; font-size: 1rem;}
         .admin-btn { padding: 6px 12px; border: 1px solid var(--border); background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-main); margin-right: 5px; font-size: 0.8rem; }
         
-        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; }
+        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 16px; /* Evita zoom en iOS */ }
+
+        /* Calendario */
+        .calendar-header { display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 15px; }
+        .calendar-nav-btn { background: var(--bg-body); border: 1px solid var(--border); color: var(--primary); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .weekday { background: var(--bg-sidebar); padding: 10px 0; font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-align: center; }
+        .day { height: 80px; background: var(--bg-card); color: var(--text-muted); padding: 5px; position: relative; cursor: pointer; }
+        .day.today { color: var(--primary); font-weight: 700; background: rgba(59, 130, 246, 0.1); }
+        .day-indicator { position: absolute; bottom: 5px; right: 5px; background: var(--primary); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+
+        /* Flow & Chat */
+        .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .chat-msgs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; }
+        .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; }
+        .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; }
+        .fab { position: fixed; bottom: 25px; right: 25px; background: var(--primary); color: white; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 24px; }
 
         /* Mobile Adjustments */
         @media(max-width: 768px) { 
@@ -80,52 +95,63 @@
             .mobile-header { display: flex; }
             .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.8); } 
             .sidebar.active { transform: translateX(0); }
-            .view-padding { padding: 10px !important; }
+            .view-padding { padding: 15px !important; }
             .card { padding: 15px !important; }
+            .day { height: 60px; font-size: 0.8rem; }
+            /* Chat en toda la pantalla */
+            #view-sim.active.view-padding { padding: 0 !important; }
+            .chat-container-wrapper { border: none; border-radius: 0; }
         }
 
-        /* Flow & Chat Styles */
-        .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .chat-msgs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; }
-        .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; }
-        .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; }
-        .fab { position: fixed; bottom: 25px; right: 25px; background: var(--primary); color: white; width: 50px; height: 50px; border-radius: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 24px; }
-
-        /* Utils */
+        /* Utils & Modals */
         .step-hidden { display: none !important; }
-        #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; pointer-events: none; }
-        .toast { background: var(--bg-card); border: 1px solid var(--border); padding: 12px 20px; border-radius: 10px; color: var(--text-main); margin-bottom: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: fadeIn 0.3s; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-input); transition: .4s; border-radius: 34px; border: 1px solid var(--border); }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--success); border-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(20px); }
 
-        /* Modals */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 300; display: none; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
-        .sheet { background: var(--bg-card); width: 90%; max-width: 500px; padding: 25px; border-radius: 16px; border: 1px solid var(--border); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; }
+        #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
+        
+        /* Notificación In-App (Bonita) */
+        #inAppNotify { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #333; color: white; padding: 12px 20px; border-radius: 50px; display: flex; align-items: center; gap: 10px; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-width: 90%; width: max-content; }
+        #inAppNotify.show { transform: translateX(-50%) translateY(0); }
+        
+        #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .toast { background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border); padding: 10px 20px; border-radius: 20px; color: white; animation: fadeIn 0.3s; backdrop-filter: blur(4px); }
+
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 300; display: none; justify-content: center; align-items: flex-end; /* Mobile Bottom Sheet Style */ }
+        @media(min-width: 769px) { .modal { align-items: center; } }
+        
+        .sheet { background: var(--bg-card); width: 100%; max-width: 500px; padding: 25px; border-radius: 20px 20px 0 0; border-top: 1px solid var(--border); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; animation: slideUp 0.3s; }
+        @media(min-width: 769px) { .sheet { border-radius: 16px; border: 1px solid var(--border); animation: fadeIn 0.2s; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <audio id="alertSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+    <div id="inAppNotify"><i class="fab fa-whatsapp" style="color:#25D366; font-size: 1.2rem;"></i> <span id="notifyText">Nuevo mensaje</span></div>
     <div id="toast-container"></div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <!-- WIZARD INICIAL -->
+    <!-- WIZARD -->
     <div id="setupWizard" class="step-hidden">
         <div id="stepLoading" style="text-align:center;">
             <i class="fas fa-circle-notch fa-spin" style="font-size:2.5rem; color:var(--primary);"></i>
-            <p style="margin-top:20px; color:var(--text-muted);">Conectando con el Servidor...</p>
+            <p style="margin-top:20px; color:var(--text-muted);">Conectando...</p>
         </div>
         <div id="stepQR" class="step-hidden" style="text-align:center;">
-            <h2 style="margin-top:0;">Vincular WhatsApp</h2>
+            <h2 style="margin-top:0;">Vincular</h2>
             <div style="background:white; padding:10px; display:inline-block; border-radius:10px; margin:15px 0;">
                 <canvas id="qrCanvas"></canvas>
             </div>
-            <p style="color:var(--success);">Escanea el código para activar el Bot</p>
+            <p style="color:var(--success);">Escanea el código QR</p>
         </div>
     </div>
 
-    <!-- APLICACIÓN PRINCIPAL -->
+    <!-- APP -->
     <div id="mainApp">
         <div class="sidebar" id="sidebar">
             <div class="brand"><i class="fas fa-robot" style="color:var(--primary);"></i> FLOW CRM</div>
@@ -133,15 +159,14 @@
                 <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-project-diagram"></i> Flujo del Bot</div>
                 <div class="menu-item" onclick="nav('activity', this)">
                     <i class="fas fa-desktop"></i> Monitor
-                    <!-- Indicador visual de conexión en el menú -->
                     <span id="socketDot" style="width:8px; height:8px; background:var(--danger); border-radius:50%; margin-left:auto; box-shadow:0 0 5px var(--danger);"></span>
                 </div>
                 <div class="menu-item" onclick="nav('agenda', this)"><i class="far fa-calendar-alt"></i> Agenda</div>
                 <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
+                <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-cog"></i> Configuración</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-gamepad"></i> Simulador</div>
-                
                 <div class="menu-item" id="installAppBtn" onclick="installPWA()"><i class="fas fa-download"></i> Instalar App</div>
-                <div class="menu-item logout" onclick="resetSession()"><i class="fas fa-power-off"></i> Desconectar</div>
+                <div class="menu-item logout" onclick="resetSession()"><i class="fas fa-power-off"></i> Salir</div>
             </div>
         </div>
 
@@ -149,20 +174,16 @@
             <div class="mobile-header">
                 <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.4rem;">☰</button>
                 <span id="pageTitle" style="font-weight:700;">MONITOR</span>
-                <!-- Indicador visual de conexión en el header móvil -->
                 <div id="statusIndicator" class="status-badge disconnected">OFFLINE</div>
             </div>
 
-            <!-- VISTA: MONITOR DE ACTIVIDAD -->
+            <!-- VISTA: MONITOR -->
             <div id="view-activity" class="view view-padding">
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3>Monitor de Tráfico</h3>
-                        <!-- Botón de alertas eliminado de aquí también, ya es automático -->
-                    </div>
+                    <h3 style="margin-top:0;">Monitor en Vivo</h3>
                     <div style="overflow-x:auto;">
                         <table class="act-table">
-                            <thead><tr><th>Cliente</th><th>Estado Actual</th><th>Acción</th></tr></thead>
+                            <thead><tr><th>Cliente</th><th>Estado</th><th>Acción</th></tr></thead>
                             <tbody id="activityBody"></tbody>
                         </table>
                     </div>
@@ -175,19 +196,45 @@
                 <div class="fab" onclick="createNewStepPrompt()"><i class="fas fa-plus"></i></div>
             </div>
 
-            <!-- VISTA: AGENDA -->
+            <!-- VISTA: AGENDA (RESTAURADA) -->
             <div id="view-agenda" class="view view-padding">
-                <div class="card" style="text-align:center;">
-                    <h3>Próximamente</h3>
-                    <p style="color:var(--text-muted);">Módulo de Calendario Simplificado</p>
+                <div class="card" style="height: 100%; display: flex; flex-direction: column;">
+                    <div class="calendar-header">
+                        <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+                        <h3 id="monthDisplay" style="margin:0; font-size:1.1rem;"></h3>
+                        <button class="calendar-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid"><div class="weekday">DOM</div><div class="weekday">LUN</div><div class="weekday">MAR</div><div class="weekday">MIÉ</div><div class="weekday">JUE</div><div class="weekday">VIE</div><div class="weekday">SÁB</div></div>
+                    <div id="calendarDays" class="calendar-grid" style="flex: 1; border-top: none; border-radius: 0 0 12px 12px; border-color: var(--border);"></div>
                 </div>
             </div>
 
             <!-- VISTA: CONTACTOS -->
             <div id="view-contacts" class="view view-padding">
                 <div class="card">
-                    <h3>Base de Datos</h3>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                        <h3>Usuarios</h3>
+                        <button class="admin-btn" onclick="openContactModal()">+ Nuevo</button>
+                    </div>
                     <div id="contactsList"></div>
+                </div>
+            </div>
+
+            <!-- VISTA: CONFIGURACIÓN (RESTAURADA) -->
+            <div id="view-settings" class="view view-padding">
+                <div class="card">
+                    <h3>Horario de Atención</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:10px; background:var(--bg-input); border-radius:8px;">
+                        <span>Respuesta Automática</span>
+                        <label class="switch"><input type="checkbox" id="schedActive"><span class="slider"></span></label>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <div><label>Apertura</label><input type="time" id="schedStart"></div>
+                        <div><label>Cierre</label><input type="time" id="schedEnd"></div>
+                    </div>
+                    <label style="margin-top:10px; display:block;">Mensaje de Ausencia</label>
+                    <textarea id="schedMsg" rows="3" placeholder="No estamos disponibles..."></textarea>
+                    <button class="btn-primary" onclick="saveSettings()" style="margin-top:15px;">Guardar Cambios</button>
                 </div>
             </div>
 
@@ -196,305 +243,152 @@
                 <div class="chat-container-wrapper">
                     <div class="chat-msgs" id="simMsgs"></div>
                     <div style="padding:15px; border-top:1px solid var(--border); display:flex; gap:10px;">
-                        <input type="text" id="simInput" placeholder="Escribe al bot..." style="margin:0;">
+                        <input type="text" id="simInput" placeholder="Escribe..." style="margin:0;">
                         <button onclick="sendSim()" class="btn-primary" style="width:auto;"><i class="fas fa-paper-plane"></i></button>
                     </div>
-                </div>
-            </div>
-            
-            <!-- VISTA: CONFIGURACIÓN -->
-            <div id="view-settings" class="view view-padding">
-                <div class="card" style="max-width: 600px; margin: 0 auto;">
-                    <h3 style="margin-top:0;">Configuración de Horario</h3>
-                    <div style="padding:20px; background:var(--bg-body); border-radius:8px; border:1px solid var(--border); margin-bottom:24px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div><label style="margin:0; font-size:0.95rem; color:var(--text-main); cursor:pointer;" for="schedActive">Restricción de Horario</label><p style="margin:4px 0 0 0; font-size:0.8rem; color:var(--text-muted);">Activa la respuesta automática de ausencia.</p></div>
-                            <label class="switch"><input type="checkbox" id="schedActive"><span class="slider"></span></label>
-                        </div>
-                    </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom:20px;">
-                        <div><label>Hora Apertura</label><input type="time" id="schedStart"></div>
-                        <div><label>Hora Cierre</label><input type="time" id="schedEnd"></div>
-                    </div>
-                    <label>Mensaje de Ausencia</label><textarea id="schedMsg" placeholder="Ej: Actualmente no estamos disponibles..." rows="4"></textarea>
-                    <button onclick="saveSettings()" class="btn-primary" style="width:100%; margin-top:10px;">Guardar Configuración</button>
-                    <!-- BOTÓN ELIMINADO COMO SOLICITASTE -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL EDITOR -->
+    <!-- MODAL EDITOR (RESTAURADO COMPLETO) -->
     <div class="modal" id="editorModal">
         <div class="sheet">
-            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-                <h3>Editar Paso</h3>
-                <button onclick="document.getElementById('editorModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.2rem;">✕</button>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <h3 style="margin:0;">Editar Paso</h3>
+                <button onclick="document.getElementById('editorModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
             </div>
             <input type="hidden" id="stId">
-            <label>Tipo</label>
+            
+            <label>Tipo de Interacción</label>
             <select id="stType" onchange="renderFields()">
-                <option value="menu">Menú</option>
-                <option value="filtro">Filtro Admin</option>
-                <option value="input">Guardar Dato</option>
-                <option value="message">Mensaje</option>
-                <option value="fin_bot">Finalizar</option>
+                <option value="menu">🔘 Menú (Botones)</option>
+                <option value="filtro">👮 Filtro Admin</option>
+                <option value="input">💾 Guardar Dato</option>
+                <option value="message">💬 Mensaje Texto</option>
+                <option value="cita">📅 Citas</option>
+                <option value="fin_bot">🏁 Finalizar</option>
             </select>
-            <div id="dynFields"></div>
-            <button onclick="saveStep()" class="btn-primary" style="margin-top:20px;">Guardar Cambios</button>
-            <button onclick="delStep()" style="background:transparent; color:var(--danger); border:1px solid var(--danger); padding:10px; border-radius:8px; margin-top:10px; width:100%;">Eliminar Paso</button>
+
+            <div id="wrapper-msg" style="margin-top:15px;">
+                <label>Mensaje del Bot</label>
+                <textarea id="stMsg" rows="3" placeholder="Hola {{nombre}}..."></textarea>
+            </div>
+            
+            <!-- SECCIÓN MULTIMEDIA (RESTAURADA) -->
+            <div id="wrapper-media" style="margin-top:15px; background:var(--bg-input); padding:10px; border-radius:8px;">
+                <label>Multimedia (Fotos/Videos)</label>
+                <div id="galleryContainer" style="display:flex; gap:10px; overflow-x:auto; padding:5px 0;"></div>
+                <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
+                <button onclick="document.getElementById('imgUpload').click()" class="admin-btn" style="width:100%; border-style:dashed; margin-top:5px;">+ Subir Archivo</button>
+            </div>
+
+            <!-- CAMPOS DINÁMICOS -->
+            <div id="dynFields" style="margin-top:15px;"></div>
+
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button onclick="saveStep()" class="btn-primary" style="flex:1;">Guardar</button>
+                <button onclick="delStep()" style="background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); padding:10px; border-radius:8px;"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CITAS -->
+    <div class="modal" id="dayModal">
+        <div class="sheet">
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <h3 id="modalDateTitle" style="margin:0;">Eventos</h3>
+                <button onclick="document.getElementById('dayModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
+            </div>
+            <div id="modalApptList" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
+            <button onclick="document.getElementById('eventForm').style.display='block'; this.style.display='none'" id="btnAddEvent" class="admin-btn" style="width:100%; padding:15px; border-style:dashed;">+ Agendar Manualmente</button>
+            
+            <div id="eventForm" style="display:none; background:var(--bg-input); padding:15px; border-radius:10px; margin-top:10px;">
+                <input type="hidden" id="evtOldTime">
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><label>Hora</label><input type="time" id="evtTime"></div>
+                    <div style="flex:1"><label>Teléfono</label><input type="tel" id="evtPhone"></div>
+                </div>
+                <label>Nombre</label><input type="text" id="evtName">
+                <label>Nota</label><input type="text" id="evtNote">
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button onclick="saveEvent()" class="btn-primary" style="flex:1;">Guardar</button>
+                    <button onclick="document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block'" class="admin-btn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONTACTO -->
+    <div class="modal" id="contactModal">
+        <div class="sheet">
+            <h3>Nuevo Contacto</h3>
+            <label>Nombre</label><input type="text" id="newContName">
+            <label>Teléfono (con país)</label><input type="tel" id="newContPhone" placeholder="Ej: 521...">
+            <div style="display:flex; justify-content:space-between; margin:15px 0;">
+                <span>Activar Bot</span>
+                <label class="switch"><input type="checkbox" id="newContEnable" checked><span class="slider"></span></label>
+            </div>
+            <button onclick="saveNewContact()" class="btn-primary">Guardar</button>
         </div>
     </div>
 
 <script>
     const API_BASE = ''; 
-    let flow = {};
-    let users = [];
-    let pollingInterval = null;
-    let deferredPrompt;
+    let flow = {}, users = [];
+    let pollingInterval = null, deferredPrompt;
+    let currentRefDate = new Date();
 
-    // --- SOCKET.IO (EL CORAZÓN DEL TIEMPO REAL) ---
-    const socket = io({
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: Infinity
-    });
+    // --- SOCKET.IO ---
+    const socket = io({ reconnection: true });
+    socket.on('connect', () => { updateConnStatus(true); loadActivity(); });
+    socket.on('disconnect', () => { updateConnStatus(false); });
 
-    socket.on('connect', () => {
-        updateConnStatus(true);
-        loadActivity(); // Cargar datos al reconectar
-    });
-
-    socket.on('disconnect', () => {
-        updateConnStatus(false);
-    });
-
-    // ¡AQUÍ ESTÁ LA LÓGICA DE ACTUALIZACIÓN INSTANTÁNEA!
     socket.on('message', (data) => {
-        // 1. Reproducir sonido si es mensaje nuevo de cliente
-        if (!data.fromMe) {
-            try {
-                const audio = document.getElementById('alertSound');
-                audio.volume = 0.5;
-                audio.play().catch(e => console.log("Audio bloqueado por navegador"));
-                
-                // Notificación nativa (Background)
-                if (document.visibilityState === 'hidden') {
-                    new Notification("CRM: Nuevo Mensaje", { 
-                        body: data.text || "Archivo recibido", 
-                        icon: "logo.svg",
-                        vibrate: [200, 100, 200]
-                    });
-                }
-            } catch(e){}
+        // Notificación In-App (Bonita) si la app está abierta
+        if (!data.fromMe && document.visibilityState === 'visible') {
+            showInAppNotify(data.text || "📷 Imagen recibida");
+            const audio = document.getElementById('alertSound');
+            if(audio) { audio.volume = 0.5; audio.play().catch(()=>{}); }
+        }
+        // Notificación Sistema si la app está cerrada/fondo
+        else if (!data.fromMe) {
+            new Notification("Nuevo Mensaje", { body: data.text || "Archivo", icon: "logo.svg" });
         }
 
-        // 2. ACTUALIZAR EL MONITOR INSTANTÁNEAMENTE
-        loadActivity();
-
-        // 3. Si es el simulador, pintar el chat
-        const simPhone = '5218991234567';
-        const destino = (data.to || '').replace(/\D/g, '');
-        const origen = (data.from || '').replace(/\D/g, '');
+        loadActivity(); // Actualizar monitor
         
-        if (destino.includes(simPhone) || origen.includes(simPhone)) {
-             addMsg(data.text, data.fromMe);
-        }
+        // Simulador
+        const simPhone = '5218991234567';
+        const dest = (data.to||'').replace(/\D/g, ''), orig = (data.from||'').replace(/\D/g, '');
+        if (dest.includes(simPhone) || orig.includes(simPhone)) addMsg(data.text, data.fromMe);
     });
+
+    function showInAppNotify(text) {
+        const el = document.getElementById('inAppNotify');
+        document.getElementById('notifyText').innerText = text.substring(0, 30) + (text.length>30?'...':'');
+        el.classList.add('show');
+        setTimeout(() => el.classList.remove('show'), 4000);
+    }
 
     function updateConnStatus(online) {
-        const dot = document.getElementById('socketDot');
-        const badge = document.getElementById('statusIndicator');
-        
-        if(online) {
-            dot.style.background = 'var(--success)';
-            dot.style.boxShadow = '0 0 5px var(--success)';
-            badge.className = 'status-badge connected';
-            badge.innerText = 'ONLINE';
-        } else {
-            dot.style.background = 'var(--danger)';
-            dot.style.boxShadow = '0 0 5px var(--danger)';
-            badge.className = 'status-badge disconnected';
-            badge.innerText = 'OFFLINE';
-        }
-    }
-
-    // --- PWA INSTALL ---
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        document.getElementById('installAppBtn').style.display = 'flex';
-    });
-
-    async function installPWA() {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        deferredPrompt = null;
-    }
-
-    // --- PERMISO DE NOTIFICACIONES (AUTOMÁTICO AL CLIC) ---
-    document.addEventListener('click', function initAudioAndNotify() {
-        if (Notification.permission === 'default') {
-            Notification.requestPermission().then(permission => {
-                if(permission === 'granted') {
-                    showToast('Alertas Activadas');
-                }
-            });
-        }
-        document.removeEventListener('click', initAudioAndNotify);
-    }, { once: true });
-
-    // --- LOGICA DE DATOS ---
-    async function loadAll() {
-        try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e){}
-        try { const set = await (await fetch(`${API_BASE}/api/settings`)).json(); if(set.schedule) { document.getElementById('schedActive').checked = set.schedule.active; document.getElementById('schedStart').value = set.schedule.start; document.getElementById('schedEnd').value = set.schedule.end; document.getElementById('schedMsg').value = set.schedule.offline_message; } } catch(e) {}
-    }
-
-    async function loadActivity() {
-        // Esta función ahora es llamada por el Socket cada vez que alguien escribe
-        try {
-            users = await (await fetch(`${API_BASE}/api/users`)).json();
-            const tb = document.getElementById('activityBody');
-            tb.innerHTML = '';
-            
-            // Filtrar y ordenar
-            let activeUsers = users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a,b) => new Date(b.last_active) - new Date(a.last_active));
-            
-            if(activeUsers.length === 0) {
-                tb.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--text-muted);">Sin actividad reciente</td></tr>';
-                return;
-            }
-
-            activeUsers.forEach(u => {
-                const s = flow[u.current_step] || { type: 'unknown' };
-                let btns = '';
-                if(s.type === 'filtro' && s.options) {
-                    s.options.forEach(o => {
-                        btns += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${o.next_step}')" style="border-color:var(--primary); color:var(--primary);">${o.label}</button>`;
-                    });
-                } else {
-                    btns = `<span style="font-size:0.8rem; color:var(--text-muted);">Esperando usuario...</span>`;
-                }
-
-                tb.innerHTML += `
-                    <tr>
-                        <td>
-                            <div style="font-weight:bold;">${u.phone}</div>
-                            <small style="color:var(--text-muted);">${timeAgo(u.last_active)}</small>
-                        </td>
-                        <td><span class="status-badge connected" style="background:var(--bg-body); border:1px solid var(--border); color:var(--text-muted);">${u.current_step}</span></td>
-                        <td>${btns}</td>
-                    </tr>
-                `;
-            });
-        } catch(e) {}
-    }
-
-    async function crmAction(phone, step) {
-        await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) });
-        loadActivity(); // Actualizar UI manual tras acción
-    }
-
-    // --- FLOW EDITOR LITE ---
-    function renderFlowList() {
-        const c = document.getElementById('flowListContainer'); c.innerHTML='';
-        Object.keys(flow).sort().forEach(k => {
-            const step = flow[k];
-            c.innerHTML += `<div class="flow-step-card" onclick="edit('${k}')"><div><strong>${k}</strong><br><small style="color:var(--text-muted);">${step.type}</small></div><i class="fas fa-chevron-right"></i></div>`;
-        });
-    }
-    
-    function edit(id) {
-        const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type;
-        renderFields(); document.getElementById('editorModal').classList.add('active');
-    }
-
-    function renderFields() {
-        const type = document.getElementById('stType').value;
-        const id = document.getElementById('stId').value;
-        const d = flow[id] || {};
-        const c = document.getElementById('dynFields');
-        let html = `<label>Mensaje</label><textarea id="stMsg" rows="3">${d.message||''}</textarea>`;
-        
-        if(type === 'menu' || type === 'filtro') {
-            html += `<label>Opciones (Texto Botón, Siguiente Paso)</label><div id="optsList">`;
-            (d.options||[]).forEach(o => {
-                 html += `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}"><input class="o-nxt" value="${o.next_step}"></div>`;
-            });
-            html += `</div><button class="admin-btn" onclick="addOptRow()">+ Opción</button>`;
-        } else {
-            html += `<label>Siguiente Paso</label><input id="stNext" value="${d.next_step||''}">`;
-        }
-        c.innerHTML = html;
-    }
-    
-    function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><input class="o-nxt" placeholder="Sig. Paso"></div>`); }
-
-    async function saveStep() {
-        const id = document.getElementById('stId').value;
-        const type = document.getElementById('stType').value;
-        const msg = document.getElementById('stMsg').value;
-        const data = { type, message: msg };
-        
-        if(document.getElementById('stNext')) data.next_step = document.getElementById('stNext').value;
-        if(document.getElementById('optsList')) {
-            data.options = [];
-            document.querySelectorAll('#optsList div').forEach(row => {
-                const l = row.querySelector('.o-lbl').value;
-                const n = row.querySelector('.o-nxt').value;
-                if(l && n) data.options.push({label:l, trigger:l, next_step:n});
-            });
-        }
-        
-        await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
-        flow[id] = data; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
-    }
-    
-    function createNewStepPrompt() {
-        const name = prompt("Nombre del paso (MAYUSCULAS):");
-        if(name) { flow[name] = {type:'message'}; renderFlowList(); edit(name); }
-    }
-    
-    async function delStep() {
-        const id = document.getElementById('stId').value;
-        if(confirm("¿Eliminar?")) {
-            await fetch('/api/flow/step/'+id, {method:'DELETE'});
-            delete flow[id]; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
-        }
-    }
-
-    // --- UTILS ---
-    function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebarOverlay').classList.toggle('active'); }
-    function nav(v, btn) { 
-        document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
-        document.querySelectorAll('.menu-item').forEach(e=>e.classList.remove('active')); 
-        document.getElementById('view-'+v).classList.add('active');
-        if(btn) btn.classList.add('active');
-        document.getElementById('sidebar').classList.remove('active');
-        document.getElementById('sidebarOverlay').classList.remove('active');
-        if(v === 'activity') loadActivity();
-    }
-    function timeAgo(date) { 
-        if(!date) return '-'; 
-        const s = Math.floor((new Date() - new Date(date)) / 1000);
-        if(s < 60) return 'Ahora';
-        if(s < 3600) return Math.floor(s/60) + 'm';
-        return Math.floor(s/3600) + 'h';
+        const dot = document.getElementById('socketDot'), badge = document.getElementById('statusIndicator');
+        if(online) { dot.style.background='var(--success)'; dot.style.boxShadow='0 0 5px var(--success)'; badge.className='status-badge connected'; badge.innerText='ONLINE'; } 
+        else { dot.style.background='var(--danger)'; dot.style.boxShadow='0 0 5px var(--danger)'; badge.className='status-badge disconnected'; badge.innerText='OFFLINE'; }
     }
 
     // --- INIT ---
     window.onload = () => {
         document.getElementById('setupWizard').classList.remove('step-hidden');
+        Notification.requestPermission(); // Pedir permiso silenciosamente al inicio
         
-        // Polling para status de conexión inicial (QR)
         const checkStatus = async () => {
             try {
                 const res = await (await fetch(`${API_BASE}/api/status`)).json();
                 if(res.status === 'connected') {
                     document.getElementById('setupWizard').classList.add('step-hidden');
                     document.getElementById('mainApp').classList.add('visible');
-                    loadAll();
-                    loadActivity();
+                    loadAll(); loadActivity();
                 } else if(res.qr) {
                     document.getElementById('stepLoading').classList.add('step-hidden');
                     document.getElementById('stepQR').classList.remove('step-hidden');
@@ -506,32 +400,148 @@
         };
         checkStatus();
     };
+
+    // --- DATA ---
+    async function loadAll() {
+        try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e){}
+        try { const s = await (await fetch(`${API_BASE}/api/settings`)).json(); if(s.schedule) { document.getElementById('schedActive').checked = s.schedule.active; document.getElementById('schedStart').value = s.schedule.start; document.getElementById('schedEnd').value = s.schedule.end; document.getElementById('schedMsg').value = s.schedule.offline_message; } } catch(e){}
+    }
     
-    // --- SIMULATOR ---
-    function sendSim() { 
-        const txt = document.getElementById('simInput').value; 
-        if(!txt) return;
-        addMsg(txt, true);
-        document.getElementById('simInput').value = '';
-        fetch(`${API_BASE}/api/simulate/text`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ phone: '5218991234567', text: txt }) });
+    async function loadActivity() {
+        try {
+            users = await (await fetch(`${API_BASE}/api/users`)).json();
+            const tb = document.getElementById('activityBody'); tb.innerHTML = '';
+            users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a,b) => new Date(b.last_active) - new Date(a.last_active)).forEach(u => {
+                const s = flow[u.current_step] || {};
+                let btns = '';
+                if(s.type === 'filtro' && s.options) s.options.forEach(o => btns += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${o.next_step}')">${o.label}</button>`);
+                tb.innerHTML += `<tr><td><b>${u.phone}</b><br><small>${timeAgo(u.last_active)}</small></td><td><span class="status-badge connected" style="background:var(--bg-input); color:var(--text-muted);">${u.current_step}</span></td><td>${btns}</td></tr>`;
+            });
+        } catch(e){}
     }
-    function addMsg(txt, me) {
-        document.getElementById('simMsgs').innerHTML += `<div class="msg ${me?'user':'bot'}">${txt}</div>`;
-        const c = document.querySelector('.chat-msgs'); c.scrollTop = c.scrollHeight;
+    async function crmAction(phone, step) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) }); }
+
+    // --- FLOW EDITOR (FULL) ---
+    function renderFlowList() {
+        const c = document.getElementById('flowListContainer'); c.innerHTML='';
+        Object.keys(flow).sort().forEach(k => {
+            const step = flow[k];
+            c.innerHTML += `<div class="flow-step-card" onclick="edit('${k}')"><div><strong>${k}</strong><br><small style="color:var(--text-muted);">${step.type}</small></div><i class="fas fa-chevron-right"></i></div>`;
+        });
     }
-    function resetSession() { fetch(`${API_BASE}/api/logout`, { method: 'POST' }).then(() => location.reload()); }
-    function saveSettings() {
+    let currentMediaList = [];
+    function edit(id) {
+        const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type;
+        document.getElementById('stMsg').value = d.message || '';
+        currentMediaList = d.media || [];
+        renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
+    }
+    function renderGallery() { 
+        const c = document.getElementById('galleryContainer'); c.innerHTML=''; 
+        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="min-width:60px; height:60px; background:url(${u}) center/cover; border-radius:5px; position:relative;"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:red; border-radius:50%; width:18px; height:18px; border:none; color:white; font-size:10px;">x</button></div>`); 
+    }
+    async function uploadImages(inp) { 
+        if(!inp.files.length) return; const fd = new FormData(); for(let f of inp.files) fd.append('images', f);
+        const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json();
+        if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
+    }
+    function renderFields() {
+        const type = document.getElementById('stType').value;
+        const id = document.getElementById('stId').value;
+        const d = flow[id] || {};
+        const c = document.getElementById('dynFields');
+        const wrapMsg = document.getElementById('wrapper-msg'), wrapMedia = document.getElementById('wrapper-media');
+        wrapMsg.style.display = type==='cita'?'none':'block'; wrapMedia.style.display = type==='cita'?'none':'block';
+
+        let html = '';
+        if(type === 'menu' || type === 'filtro') {
+            html += `<label>Opciones</label><div id="optsList">`;
+            (d.options||[]).forEach(o => html += `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}"><input class="o-nxt" value="${o.next_step}"></div>`);
+            html += `</div><button class="admin-btn" onclick="addOptRow()">+ Opción</button>`;
+            if(type==='menu') html += `<label style="margin-top:10px">Keywords</label><input id="stKw" value="${(d.keywords||[]).join(', ')}">`;
+            if(type==='filtro') html += `<label style="margin-top:10px">Admin Tel</label><input id="stAdm" value="${d.admin_number||''}">`;
+        } else if (type === 'input') {
+            html += `<label>Variable a Guardar</label><input id="stVar" value="${d.save_var||''}"><label>Siguiente</label><input id="stNext" value="${d.next_step||''}">`;
+        } else {
+            html += `<label>Siguiente</label><input id="stNext" value="${d.next_step||''}">`;
+        }
+        c.innerHTML = html;
+    }
+    function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><input class="o-nxt" placeholder="Sig. Paso"></div>`); }
+    async function saveStep() {
+        const id = document.getElementById('stId').value, type = document.getElementById('stType').value;
+        const data = { type, message: document.getElementById('stMsg').value, media: currentMediaList };
+        if(document.getElementById('stNext')) data.next_step = document.getElementById('stNext').value;
+        if(document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value;
+        if(document.getElementById('stKw')) data.keywords = document.getElementById('stKw').value.split(',').map(s=>s.trim());
+        if(document.getElementById('stAdm')) data.admin_number = document.getElementById('stAdm').value;
+        if(document.getElementById('optsList')) {
+            data.options = [];
+            document.querySelectorAll('#optsList div').forEach(row => {
+                const l = row.querySelector('.o-lbl').value, n = row.querySelector('.o-nxt').value;
+                if(l && n) data.options.push({label:l, trigger:l, next_step:n});
+            });
+        }
+        await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
+        flow[id] = data; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
+    }
+    function createNewStepPrompt() { const n = prompt("Nombre (MAYUSCULAS):"); if(n){ flow[n]={type:'message'}; renderFlowList(); edit(n); }}
+    async function delStep() { await fetch('/api/flow/step/'+document.getElementById('stId').value, {method:'DELETE'}); delete flow[document.getElementById('stId').value]; renderFlowList(); document.getElementById('editorModal').classList.remove('active'); }
+
+    // --- AGENDA RESTAURADA ---
+    async function renderCalendar() {
+        const now = currentRefDate, m = now.getMonth(), y = now.getFullYear();
+        document.getElementById('monthDisplay').innerText = `${["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]} ${y}`;
+        const g = document.getElementById('calendarDays'); g.innerHTML = '';
+        let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
+        const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m+1, 0).getDate();
+        for(let i=0; i<firstDay; i++) g.innerHTML += `<div></div>`;
+        for(let i=1; i<=daysInMonth; i++) { 
+            const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
+            const count = (appts[k]||[]).length;
+            const isToday = new Date().toDateString() === new Date(y,m,i).toDateString();
+            g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}')">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`; 
+        }
+    }
+    function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
+    async function openDayModal(date) {
+        document.getElementById('modalDateTitle').innerText = date;
+        const list = document.getElementById('modalApptList'); list.innerHTML = 'Cargando...';
+        const all = await (await fetch(`${API_BASE}/api/agenda`)).json();
+        const appts = all[date] || [];
+        list.innerHTML = appts.length ? '' : '<div style="text-align:center; padding:20px; color:#666;">Sin citas</div>';
+        appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => list.innerHTML += `<div style="background:var(--bg-input); padding:10px; margin-bottom:5px; border-radius:8px;"><b>${c.time}</b> ${c.name} <br><small>${c.phone}</small> <button style="float:right; color:red; background:none; border:none;" onclick="delAppt('${date}','${c.time}')">x</button></div>`);
+        document.getElementById('evtOldTime').dataset.date = date;
+        document.getElementById('dayModal').classList.add('active');
+    }
+    async function saveEvent() {
+        const d = { date: document.getElementById('evtOldTime').dataset.date, time: document.getElementById('evtTime').value, name: document.getElementById('evtName').value, phone: document.getElementById('evtPhone').value, note: document.getElementById('evtNote').value };
+        if(!d.time || !d.name) return alert("Faltan datos");
+        await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
+        document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block';
+        openDayModal(d.date); renderCalendar();
+    }
+    async function delAppt(d, t) { await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date:d, time:t}) }); openDayModal(d); renderCalendar(); }
+
+    // --- UTILS ---
+    function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebarOverlay').classList.toggle('active'); }
+    function nav(v, btn) { document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); document.querySelectorAll('.menu-item').forEach(e=>e.classList.remove('active')); document.getElementById('view-'+v).classList.add('active'); if(btn) btn.classList.add('active'); document.getElementById('sidebar').classList.remove('active'); document.getElementById('sidebarOverlay').classList.remove('active'); if(v==='agenda') renderCalendar(); }
+    function timeAgo(date) { if(!date) return '-'; const s = Math.floor((new Date()-new Date(date))/1000); if(s<60) return 'Ahora'; if(s<3600) return Math.floor(s/60)+'m'; return Math.floor(s/3600)+'h'; }
+    async function resetSession() { await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); location.reload(); }
+    async function saveSettings() {
         const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
-        fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})}).then(()=>showToast('Configuración Guardada'));
+        await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
+        showToast('Guardado');
     }
-    function showToast(msg) {
-        const c = document.getElementById('toast-container');
-        const t = document.createElement('div');
-        t.className = `toast success`;
-        t.innerHTML = `<span>${msg}</span>`;
-        c.appendChild(t);
-        setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(), 300); }, 3000);
-    }
+    function showToast(m) { const c=document.getElementById('toast-container'); c.innerHTML+=`<div class="toast">${m}</div>`; setTimeout(()=>c.innerHTML='', 3000); }
+    
+    // Sim
+    function sendSim() { const t=document.getElementById('simInput'); if(!t.value)return; addMsg(t.value,true); fetch(`${API_BASE}/api/simulate/text`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:'5218991234567', text:t.value}) }); t.value=''; }
+    function addMsg(t, me) { document.getElementById('simMsgs').innerHTML+=`<div class="msg ${me?'user':'bot'}">${t}</div>`; const c=document.querySelector('.chat-msgs'); c.scrollTop=c.scrollHeight; }
+
+    // Mobile PWA Install
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt=e; document.getElementById('installAppBtn').style.display='flex'; });
+    async function installPWA() { if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt=null; } }
 </script>
 </body>
 </html>
