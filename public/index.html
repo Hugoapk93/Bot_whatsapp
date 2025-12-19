@@ -71,7 +71,7 @@
         
         input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 16px; /* Evita zoom en iOS */ }
 
-        /* Calendario Ajustado */
+        /* Calendario */
         .calendar-header { display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 15px; flex-shrink: 0; }
         .calendar-nav-btn { background: var(--bg-body); border: 1px solid var(--border); color: var(--primary); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -99,13 +99,11 @@
             .view-padding { padding: 15px !important; }
             .card { padding: 15px !important; }
             
-            /* Ajuste Calendario Móvil */
             #view-agenda.active { display: flex; flex-direction: column; }
             #view-agenda .card { flex: 1; display: flex; flex-direction: column; height: auto; min-height: 0; }
             #calendarDays { flex: 1; overflow-y: auto; display: grid; align-content: stretch; }
             .day { height: auto; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-start; }
             
-            /* Chat en toda la pantalla */
             #view-sim.active.view-padding { padding: 0 !important; }
             .chat-container-wrapper { border: none; border-radius: 0; }
         }
@@ -381,7 +379,8 @@
         loadActivity(); 
         const simPhone = '5218991234567';
         const dest = (data.to||'').replace(/\D/g, ''), orig = (data.from||'').replace(/\D/g, '');
-        if (dest.includes(simPhone) || orig.includes(simPhone)) addMsg(data.text, data.fromMe);
+        // FIX: Invertir fromMe para el simulador para que los mensajes del bot aparezcan a la izquierda y los míos a la derecha
+        if (dest.includes(simPhone) || orig.includes(simPhone)) addMsg(data.text, !data.fromMe);
     });
 
     function showInAppNotify(text) {
@@ -399,7 +398,7 @@
 
     window.onload = () => {
         document.getElementById('setupWizard').classList.remove('step-hidden');
-        Notification.requestPermission();
+        // FIX: No pedir permiso al cargar, esperar a la interacción del usuario
         
         const checkStatus = async () => {
             try {
@@ -420,6 +419,13 @@
         checkStatus();
     };
 
+    // FIX: Pedir permisos de notificación en el primer clic/toque en la pantalla
+    document.body.addEventListener('click', function() {
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+    }, { once: true });
+
     async function loadAll() {
         try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e){}
         try { const s = await (await fetch(`${API_BASE}/api/settings`)).json(); if(s.schedule) { document.getElementById('schedActive').checked = s.schedule.active; document.getElementById('schedStart').value = s.schedule.start; document.getElementById('schedEnd').value = s.schedule.end; document.getElementById('schedMsg').value = s.schedule.offline_message; } } catch(e){}
@@ -427,7 +433,6 @@
     
     async function loadActivity() {
         try {
-            // Aseguramos que 'flow' esté cargado antes de procesar la actividad para que los botones de filtro funcionen
             if (Object.keys(flow).length === 0) flow = await (await fetch(`${API_BASE}/api/flow`)).json();
             
             users = await (await fetch(`${API_BASE}/api/users`)).json();
@@ -435,7 +440,6 @@
             users.filter(u => u.phone !== 'TEST_SIMULADOR').sort((a,b) => new Date(b.last_active) - new Date(a.last_active)).forEach(u => {
                 const s = flow[u.current_step] || {};
                 let btns = '';
-                // CORRECCIÓN: Validamos el tipo 'filtro' asegurándonos que 'flow' existe
                 if(s.type === 'filtro' && s.options) s.options.forEach(o => btns += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${o.next_step}')" style="border-color:var(--primary); color:var(--primary); margin-top:5px;">${o.label}</button>`);
                 
                 tb.innerHTML += `<tr><td><b>${u.phone}</b><br><small>${timeAgo(u.last_active)}</small></td><td><span class="status-badge connected" style="background:var(--bg-input); color:var(--text-muted);">${u.current_step}</span></td><td>${btns}</td></tr>`;
@@ -468,7 +472,6 @@
         if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
     }
 
-    // --- NUEVO HELPER PARA LISTAS DESPLEGABLES ---
     const getSelectOptions = (selected) => {
         let opts = '<option value="">-- Elegir --</option>';
         Object.keys(flow).sort().forEach(k => {
@@ -486,7 +489,6 @@
         wrapMsg.style.display = type==='cita'?'none':'block'; wrapMedia.style.display = type==='cita'?'none':'block';
 
         let html = '';
-        // CORRECCIÓN: Usamos getSelectOptions para mostrar dropdowns en lugar de inputs planos
         if(type === 'menu' || type === 'filtro') {
             html += `<label>Opciones</label><div id="optsList">`;
             (d.options||[]).forEach(o => html += `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}"><select class="o-nxt">${getSelectOptions(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`);
@@ -500,7 +502,6 @@
         }
         c.innerHTML = html;
     }
-    // CORRECCIÓN: El botón "agregar opción" ahora también añade un select desplegable
     function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><select class="o-nxt">${getSelectOptions('')}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`); }
     
     async function saveStep() {
@@ -593,7 +594,7 @@
         document.getElementById('sidebarOverlay').classList.remove('active'); 
         
         if(v==='agenda') renderCalendar();
-        if(v==='contacts') renderContacts(); // CORRECCIÓN: Asegurar llamada explícita
+        if(v==='contacts') renderContacts(); 
     }
     function timeAgo(date) { if(!date) return '-'; const s = Math.floor((new Date()-new Date(date))/1000); if(s<60) return 'Ahora'; if(s<3600) return Math.floor(s/60)+'m'; return Math.floor(s/3600)+'h'; }
     async function saveSettings() {
@@ -603,7 +604,6 @@
     }
     function showToast(m) { const c=document.getElementById('toast-container'); c.innerHTML+=`<div class="toast">${m}</div>`; setTimeout(()=>c.innerHTML='', 3000); }
     
-    // CORRECCIÓN CONTACTOS: Aseguramos renderizado robusto
     async function renderContacts() {
         try { 
             const list = await (await fetch(`${API_BASE}/api/contacts`)).json(); 
