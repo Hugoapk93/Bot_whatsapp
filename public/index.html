@@ -134,11 +134,36 @@
         @media(min-width: 769px) { .sheet { border-radius: 16px; border: 1px solid var(--border); animation: fadeIn 0.2s; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* --- NUEVOS ESTILOS PARA FLUJO --- */
-        .flow-nav { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; font-size: 1.1rem; font-weight: bold; }
-        .flow-nav span { color: var(--text-muted); cursor: pointer; }
+        /* --- ESTILOS DE NAVEGACIÓN MEJORADOS --- */
+        .flow-nav { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            margin-bottom: 15px; 
+    
+            /* Habilita el scroll horizontal */
+            overflow-x: auto; 
+            white-space: nowrap; 
+    
+            /* Estética del scroll */
+            padding-bottom: 5px; 
+            -webkit-overflow-scrolling: touch; /* Suavidad en móviles */
+            scrollbar-width: thin; /* Para Firefox */
+        }
+
+        /* Estilizar la barra de desplazamiento para que sea sutil */
+        .flow-nav::-webkit-scrollbar { height: 4px; }
+        .flow-nav::-webkit-scrollbar-track { background: transparent; }
+        .flow-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+        /* Importante: Evita que los textos se aplasten */
+        .flow-nav span, .flow-nav i { 
+            flex-shrink: 0; 
+        }
+
+        .flow-nav span { color: var(--text-muted); cursor: pointer; font-weight: 500; }
         .flow-nav span:hover { color: var(--primary); text-decoration: underline; }
-        .flow-nav span:last-child { color: var(--text-main); cursor: default; text-decoration: none; }
+        .flow-nav span:last-child { color: var(--text-main); cursor: default; font-weight: 700; text-decoration: none; }
 
         /* Estilo para paso incompleto */
         .card-incomplete { border-left: 4px solid var(--danger) !important; background: rgba(239, 68, 68, 0.05); }
@@ -511,32 +536,41 @@
         const c = document.getElementById('flowListContainer'); 
         c.innerHTML = '';
 
-        // 1. Barra de Navegación (Breadcrumbs)
+        // 1. Barra de Navegación (Breadcrumbs) con SCROLL
         if (flowPath.length > 0) {
-            let navHtml = `<div class="flow-nav"><span onclick="resetFlowNav()">Inicio</span>`;
+            // Botón para regresar un nivel (Padre inmediato)
+            let navHtml = `<div class="flow-nav" id="breadcrumbNav">`;
+            
+            // Agregamos botón "Atrás" al inicio
+            navHtml += `<button onclick="jumpToStep(${flowPath.length - 2})" class="admin-btn" style="margin-right:10px; border-radius:50%; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center;"><i class="fas fa-arrow-left"></i></button>`;
+
+            navHtml += `<span onclick="resetFlowNav()">Inicio</span>`;
+            
             flowPath.forEach((step, index) => {
-                if(index === flowPath.length - 1) navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.8rem"></i> <span>${step}</span>`;
-                else navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.8rem"></i> <span onclick="jumpToStep(${index})">${step}</span>`;
+                if(index === flowPath.length - 1) {
+                    navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.5;"></i> <span>${step}</span>`;
+                } else {
+                    navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.5;"></i> <span onclick="jumpToStep(${index})">${step}</span>`;
+                }
             });
             navHtml += `</div>`;
             c.innerHTML += navHtml;
+
+            // AUTO-SCROLL: Mover la barra al final para ver el paso actual
+            setTimeout(() => {
+                const nav = document.getElementById('breadcrumbNav');
+                if(nav) nav.scrollLeft = nav.scrollWidth;
+            }, 50);
         }
 
-        // 2. Lógica de Jerarquía: ¿Qué mostramos?
+        // 2. Lógica de Jerarquía (Igual que antes)
         let stepsToShow = [];
-        
         if (flowPath.length === 0) {
-            // Estamos en el inicio: Buscar raíces
             stepsToShow = findFlowRoots();
-            
-            // FALLBACK: Si hay pasos creados pero NO están conectados entre sí, 
-            // findFlowRoots devolverá TODOS (porque todos parecen inicios).
-            // Esto es normal hasta que los vincules.
             if(stepsToShow.length === 0 && Object.keys(flow).length > 0) {
                 stepsToShow = [Object.keys(flow).sort()[0]]; 
             }
         } else {
-            // Estamos dentro de un paso: Mostrar sus hijos
             const parentId = flowPath[flowPath.length - 1];
             stepsToShow = getChildrenSteps(parentId);
         }
@@ -550,29 +584,25 @@
             </div>`;
         }
 
-        // 3. Renderizar Tarjetas
+        // 3. Renderizar Tarjetas (Igual que antes)
         stepsToShow.forEach(k => {
             const step = flow[k];
             if(!step) return; 
-
-            // Validar si está incompleto (sin salida y sin botones)
             let isInc = false;
             if (step.type !== 'fin_bot' && !step.next_step && (!step.options || step.options.length === 0)) {
                 isInc = true;
             }
 
-            // HTML ACTUALIZADO: Eventos separados y botón de editar explícito
             c.innerHTML += `
             <div class="flow-step-card ${isInc ? 'card-incomplete' : ''}" 
                  onclick="enterStep('${k}')" 
-                 style="position:relative; padding-right:50px;"> <div style="flex:1">
+                 style="position:relative; padding-right:50px;">
+                <div style="flex:1">
                     <strong>${k}</strong> ${isInc ? '<i class="fas fa-exclamation-circle warning-icon" title="Paso incompleto"></i>' : ''}
                     <br><small style="color:var(--text-muted);">${step.type}</small>
                     ${step.message ? `<div style="font-size:0.85em; color:#64748b; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${step.message}</div>` : ''}
                 </div>
-
                 <i class="fas fa-chevron-right" style="opacity:0.5;"></i>
-
                 <button onclick="event.stopPropagation(); edit('${k}')" 
                         style="position:absolute; right:10px; top:50%; transform:translateY(-50%); 
                                background:var(--bg-input); border:1px solid var(--border); 
