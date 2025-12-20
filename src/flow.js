@@ -468,92 +468,115 @@ const handleMessage = async (sock, msg) => {
         nextStepId = currentConfig.next_step;
     }
 
-    // --- LÓGICA CITAS REPARADA ---
+    // --- LÓGICA CITAS BLINDADA v2 (CON DEBUG) ---
     if (nextStepId || currentConfig.type === 'cita') {
-        // Usamos nextStepId si está definido (ej: vengo de un input y voy a cita) 
-        // O si ya estoy en un paso tipo 'cita' y estoy procesando la entrada
         
         let targetStep = nextStepId || user.current_step;
         const nextStepConfig = getFlowStep(targetStep);
         
-        // Si el destino es un módulo de citas
         if (nextStepConfig && nextStepConfig.type === 'cita') {
-             
-             let rawDate = user.history['fecha_cita'] || user.history['fecha'];
-             let rawTime = user.history['hora_cita'] || user.history['hora'];
-             let fecha = normalizeDate(rawDate);
 
-             // 1. Validar Fecha
-             if (!fecha || fecha < new Date().toISOString().split('T')[0]) {
-                 if (!fecha && !rawDate) {
-                     // Si no hay fecha en el historial, probablemente acabamos de entrar al módulo
-                     // y el bot apenas va a preguntar la fecha (definida en el mensaje del paso).
-                     // Así que dejamos pasar al bot para que mande el mensaje.
-                 } else {
-                     // Si hay algo en 'fecha' pero es inválido:
-                     const txt = `⚠️ Fecha no válida o ya pasó.\n📅 Por favor escribe la fecha con el formato: Día/Mes/Año.\nEjemplo: *25/12/2025* o *01/05/2024*`;
+            // 1. CAPTURA INTELIGENTE (Esto arregla el error de la imagen)
+            const detectedDate = normalizeDate(text); 
+            const detectedTime = normalizeTime(text); 
+
+            console.log(`🔍 Input Recibido: "${text}"`);
+
+            if (detectedDate) {
+                console.log(`✅ CORRECCIÓN DETECTADA: El usuario cambió la fecha a ${text}`);
+                // Sobrescribimos TODAS las variables de fecha posibles para evitar conflictos
+                user.history['fecha_cita'] = text; 
+                user.history['fecha'] = text; 
+                user.history['dia'] = text; 
+                await updateUser(dbKey, { history: user.history }); 
+            }
+
+            if (detectedTime) {
+                console.log(`✅ HORA DETECTADA: ${text}`);
+                user.history['hora_cita'] = text;
+                await updateUser(dbKey, { history: { ...user.history, hora_cita: text } });
+            }
+
+            // 2. LECTURA DE DATOS
+            let rawDate = user.history['fecha_cita'] || user.history['fecha'] || user.history['dia'];
+            let rawTime = user.history['hora_cita'] || user.history['hora'];
+            let fecha = normalizeDate(rawDate);
+            
+            console.log(`📊 Datos actuales en memoria -> Fecha: ${rawDate} | Hora: ${rawTime}`);
+
+            // 3. VALIDACIONES
+            if (!fecha || fecha < new Date().toISOString().split('T')[0]) {
+                if (fecha) { 
+                    const txt = `⚠️ La fecha ${rawDate} no es válida o ya pasó.\n📅 Por favor escribe una nueva fecha (Ej: 25/12/2025)`;
+                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    return; 
+                }
+            }
+
+            if (fecha) {
+                let hora = normalizeTime(rawTime);
+                
+                // Si falta la hora, dejamos pasar para que el bot pregunte en el siguiente paso (si así está configurado)
+                // O si el usuario ya puso hora, intentamos agendar.
+                
+                if (hora) {
+                    // --- INTENTO DE AGENDAR ---
+                    try {
+                        const settings = getSettings();
+                        const rules = validateBusinessRules(hora, settings);
+                        
+                        if (!rules.valid) {
+                            const txt = `⚠️ ${rules.reason}\nHorario laboral: ${settings.schedule?.start} - ${settings.schedule?.end}`;
+                            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                            return; 
+                        }
+                        
+                        const db = getAgenda(); 
+                        if (db[fecha] && db[fecha].some(c => c.time === hora)) {
+                            const txt = `❌ Horario ocupado (${hora}). Por favor escribe otra hora.`;
+                            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                            return; 
+                        }
+                        
+                        // --- ESCRITURA ---
+                        if (!db[fecha]) db[fecha] = [];
+                        const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
+                        
+                        db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
+                        saveAgenda(db); 
+                        console.log(`🎉 Cita agendada con éxito`);
+
+                        // Mensaje de éxito forzado si no hay siguiente paso
+                        if (!nextStepConfig.next_step) {
+                            const txt = `✅ Cita confirmada: ${fecha} a las ${hora}.`;
+                            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                        } else {
+                            nextStepId = nextStepConfig.next_step;
+                        }
+
+                        // Limpieza
+                        delete user.history['fecha_cita'];
+                        delete user.history['hora_cita'];
+                        delete user.history['fecha']; // Limpiamos también la variable original
+                        await updateUser(dbKey, { history: user.history });
+                        
+                        if (!nextStepConfig.next_step) return;
+
+                    } catch (error) {
+                        console.error("🔥 Error:", error);
+                        const txt = `⚠️ Error interno. Intenta de nuevo.`;
+                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                        return;
+                    }
+                } 
+                else if (rawTime && !hora) {
+                     const txt = `⚠️ Hora no reconocida. Usa formato: 4:00 PM`;
                      if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                     return; // STOP: No avanzar hasta corregir fecha
-                 }
-             }
-
-             // 2. Validar Hora y Guardar (Solo si hay fecha válida)
-             if (fecha) {
-                 // Intentamos normalizar la hora (si existe en historial)
-                 let hora = normalizeTime(rawTime);
-                 
-                 // SI TENEMOS HORA VÁLIDA -> INTENTAMOS AGENDAR
-                 if (hora) {
-                     const settings = getSettings();
-                     const rules = validateBusinessRules(hora, settings);
-                     
-                     if (!rules.valid) {
-                         const txt = `⚠️ ${rules.reason}\n🕒 Por favor usa el formato de 12 o 24 horas.\nEjemplo: *4:00 PM* o *16:00*`;
-                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                         return; // STOP: Hora inválida por reglas negocio
-                     }
-                     
-                     // Checar disponibilidad
-                     const db = getAgenda();
-                     if (db[fecha] && db[fecha].some(c => c.time === hora)) {
-                         const txt = `❌ Ese horario ya está ocupado. Por favor elige otra hora.`;
-                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                         return; // STOP: Horario ocupado
-                     }
-                     
-                     // --- GUARDADO EXITOSO ---
-                     if (!db[fecha]) db[fecha] = [];
-                     const finalName = user.history['nombre'] || user.history['nombre_completo'] || user.history['cliente'] || user.history['name'] || msg.pushName || 'Cliente';
-                     
-                     db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
-                     saveAgenda(db);
-                     console.log(`📅 Cita agendada: ${finalName} -> ${fecha} ${hora}`);
-                     
-                     // Avanzar al paso de éxito (next_step configurado en el editor)
-                     if (nextStepConfig.next_step) {
-                         nextStepId = nextStepConfig.next_step;
-                     }
-
-                 } else if (rawTime && !hora) {
-                     // SI EL USUARIO ESCRIBIÓ ALGO EN 'HORA' PERO NO ES UNA HORA VÁLIDA
-                     const txt = `⚠️ No reconocí la hora.\n🕒 Por favor usa el formato: *4:00 PM* o *16:30*`;
-                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                     return; // STOP: No avanzar
-                 } 
-                 
-                 // Si (fecha válida) Y (no hay hora o es vacía) -> Dejamos avanzar 
-                 // (Asumimos que el flujo va hacia el paso que pide la hora)
-             }
-             
-             // Si targetStep era el destino calculado, aseguramos que nextStepId lo refleje
-             if (!nextStepId) nextStepId = targetStep;
+                     return;
+                }
+            }
+            if (!nextStepId) nextStepId = targetStep;
         }
-    }
-
-    if (nextStepId) {
-        console.log(`➡️ Avanzando al paso: ${nextStepId}`);
-        await updateUser(dbKey, { current_step: nextStepId });
-        await sendStepMessage(sock, remoteJid, nextStepId, getUser(dbKey));
     }
 };
 
