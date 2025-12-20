@@ -192,6 +192,14 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
 
         console.log(`👮 Notificación enviada al Admin: ${step.admin_number}`);
+        
+        // ---> TRIGGER PUSH NOTIFICATION (ADMIN) <---
+        if (global.sendPushNotification) {
+             global.sendPushNotification(
+                 "⚠️ Solicitud Pendiente", 
+                 `El cliente ${cleanClientPhone} requiere aprobación.`
+             );
+        }
     }
 
     if (step.type === 'filtro' && isBusinessClosed()) {
@@ -545,6 +553,14 @@ const handleMessage = async (sock, msg) => {
                         db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
                         saveAgenda(db); 
                         console.log(`🎉 Cita agendada con éxito`);
+                        
+                        // ---> TRIGGER PUSH NOTIFICATION (CITA) <---
+                        if (global.sendPushNotification) {
+                             global.sendPushNotification(
+                                 "📅 Cliente Agendado", 
+                                 `Nueva cita para el ${fecha} a las ${hora}.`
+                             );
+                        }
 
                         // Mensaje de éxito forzado si no hay siguiente paso
                         if (!nextStepConfig.next_step) {
@@ -570,9 +586,9 @@ const handleMessage = async (sock, msg) => {
                     }
                 } 
                 else if (rawTime && !hora) {
-                     const txt = `⚠️ Hora no reconocida. Usa formato: 4:00 PM`;
-                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                     return;
+                      const txt = `⚠️ Hora no reconocida. Usa formato: 4:00 PM`;
+                      if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                      return;
                 }
             }
             if (!nextStepId) nextStepId = targetStep;

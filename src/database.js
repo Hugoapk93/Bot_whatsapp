@@ -5,14 +5,12 @@ const path = require('path');
 const dataDir = path.join(__dirname, '../data');
 const dbPath = path.join(dataDir, 'database.json');
 
-// --- TRUCO IMPORTANTE ---
-// Creamos 'db' como un objeto constante con una propiedad 'data'.
-// Así, aunque se actualice 'data', la referencia a 'db' se mantiene viva en los otros archivos.
 const db = { 
     data: { 
         users: [], 
-        contacts: [], // Aquí vivirán tus contactos
-        settings: { schedule: { active: false, days: [] } } 
+        contacts: [],
+        settings: { schedule: { active: false, days: [] } },
+        subscriptions: []
     } 
 };
 
@@ -89,8 +87,28 @@ function getFlowStep(id) {
     return flow[id];
 }
 
+function getSubscriptions() {
+    return db.data.subscriptions || [];
+}
+
+function saveSubscription(sub) {
+    if (!db.data.subscriptions) db.data.subscriptions = [];
+    // Evitar duplicados
+    const exists = db.data.subscriptions.find(s => s.endpoint === sub.endpoint);
+    if (!exists) {
+        db.data.subscriptions.push(sub);
+        saveDB();
+    }
+}
+
+function removeSubscription(endpoint) {
+    if (!db.data.subscriptions) return;
+    db.data.subscriptions = db.data.subscriptions.filter(s => s.endpoint !== endpoint);
+    saveDB();
+}
+
 module.exports = {
-    db, // Exportamos el objeto contenedor
+    db,
     initializeDB,
     getAllUsers,
     getUser,
@@ -100,5 +118,8 @@ module.exports = {
     deleteFlowStep,
     getSettings,
     saveSettings,
-    getFlowStep
+    getFlowStep,
+    getSubscriptions, 
+    saveSubscription,
+    removeSubscription
 };

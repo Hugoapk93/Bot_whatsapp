@@ -11,10 +11,43 @@ const cors = require('cors');
 // --- IMPORTS ---
 const { handleMessage, sendStepMessage } = require('./src/flow');
 const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, saveSettings, getAllUsers, updateUser, getUser, clearAllSessions } = require('./src/database');
+// CORREGIDO: Se eliminó el guion "-" al final de la siguiente línea
 const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
+const webpush = require('web-push');
+const bodyParser = require('body-parser');
+const { getSubscriptions, saveSubscription, removeSubscription } = require('./src/database');
 
 const app = express();
 app.use(cors());
+app.use(bodyParser.json());
+
+// ==========================================
+// CONFIGURACIÓN WEB PUSH (VAPID)
+// ==========================================
+const publicVapidKey = 'BKdzNrgEPTOnZF14GlVWIQDQBO5e1fZqq0DqU3tcM_8dsCiVqjHslSYgNQVccHlhjyyebi3cpMTtpOHppN6i5RE'; 
+const privateVapidKey = 'J_4mSjwet7y8i_xmiBsS9aG_BQXJjjfVXWO6qtcDeaA';
+
+webpush.setVapidDetails(
+  'mailto:tu_email@ejemplo.com', // Puedes cambiar esto por tu email real si quieres
+  publicVapidKey,
+  privateVapidKey
+);
+
+// --- FUNCIÓN GLOBAL PARA NOTIFICAR A TODOS LOS ADMINS ---
+global.sendPushNotification = (title, body) => {
+    const payload = JSON.stringify({ title, body });
+    const subscriptions = getSubscriptions();
+
+    subscriptions.forEach(subscription => {
+        webpush.sendNotification(subscription, payload).catch(err => {
+            console.error("Error enviando push:", err);
+            // Si da error 410 o 404, la suscripción ya no sirve (usuario borró caché), la quitamos
+            if (err.statusCode === 410 || err.statusCode === 404) {
+                removeSubscription(subscription.endpoint);
+            }
+        });
+    });
+};
 
 // =================================================================
 // 🛡️ MEJORA 1: ESCUDO ANTI-CAÍDAS (ANTI-CRASH)
@@ -116,7 +149,6 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 app.use(express.static('public'));
-app.use(express.json());
 
 // Inicializar DB
 initializeDB();
@@ -141,8 +173,8 @@ async function connectToWhatsApp() {
         logger: pino({ level: 'silent' }),
         keepAliveIntervalMs: 30000, 
         retryRequestDelayMs: 2000,      
-        connectTimeoutMs: 60000,       
-        syncFullHistory: false,        
+        connectTimeoutMs: 60000,        
+        syncFullHistory: false,         
         browser: ["CRM Bot", "Chrome", "2.0.0"],
     });
     
@@ -213,20 +245,17 @@ async function connectToWhatsApp() {
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, ''); 
             const incomingName = msg.pushName || ''; 
 
-            // === LÓGICA DE BLOQUEO ROBUSTA (TRIPLE VERIFICACIÓN + LIMPIEZA) ===
+            // === LÓGICA DE BLOQUEO ROBUSTA ===
             const isBlocked = allContacts.some(contact => {
-                // Solo revisamos contactos que estén explícitamente APAGADOS (false)
                 if (contact.bot_enabled !== false) return false; 
                 
-                // --- HELPER: NORMALIZAR CADENAS (Quitar acentos, emojis, espacios) ---
                 const normalizeString = (str) => {
                     if (!str) return '';
-                    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita acentos
-                              .replace(/[^a-zA-Z0-9]/g, "") // Quita emojis y símbolos
+                    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+                              .replace(/[^a-zA-Z0-9]/g, "") 
                               .toLowerCase();
                 };
 
-                // --- HELPER: NORMALIZAR TELÉFONOS (MX 10 Dígitos) ---
                 const normalizePhone = (ph) => {
                     if (!ph) return '';
                     let clean = ph.replace(/[^0-9]/g, '');
@@ -234,34 +263,24 @@ async function connectToWhatsApp() {
                     return clean;
                 };
 
-                // 1️⃣ CHECK POR TELÉFONO (Principal)
                 const dbPhoneNorm = normalizePhone(contact.phone || contact.id);
                 const incPhoneNorm = normalizePhone(incomingPhoneRaw);
                 if (dbPhoneNorm && incPhoneNorm && dbPhoneNorm === incPhoneNorm) return true;
 
-                // 2️⃣ CHECK POR TELÉFONO CRUDO (LIDs numéricos)
                 const rawDB = (contact.phone || '').replace(/[^0-9]/g, '');
                 if (rawDB.length > 5 && rawDB === incomingPhoneRaw) return true;
 
-                // 3️⃣ CHECK POR NOMBRE (Respaldo para LIDs y Contactos Descargados)
-                // Comparamos el nombre que llega (PushName) contra:
-                // A) El nombre que tú guardaste en la agenda (contact.name)
-                // B) El nombre de perfil que WhatsApp sincronizó antes (contact.notify)
-                
                 const incNameClean = normalizeString(incomingName);
                 const dbNameClean = normalizeString(contact.name);
-                const dbNotifyClean = normalizeString(contact.notify); // A veces se guarda aquí
+                const dbNotifyClean = normalizeString(contact.notify); 
 
-                // Regla de seguridad: El nombre debe tener al menos 3 letras para evitar falsos positivos
                 if (incNameClean.length < 3) return false;
 
-                // Comparación A: Nombre Guardado
                 if (dbNameClean && dbNameClean === incNameClean) {
                     console.log(`⛔ Bloqueo por Nombre Guardado: "${contact.name}"`);
                     return true;
                 }
 
-                // Comparación B: Nombre Notify (Sincronizado)
                 if (dbNotifyClean && dbNotifyClean === incNameClean) {
                     console.log(`⛔ Bloqueo por Nombre Sincronizado: "${contact.notify}"`);
                     return true;
@@ -291,9 +310,22 @@ async function connectToWhatsApp() {
         }
     });
 }
+
 // ==========================================
-//             RUTAS API
+//              RUTAS API
 // ==========================================
+
+app.post('/api/subscribe', (req, res) => {
+    const subscription = req.body;
+    saveSubscription(subscription);
+    res.status(201).json({});
+    console.log("🔔 Nueva suscripción Push registrada.");
+});
+
+// Ruta para obtener la llave pública (para el frontend)
+app.get('/api/vapid-key', (req, res) => {
+    res.json({ key: publicVapidKey });
+});
 
 app.get('/api/status', (req, res) => {
     const sessionPath = path.join(__dirname, authDir);
