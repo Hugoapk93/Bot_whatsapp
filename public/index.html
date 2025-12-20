@@ -464,6 +464,23 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Fail', err));
         }
+
+        // --- SOLUCIÓN PARA EL TECLADO EN MÓVIL ---
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                // Cuando el teclado cambia el tamaño de la pantalla...
+                const container = document.querySelector('.chat-msgs');
+                
+                // Esperamos un instante a que el navegador termine de redibujar
+                setTimeout(() => {
+                    // Forzamos el scroll hasta el último mensaje
+                    container.scrollTop = container.scrollHeight;
+                    
+                    // Aseguramos que el input siga visible
+                    document.getElementById('simInput').scrollIntoView({block: 'nearest'});
+                }, 100);
+            });
+        }
     };
 
     // FIX: Pedir permisos de notificación en el primer clic/toque en la pantalla
