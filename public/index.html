@@ -855,9 +855,37 @@
     function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
     async function saveNewContact() { const name = document.getElementById('newContName').value, phone = document.getElementById('newContPhone').value, enable = document.getElementById('newContEnable').checked; if(!phone) return; await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})}); document.getElementById('contactModal').classList.remove('active'); renderContacts(); }
 
-    function sendSim() { const t=document.getElementById('simInput'); if(!t.value)return; addMsg(t.value,true); fetch(`${API_BASE}/api/simulate/text`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:'5218991234567', text:t.value}) }); t.value=''; }
-    function addMsg(t, me) { document.getElementById('simMsgs').innerHTML+=`<div class="msg ${me?'user':'bot'}">${t}</div>`; const c=document.querySelector('.chat-msgs'); c.scrollTop=c.scrollHeight; }
+    // --- LÓGICA DE ENVÍO MEJORADA ---
+    function sendSim() { 
+        const t = document.getElementById('simInput'); 
+        if(!t.value.trim()) return; 
+        
+        // 1. Agregamos visualmente
+        addMsg(t.value, true); 
+        
+        // 2. Enviamos al servidor
+        fetch(`${API_BASE}/api/simulate/text`, { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({phone:'5218991234567', text:t.value}) 
+        }); 
+        
+        t.value = ''; 
+        
+        // 3. TRUCO CLAVE: Mantiene el teclado abierto en celular
+        t.focus(); 
+    }
 
+    function addMsg(t, me) { 
+        const box = document.getElementById('simMsgs');
+        box.innerHTML += `<div class="msg ${me?'user':'bot'}">${t}</div>`; 
+        
+        // 4. SCROLL CON RETRASO: Asegura que baje hasta el final
+        const c = document.querySelector('.chat-msgs'); 
+        setTimeout(() => {
+            c.scrollTop = c.scrollHeight;
+        }, 50);
+    }
     // --- PWA INSTALLATION (Re-added & Improved) ---
     window.addEventListener('beforeinstallprompt', (e) => { 
         e.preventDefault(); 
