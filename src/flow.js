@@ -555,9 +555,9 @@ const handleMessage = async (sock, msg) => {
                         }
 
                         // Limpieza
-                        delete user.history['fecha_cita'];
-                        delete user.history['hora_cita'];
-                        delete user.history['fecha']; // Limpiamos también la variable original
+                        //delete user.history['fecha_cita'];
+                        //delete user.history['hora_cita'];
+                        //delete user.history['fecha'];
                         await updateUser(dbKey, { history: user.history });
                         
                         if (!nextStepConfig.next_step) return;
