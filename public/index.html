@@ -287,8 +287,12 @@
                 <div class="chat-container-wrapper">
                     <div class="chat-msgs" id="simMsgs"></div>
                     <div style="padding:15px; border-top:1px solid var(--border); display:flex; gap:10px;">
-                        <input type="text" id="simInput" placeholder="Escribe..." style="margin:0;">
-                        <button onclick="sendSim()" class="btn-primary" style="width:auto;"><i class="fas fa-paper-plane"></i></button>
+                        <input type="text" id="simInput" placeholder="Escribe..." style="margin:0;" 
+                               onkeyup="if(event.key === 'Enter') sendSim()">
+                        
+                        <button onmousedown="event.preventDefault()" onclick="sendSim()" class="btn-primary" style="width:auto;">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
                     </div>
                 </div>
             </div>
