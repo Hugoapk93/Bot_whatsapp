@@ -578,6 +578,12 @@ const handleMessage = async (sock, msg) => {
             if (!nextStepId) nextStepId = targetStep;
         }
     }
+
+    if (nextStepId) {
+        console.log(`➡️ Avanzando al paso: ${nextStepId}`);
+        await updateUser(dbKey, { current_step: nextStepId });
+        await sendStepMessage(sock, remoteJid, nextStepId, getUser(dbKey));
+    }
 };
 
 module.exports = { handleMessage, sendStepMessage };
