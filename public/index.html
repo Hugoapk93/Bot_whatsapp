@@ -473,14 +473,14 @@
                     // --- LOGICA NUEVA: FORMATEAR VARIABLES ---
                     let varsHtml = '<span style="color:var(--text-muted); font-size:0.8rem;">-</span>';
                     
-                    // Verificamos si el usuario tiene variables guardadas
-                    if (u.variables && Object.keys(u.variables).length > 0) {
+                    // CORRECCIÓN: Usamos 'history' en lugar de 'variables'
+                    if (u.history && Object.keys(u.history).length > 0) {
                         varsHtml = '';
-                        Object.keys(u.variables).forEach(key => {
+                        Object.keys(u.history).forEach(key => {
                             // Muestra: Nombre: Juan (en pequeñito)
                             varsHtml += `<div style="font-size:0.85rem; white-space:nowrap;">
                                 <span style="color:#64748b; font-weight:bold;">${key}:</span> 
-                                <span style="color:var(--text-main);">${u.variables[key]}</span>
+                                <span style="color:var(--text-main);">${u.history[key]}</span>
                             </div>`;
                         });
                     }
