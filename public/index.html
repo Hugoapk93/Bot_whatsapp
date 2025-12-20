@@ -84,7 +84,7 @@
         /* Flow & Chat */
         .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .chat-msgs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; overflow-anchor: none }
+        .chat-msgs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
         .msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; }
         .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; }
         .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; }
@@ -105,9 +105,15 @@
             .day { height: auto; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-start; }
             
             #view-sim.active.view-padding { padding: 0 !important; }
-            .chat-container-wrapper { border: none; border-radius: 0; }
-        }
 
+            #view-sim { height: 100dvh; display: flex; flex-direction: column; }
+            .chat-container-wrapper { 
+                border: none; 
+                border-radius: 0; 
+                flex: 1; 
+                height: 100%;
+            }
+        }
         /* Utils & Modals */
         .step-hidden { display: none !important; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
@@ -440,8 +446,8 @@
 
     window.onload = () => {
         document.getElementById('setupWizard').classList.remove('step-hidden');
-        // FIX: No pedir permiso al cargar, esperar a la interacción del usuario
         
+        // 1. LÓGICA DE CONEXIÓN Y WIZARD
         const checkStatus = async () => {
             try {
                 const res = await (await fetch(`${API_BASE}/api/status`)).json();
@@ -460,25 +466,33 @@
         };
         checkStatus();
 
-        // --- PWA SERVICE WORKER REGISTRATION (Re-added) ---
+        // 2. SERVICE WORKER
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Fail', err));
         }
 
-        // --- SOLUCIÓN PARA EL TECLADO EN MÓVIL ---
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                // Cuando el teclado cambia el tamaño de la pantalla...
-                const container = document.querySelector('.chat-msgs');
-                
-                // Esperamos un instante a que el navegador termine de redibujar
+        // 3. --- SOLUCIÓN PARA EL TECLADO EN MÓVIL (CORREGIDA) ---
+        // Usamos el evento 'focus' directo en el input, que es más agresivo y fiable
+        const simInput = document.getElementById('simInput');
+        
+        if (simInput) {
+            // A) Cuando tocas para escribir (Sube el teclado)
+            simInput.addEventListener('focus', () => {
+                // Esperamos 300ms a que el teclado termine de subir
                 setTimeout(() => {
-                    // Forzamos el scroll hasta el último mensaje
-                    container.scrollTop = container.scrollHeight;
-                    
-                    // Aseguramos que el input siga visible
-                    document.getElementById('simInput').scrollIntoView({block: 'nearest'});
-                }, 100);
+                    const c = document.getElementById('simMsgs'); // El contenedor de mensajes
+                    if (c) {
+                        c.scrollTop = c.scrollHeight; // Scroll hasta abajo
+                    }
+                    // Forzamos al cuerpo de la página a no moverse (evita saltos raros)
+                    window.scrollTo(0, 0);
+                }, 300);
+            });
+            
+            // B) Mientras escribes (para que el texto no se oculte si escribes mucho)
+            simInput.addEventListener('input', () => {
+                 const c = document.getElementById('simMsgs');
+                 if (c) c.scrollTop = c.scrollHeight;
             });
         }
     };
