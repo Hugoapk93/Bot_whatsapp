@@ -145,60 +145,67 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         addManualContact(cleanPhone, contactName, false);
     }
 
-    // --- NOTIFICACIÓN AL ADMIN (FILTRO) DINÁMICA & MULTI-MENSAJE ---
-    if (step.type === 'filtro' && step.admin_number) {
-        const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
-        const cleanClientPhone = jid.replace(/[^0-9]/g, '');
-        const hist = userData.history || {};
-
-        // 1. Enviar Ficha Principal
-        let adminMsg = `🔔 *Solicitud de Aprobación*\n\n`;
-        adminMsg += `🆔 *ID:* ${cleanClientPhone}\n`;
-        adminMsg += `------------------------------\n`;
-
-        const keys = Object.keys(hist);
-        if (keys.length > 0) {
-            keys.forEach(key => {
-                const val = hist[key];
-                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                adminMsg += `📄 *${label}:* ${val}\n`;
-            });
-        } else {
-            adminMsg += `(Sin datos capturados aún)\n`;
-        }
-
-        adminMsg += `------------------------------\n`;
-        adminMsg += `🤖 *Bot:* "${messageText}"\n\n`;
-        adminMsg += `👇 *Escribe una opción (copia y pega):*`;
-
-        try { await sock.sendMessage(adminJid, { text: adminMsg }); } catch (e) {}
-
-        // 2. Enviar Botones Individuales (Mensajes Separados)
-        const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
-
-        if(step.options && Array.isArray(step.options)){
-            for (let idx = 0; idx < step.options.length; idx++) {
-                const opt = step.options[idx];
-                const icon = emojis[idx] || '👉';
-                const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
-                await new Promise(r => setTimeout(r, 200));
-                try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
-            }
-        } else {
-             await new Promise(r => setTimeout(r, 200));
-             try { await sock.sendMessage(adminJid, { text: `👉 Aprobar ${cleanClientPhone}` }); } catch (e) {}
-             await new Promise(r => setTimeout(r, 200));
-             try { await sock.sendMessage(adminJid, { text: `👉 Rechazar ${cleanClientPhone}` }); } catch (e) {}
-        }
-
-        console.log(`👮 Notificación enviada al Admin: ${step.admin_number}`);
+    // ==========================================================
+    // NOTIFICACIÓN AL ADMIN (FILTRO) - LÓGICA MEJORADA
+    // ==========================================================
+    // Si el paso es tipo FILTRO, SIEMPRE notificamos al Monitor (Push)
+    if (step.type === 'filtro') {
         
-        // ---> TRIGGER PUSH NOTIFICATION (ADMIN) <---
+        const cleanClientPhone = jid.replace(/[^0-9]/g, '');
+        
+        // 1. SIEMPRE MANDAR PUSH AL MONITOR / APP
         if (global.sendPushNotification) {
              global.sendPushNotification(
                  "⚠️ Solicitud Pendiente", 
                  `El cliente ${cleanClientPhone} requiere aprobación.`
              );
+        }
+
+        // 2. WHATSAPP AL ADMIN (SOLO SI HAY NUMERO CONFIGURADO)
+        // Esto ahora es opcional. Si está vacío, no manda nada y no rompe el flujo.
+        if (step.admin_number) {
+            const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
+            const hist = userData.history || {};
+
+            // Construir Ficha
+            let adminMsg = `🔔 *Solicitud de Aprobación*\n\n`;
+            adminMsg += `🆔 *ID:* ${cleanClientPhone}\n`;
+            adminMsg += `------------------------------\n`;
+
+            const keys = Object.keys(hist);
+            if (keys.length > 0) {
+                keys.forEach(key => {
+                    const val = hist[key];
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    adminMsg += `📄 *${label}:* ${val}\n`;
+                });
+            } else {
+                adminMsg += `(Sin datos capturados aún)\n`;
+            }
+
+            adminMsg += `------------------------------\n`;
+            adminMsg += `🤖 *Bot:* "${messageText}"\n\n`;
+            adminMsg += `👇 *Escribe una opción (copia y pega):*`;
+
+            try { await sock.sendMessage(adminJid, { text: adminMsg }); } catch (e) {}
+
+            // Enviar Botones
+            const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+            if(step.options && Array.isArray(step.options)){
+                for (let idx = 0; idx < step.options.length; idx++) {
+                    const opt = step.options[idx];
+                    const icon = emojis[idx] || '👉';
+                    const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
+                    await new Promise(r => setTimeout(r, 200));
+                    try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
+                }
+            } else {
+                 await new Promise(r => setTimeout(r, 200));
+                 try { await sock.sendMessage(adminJid, { text: `👉 Aprobar ${cleanClientPhone}` }); } catch (e) {}
+                 await new Promise(r => setTimeout(r, 200));
+                 try { await sock.sendMessage(adminJid, { text: `👉 Rechazar ${cleanClientPhone}` }); } catch (e) {}
+            }
+            console.log(`👮 WhatsApp enviado al Admin: ${step.admin_number}`);
         }
     }
 
