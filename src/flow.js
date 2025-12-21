@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { proto } = require('@whiskeysockets/baileys');
 
-console.log("✅ CÓDIGO CARGADO: Botones con Header v3");
+console.log("✅ CÓDIGO CARGADO: Modo Lista Forzada (Estabilidad Máxima)");
 
 // --- CONFIGURACIÓN ---
 const SIMULATOR_PHONE = '5218991234567';
@@ -131,7 +131,6 @@ const typing = async (sock, jid, length) => {
 // --- ENVÍO DE MENSAJES (Manejador de Botones) ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     
-    // CORRECCIÓN JID: Asegurar que no enviamos a @lid si tenemos el número
     let targetJid = jid;
     if (jid.includes('@lid') || !jid.includes('@s.whatsapp.net')) {
         if (userData.phone) {
@@ -190,7 +189,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     try { await typing(sock, targetJid, messageText.length); } catch (e) {}
 
     // -----------------------------------------------------------------
-    //  🚀 LÓGICA DE INTERACTIVE MESSAGES (BOTONES Y LISTAS)
+    //  🚀 LÓGICA DE INTERACTIVE MESSAGES (MODO LISTA SIEMPRE)
     // -----------------------------------------------------------------
     
     if (esSimulador(targetJid)) {
@@ -206,71 +205,45 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     // ¿Es un menú con opciones?
     if (step.type === 'menu' && step.options && step.options.length > 0) {
         try {
-            const isList = step.options.length > 3;
+            // ESTRATEGIA: USAR SIEMPRE LISTAS. 
+            // Las listas son mucho más estables que los botones simples y no dan error 400.
+            
+            const sections = [{
+                title: "Opciones Disponibles",
+                rows: step.options.map((opt) => ({
+                    header: "",
+                    title: opt.label,
+                    description: "", // Descripción opcional
+                    id: opt.trigger 
+                }))
+            }];
 
-            if (isList) {
-                // --- MODO LISTA ---
-                const sections = [{
-                    title: "Opciones",
-                    rows: step.options.map((opt) => ({
-                        header: "",
-                        title: opt.label,
-                        description: "", 
-                        id: opt.trigger 
-                    }))
-                }];
-                const listMessage = {
-                    viewOnceMessage: {
-                        message: {
-                            interactiveMessage: {
-                                header: { title: "Menú" }, 
-                                body: { text: messageText },
-                                footer: { text: "Selecciona una opción" },
-                                nativeFlowMessage: {
-                                    buttons: [{
-                                        name: "single_select",
-                                        buttonParamsJson: JSON.stringify({
-                                            title: "Ver Opciones",
-                                            sections: sections
-                                        })
-                                    }]
-                                }
+            const listMessage = {
+                viewOnceMessage: {
+                    message: {
+                        interactiveMessage: {
+                            header: { title: "MENÚ" }, // Las listas SÍ aceptan y requieren Header
+                            body: { text: messageText },
+                            footer: { text: "Selecciona una opción 👇" },
+                            nativeFlowMessage: {
+                                buttons: [{
+                                    name: "single_select",
+                                    buttonParamsJson: JSON.stringify({
+                                        title: "Ver Opciones", // Texto del botón principal
+                                        sections: sections
+                                    })
+                                }]
                             }
                         }
                     }
-                };
-                await sock.sendMessage(targetJid, listMessage);
-            } else {
-                // --- MODO BOTONES (Quick Reply) ---
-                const buttons = step.options.map((opt) => ({
-                    name: "quick_reply",
-                    buttonParamsJson: JSON.stringify({
-                        display_text: opt.label,
-                        id: opt.trigger
-                    })
-                }));
-                const btnMessage = {
-                    viewOnceMessage: {
-                        message: {
-                            interactiveMessage: {
-                                // CORRECCIÓN: Agregamos Título en header para evitar error 400
-                                header: { title: "Opciones", hasMediaAttachment: false }, 
-                                body: { text: messageText },
-                                footer: { text: "👇" },
-                                nativeFlowMessage: {
-                                    buttons: buttons
-                                }
-                            }
-                        }
-                    }
-                };
-                await sock.sendMessage(targetJid, btnMessage);
-            }
+                }
+            };
+            
+            await sock.sendMessage(targetJid, listMessage);
             return; 
 
         } catch (err) {
-            // Este log se verá en 'pm2 logs' si falla, pero el bot no morirá
-            console.error("⚠️ Fallaron los botones, enviando texto plano:", err.message);
+            console.error("⚠️ Fallaron las listas, enviando texto plano:", err.message);
         }
     }
 
@@ -298,7 +271,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (!sent && messageText) {
-        // Fallback texto menú si los botones fallaron arriba (el catch deja seguir el flujo)
+        // Fallback texto menú si falla lo anterior
         if (step.type === 'menu' && step.options) {
              messageText += '\n';
              step.options.forEach((opt, idx) => messageText += `\n${idx+1}. ${opt.label}`);
