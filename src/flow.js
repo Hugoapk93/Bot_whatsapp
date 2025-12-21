@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { proto, generateWAMessageFromContent } = require('@whiskeysockets/baileys');
 
-console.log("✅ CÓDIGO CARGADO: v5 (Soporte Híbrido LID + Real)");
+console.log("✅ CÓDIGO CARGADO: v7 (Botones Nativos Estándar)");
 
 // --- CONFIGURACIÓN ---
 const SIMULATOR_PHONE = '5218991234567';
@@ -128,14 +128,14 @@ const typing = async (sock, jid, length) => {
     await sock.sendPresenceUpdate('paused', jid);
 };
 
-// --- ENVÍO DE MENSAJES (Manejador de Botones) ---
+// --- ENVÍO DE MENSAJES ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     
-    // CAMBIO V5: Aceptamos el JID tal cual viene (sea LID o Real)
-    // Solo hacemos limpieza si es necesario, pero no bloqueamos LIDs.
-    let targetJid = jid;
+    // Detectamos LID
+    const isLid = jid.includes('@lid');
+    const isSim = esSimulador(jid);
     
-    console.log(`📤 Enviando paso: ${stepId} a ${targetJid}`);
+    console.log(`📤 Enviando paso: ${stepId} a ${jid} (¿Es LID?: ${isLid})`);
     
     let step = getFlowStep(stepId);
 
@@ -148,7 +148,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     let messageText = step.message || "";
     const settings = getSettings();
 
-    // Reemplazo de Variables
+    // Variables
     const mxDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
     const hour = mxDate.getHours();
     let saludo = 'Hola';
@@ -166,8 +166,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (step.type === 'fin_bot') {
-        // Intento de limpiar para guardar contacto, pero si es LID se guarda tal cual
-        const cleanPhone = targetJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
         const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
         addManualContact(cleanPhone, contactName, false);
     }
@@ -177,74 +176,72 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (step.type === 'filtro') {
-        const cleanClientPhone = targetJid.replace(/[^0-9]/g, ''); // Si es LID saldrá el hash, es normal
         if (global.sendPushNotification) {
              global.sendPushNotification("⚠️ Solicitud Pendiente", `Cliente requiere aprobación.`);
         }
     }
 
-    try { await typing(sock, targetJid, messageText.length); } catch (e) {}
+    try { await typing(sock, jid, messageText.length); } catch (e) {}
 
     // -----------------------------------------------------------------
-    //  🚀 LÓGICA DE INTERACTIVE MESSAGES
+    //  🚀 LÓGICA DE MENSAJES (SOPORTE HÍBRIDO)
     // -----------------------------------------------------------------
     
-    if (esSimulador(targetJid)) {
-        enviarAlFrontend(targetJid, messageText, 'text');
-        if(step.options && step.options.length > 0) {
-            let helpText = "👉 Opciones:\n";
-            step.options.forEach((opt, idx) => helpText += `[${opt.label}]\n`);
-            enviarAlFrontend(targetJid, helpText, 'text');
+    // CASO 1: SIMULADOR o LID -> TEXTO PLANO (Seguro)
+    if (isSim || isLid) {
+        // Enviar Texto Base
+        if (step.type === 'menu' && step.options && step.options.length > 0) {
+            let menuText = messageText + "\n";
+            step.options.forEach((opt, idx) => {
+                menuText += `\n${idx + 1}. *${opt.label}*`; 
+            });
+            menuText += "\n\n(Escribe el número o el nombre)";
+            
+            if(isSim) enviarAlFrontend(jid, menuText, 'text');
+            else await sock.sendMessage(jid, { text: menuText });
+            return;
         }
-        return; 
     }
 
+    // CASO 2: NÚMERO REAL -> BOTONES INTERACTIVOS (NATIVE FLOW)
+    // Usamos BOTONES (Quick Reply), no Listas, porque son más robustos.
     if (step.type === 'menu' && step.options && step.options.length > 0) {
         try {
-            const sections = [{
-                title: "Opciones Disponibles",
-                rows: step.options.map((opt) => ({
-                    header: "",
-                    title: opt.label,
-                    description: "",
-                    id: opt.trigger 
-                }))
-            }];
+            const buttons = step.options.map((opt) => ({
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: opt.label,
+                    id: opt.trigger
+                })
+            }));
 
             const msgContent = {
                 viewOnceMessage: {
                     message: {
                         interactiveMessage: {
-                            // Sin header para evitar errores 400
-                            body: { text: `*MENÚ DE OPCIONES*\n\n${messageText}` },
+                            // Título de TEXTO (Sin media, para evitar 400 y evitar silent drop)
+                            header: { title: "Opciones", hasMediaAttachment: false },
+                            body: { text: messageText },
                             footer: { text: "Selecciona una opción 👇" },
                             nativeFlowMessage: {
-                                buttons: [{
-                                    name: "single_select",
-                                    buttonParamsJson: JSON.stringify({
-                                        title: "Ver Lista",
-                                        sections: sections
-                                    })
-                                }]
+                                buttons: buttons
                             }
                         }
                     }
                 }
             };
 
-            const waMsg = generateWAMessageFromContent(targetJid, msgContent, { userJid: sock.user.id });
-            await sock.relayMessage(targetJid, waMsg.message, { messageId: waMsg.key.id });
+            // Usamos sendMessage estándar, que Baileys maneja mejor para encriptación
+            await sock.sendMessage(jid, msgContent);
             return; 
 
         } catch (err) {
-            console.error("⚠️ Error enviando Lista (Posiblemente LID no soportado), enviando texto:", err.message);
-            // El catch permite que el código continúe abajo al fallback
+            console.error("⚠️ Fallaron los botones, fallback a texto:", err);
+            // El código sigue abajo al fallback
         }
     }
 
-    // --- FALLBACK / TEXTO NORMAL / MEDIA ---
-    // (Esto se ejecuta si no hay menú o si el envío de lista falló)
-    
+    // --- FALLBACK / MEDIA / TEXTO SIMPLE ---
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
     let sent = false;
 
@@ -259,7 +256,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             if (imageToSend) {
                 const caption = (i === 0) ? messageText : "";
                 try {
-                    await sock.sendMessage(targetJid, { image: { url: imageToSend }, caption: caption });
+                    await sock.sendMessage(jid, { image: { url: imageToSend }, caption: caption });
                     sent = true;
                     if(mediaList.length > 1) await new Promise(r => setTimeout(r, 500));
                 } catch (e) {}
@@ -268,20 +265,20 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (!sent && messageText) {
-        // Fallback visual de menú si falló la lista
-        if (step.type === 'menu' && step.options) {
+        // Fallback visual
+        if (step.type === 'menu' && step.options && !isLid && !isSim) { 
              messageText += '\n';
              step.options.forEach((opt, idx) => messageText += `\n${idx+1}. ${opt.label}`);
         }
-        await sock.sendMessage(targetJid, { text: messageText });
+        await sock.sendMessage(jid, { text: messageText });
     }
 
     if (step.type === 'message' && step.next_step) {
         setTimeout(async () => {
-            const freshUser = getUser(userData.phone); // Nota: userData.phone aquí es la Key de la DB (puede ser LID o número)
+            const freshUser = getUser(userData.phone);
             if (freshUser && freshUser.current_step !== stepId && freshUser.current_step !== step.next_step) return;
             await updateUser(userData.phone, { current_step: step.next_step });
-            await sendStepMessage(sock, targetJid, step.next_step, getUser(userData.phone));
+            await sendStepMessage(sock, jid, step.next_step, getUser(userData.phone));
         }, 1500);
     }
 };
@@ -312,20 +309,14 @@ const handleMessage = async (sock, msg) => {
     text = (text || '').trim();
     if (!text) return; 
 
-    // LIMPIEZA CLAVE: Usamos el ID tal cual viene para asegurar respuesta
+    // ID Único (LID o Real)
     let dbKey = remoteJid.split('@')[0].replace(/:[0-9]+/, ''); 
-    // Si es LID, la dbKey será larga. Si es número, será corta. Ambos sirven como ID único.
-    
     let user = getUser(dbKey);
-
-    // Intento de compatibilidad: Si llega un número normal pero tenemos guardado un LID (o viceversa), es difícil saberlo sin la sesión.
-    // Por eso, confiamos en el ID que llega en este mensaje.
 
     const timestamp = new Date().toISOString();
 
     if (!user) {
         console.log(`✨ Nuevo Cliente Detectado (${dbKey})`);
-        // Guardamos 'phone' como el ID de la base de datos para consistencia
         await updateUser(dbKey, { phone: dbKey, current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
         user = getUser(dbKey);
     } else {
@@ -349,8 +340,7 @@ const handleMessage = async (sock, msg) => {
         }
     }
 
-    // 1. ADMIN - Mantenemos lógica de Admin solo para números reales si es posible
-    // Si el admin envía desde un LID, tendríamos que agregar su LID al paso 'filtro'.
+    // 1. ADMIN
     const words = cleanText.split(/\s+/);
     let targetClientPhone = null;
     let commandOption = "";
@@ -358,7 +348,6 @@ const handleMessage = async (sock, msg) => {
     for (const word of words) {
         const potentialNum = word.replace(/[^0-9]/g, '');
         if (potentialNum.length >= 10 && potentialNum.length <= 13) {
-            // Buscamos si existe ese número en la DB
             let checkUser = getUser(potentialNum);
             if (!checkUser && potentialNum.startsWith('52') && potentialNum.length === 12) checkUser = getUser('521' + potentialNum.slice(2));
             if (!checkUser && potentialNum.length === 10) checkUser = getUser('521' + potentialNum);
@@ -386,7 +375,7 @@ const handleMessage = async (sock, msg) => {
                 await sock.sendMessage(remoteJid, { text: `✅ Acción: ${match.label}` });
                 await updateUser(targetClientPhone, { current_step: match.next_step });
                 
-                // Responder al JID que tenga ese usuario guardado (sea LID o real)
+                // Responder al JID del usuario
                 await sendStepMessage(sock, targetUser.jid || targetClientPhone + '@s.whatsapp.net', match.next_step, targetUser);
                 return;
             }
