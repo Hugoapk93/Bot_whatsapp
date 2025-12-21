@@ -10,12 +10,11 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Fuerza al SW a activarse de inmediato
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Cacheando archivos...');
-        // Usamos map para que si falla UNO (ej. fonts), no rompa toda la instalación
         return Promise.all(
           urlsToCache.map(url => {
             return cache.add(url).catch(err => console.log('Fallo cachear:', url));
@@ -38,25 +37,31 @@ self.addEventListener('activate', event => {
       );
     })
   );
-  self.clients.claim(); // Toma control de la página inmediatamente
+  self.clients.claim();
 });
 
+// --- PUSH RECIBIDO (Segundo plano) ---
 self.addEventListener('push', event => {
-  const data = event.data.json();
-  console.log('Push recibido:', data);
+  console.log('🔔 Push recibido en SW'); // Log para confirmar llegada
+  
+  let data = { title: 'Notificación', body: 'Nuevo evento' };
+  
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      console.log('Push no es JSON:', event.data.text());
+      data.body = event.data.text();
+    }
+  }
 
   const options = {
     body: data.body,
-    icon: 'logo.svg', // Asegúrate que este archivo exista
+    icon: 'logo.svg', 
     badge: 'logo.svg',
-    vibrate: [100, 50, 100], // Patrón de vibración
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
-    actions: [
-      {action: 'explore', title: 'Ver Monitor'}
-    ]
+    vibrate: [100, 50, 100],
+    data: { url: './index.html' }, // Guardamos la URL destino aquí
+    requireInteraction: true // Mantiene la notificación hasta que el usuario la toque
   };
 
   event.waitUntil(
@@ -66,18 +71,22 @@ self.addEventListener('push', event => {
 
 // --- CLIC EN LA NOTIFICACIÓN ---
 self.addEventListener('notificationclick', event => {
+  console.log('👆 Click en notificación');
   event.notification.close();
-  // Al hacer clic, abre la ventana del monitor
+
   event.waitUntil(
-    clients.matchAll({type: 'window'}).then( windowClients => {
-      for (var i = 0; i < windowClients.length; i++) {
-        var client = windowClients[i];
-        if (client.url === '/' && 'focus' in client) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      // Intentar enfocar una ventana ya abierta
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        // Verificamos si la URL contiene tu dominio base, no solo '/'
+        if (client.url.includes(self.registration.scope) && 'focus' in client) {
           return client.focus();
         }
       }
+      // Si no hay ventana, abrir una nueva
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow('./index.html');
       }
     })
   );
