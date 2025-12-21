@@ -525,6 +525,36 @@ const gracefulShutdown = () => {
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
+// --- RUTA DE PRUEBA DE NOTIFICACIONES ---
+app.get('/api/test-push', (req, res) => {
+    const subs = getSubscriptions();
+    console.log(`🔎 TEST PUSH: Intentando enviar a ${subs.length} dispositivos.`);
+    
+    if (subs.length === 0) {
+        return res.json({ success: false, message: "❌ No hay nadie suscrito. Ve al inicio y activa las alertas." });
+    }
+
+    const payload = JSON.stringify({ 
+        title: "🔔 Prueba de Sistema", 
+        body: "¡Si lees esto, el sistema funciona al 100%!" 
+    });
+
+    // Enviar a todos y reportar resultados en la consola
+    subs.forEach(sub => {
+        webpush.sendNotification(sub, payload)
+            .then(() => console.log(`✅ Enviado éxito a: ...${sub.endpoint.slice(-10)}`))
+            .catch(err => {
+                console.error(`❌ Fallo envío: ${err.statusCode}`, err.body || err);
+                if (err.statusCode === 410 || err.statusCode === 404) {
+                    removeSubscription(sub.endpoint);
+                    console.log("🗑️ Suscripción basura eliminada.");
+                }
+            });
+    });
+    
+    res.json({ success: true, message: "Enviando... Revisa la consola del servidor (terminal) para ver el resultado." });
+});
+
 // ARRANCAR EL BOT
 server.listen(PORT, () => {
     console.log(`🚀 Torre de Control Local + Sockets en puerto: ${PORT}`);
