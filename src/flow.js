@@ -2,7 +2,6 @@ const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow
 const { isBotDisabled, addManualContact } = require('./contacts');
 const fs = require('fs');
 const path = require('path');
-// Importamos proto por si necesitamos estructuras avanzadas
 const { proto } = require('@whiskeysockets/baileys');
 
 // --- CONFIGURACIÓN ---
@@ -129,16 +128,24 @@ const typing = async (sock, jid, length) => {
 
 // --- ENVÍO DE MENSAJES (Manejador de Botones) ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
-    console.log(`📤 Enviando paso: ${stepId} a ${jid}`);
     
-    // CORRECCIÓN JID: Asegurar que no enviamos a @lid si tenemos el número
-    if (jid.includes('@lid')) {
-        // Intentar rescatar el número del userData si existe, sino limpiarlo
-        if (userData.phone && !userData.phone.includes('@')) {
-            jid = userData.phone.includes('@') ? userData.phone : `${userData.phone}@s.whatsapp.net`;
+    // ==========================================================
+    // 🚨 CORRECCIÓN CRÍTICA DE JID (Evita error @lid)
+    // ==========================================================
+    let targetJid = jid;
+
+    // Si el JID es interno (@lid) o temporal, forzamos usar el número real de la DB
+    if (jid.includes('@lid') || !jid.includes('@s.whatsapp.net')) {
+        if (userData.phone) {
+            // Limpiamos el número de la DB para asegurarnos
+            const cleanNum = userData.phone.replace(/[^0-9]/g, '');
+            targetJid = cleanNum + '@s.whatsapp.net';
+            console.log(`⚠️ JID corregido: ${jid} -> ${targetJid}`);
         }
     }
-
+    
+    console.log(`📤 Enviando paso: ${stepId} a ${targetJid}`);
+    
     let step = getFlowStep(stepId);
 
     if (!step && stepId === INITIAL_STEP) {
@@ -168,7 +175,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (step.type === 'fin_bot') {
-        const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        const cleanPhone = targetJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
         const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
         addManualContact(cleanPhone, contactName, false);
     }
@@ -179,29 +186,27 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     // Notificación Push para Filtros
     if (step.type === 'filtro') {
-        const cleanClientPhone = jid.replace(/[^0-9]/g, '');
+        const cleanClientPhone = targetJid.replace(/[^0-9]/g, '');
         if (global.sendPushNotification) {
              global.sendPushNotification(
                  "⚠️ Solicitud Pendiente", 
                  `El cliente ${cleanClientPhone} requiere aprobación.`
              );
         }
-        // Nota: Quitamos el envío de mensaje al admin aquí para simplificar, 
-        // ya que la prioridad es que funcione el flujo con el cliente.
     }
 
-    try { await typing(sock, jid, messageText.length); } catch (e) {}
+    try { await typing(sock, targetJid, messageText.length); } catch (e) {}
 
     // -----------------------------------------------------------------
     //  🚀 LÓGICA DE INTERACTIVE MESSAGES (BOTONES Y LISTAS)
     // -----------------------------------------------------------------
     
-    if (esSimulador(jid)) {
-        enviarAlFrontend(jid, messageText, 'text');
+    if (esSimulador(targetJid)) {
+        enviarAlFrontend(targetJid, messageText, 'text');
         if(step.options && step.options.length > 0) {
             let helpText = "👉 Opciones:\n";
             step.options.forEach((opt, idx) => helpText += `[${opt.label}]\n`);
-            enviarAlFrontend(jid, helpText, 'text');
+            enviarAlFrontend(targetJid, helpText, 'text');
         }
         return; 
     }
@@ -228,7 +233,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                     viewOnceMessage: {
                         message: {
                             interactiveMessage: {
-                                header: { title: "Menú" }, // Lista requiere título en header
+                                header: { title: "Menú" }, // Lista REQUIERE header con título
                                 body: { text: messageText },
                                 footer: { text: "Selecciona una opción" },
                                 nativeFlowMessage: {
@@ -244,11 +249,10 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                         }
                     }
                 };
-                await sock.sendMessage(jid, listMessage);
+                await sock.sendMessage(targetJid, listMessage);
 
             } else {
-                // --- MODO BOTONES (CORREGIDO) ---
-                // Eliminamos 'header' si no es necesario para evitar error 400 'Invalid media type'
+                // --- MODO BOTONES (Quick Reply) ---
                 const buttons = step.options.map((opt) => ({
                     name: "quick_reply",
                     buttonParamsJson: JSON.stringify({
@@ -263,7 +267,8 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                             interactiveMessage: {
                                 body: { text: messageText },
                                 footer: { text: "👇 Elige una opción" },
-                                // CORRECCIÓN: Quitamos el header vacío. Si quieres header, pon { title: "Titulo" }
+                                // ⚠️ IMPORTANTE: ELIMINAMOS EL HEADER EN BOTONES DE TEXTO
+                                // Si pones header vacío aquí, WhatsApp tira error 400.
                                 nativeFlowMessage: {
                                     buttons: buttons
                                 }
@@ -271,13 +276,12 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                         }
                     }
                 };
-                await sock.sendMessage(jid, btnMessage);
+                await sock.sendMessage(targetJid, btnMessage);
             }
-            return; // Éxito, salimos.
+            return; // Éxito
 
         } catch (err) {
             console.error("❌ Error enviando botones (Fallback a texto):", err);
-            // Si fallan los botones, el flujo sigue abajo y envía texto normal.
         }
     }
 
@@ -296,7 +300,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             if (imageToSend) {
                 const caption = (i === 0) ? messageText : "";
                 try {
-                    await sock.sendMessage(jid, { image: { url: imageToSend }, caption: caption });
+                    await sock.sendMessage(targetJid, { image: { url: imageToSend }, caption: caption });
                     sent = true;
                     if(mediaList.length > 1) await new Promise(r => setTimeout(r, 500));
                 } catch (e) {}
@@ -305,12 +309,12 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (!sent && messageText) {
-        // Opción Texto simple + Lista de opciones manual
+        // Opción Texto simple + Lista de opciones manual (Fallback visual)
         if (step.type === 'menu' && step.options) {
              messageText += '\n';
              step.options.forEach((opt, idx) => messageText += `\n${idx+1}. ${opt.label}`);
         }
-        await sock.sendMessage(jid, { text: messageText });
+        await sock.sendMessage(targetJid, { text: messageText });
     }
 
     // Auto-avance
@@ -319,7 +323,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             const freshUser = getUser(userData.phone);
             if (freshUser && freshUser.current_step !== stepId && freshUser.current_step !== step.next_step) return;
             await updateUser(userData.phone, { current_step: step.next_step });
-            await sendStepMessage(sock, jid, step.next_step, getUser(userData.phone));
+            await sendStepMessage(sock, targetJid, step.next_step, getUser(userData.phone));
         }, 1500);
     }
 };
@@ -331,14 +335,14 @@ const handleMessage = async (sock, msg) => {
     if (isBotDisabled(remoteJid)) return;
     if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
 
-    // 1. OBTENCIÓN DEL TEXTO (Híbrida: Texto Normal vs Respuesta de Botón)
+    // 1. OBTENCIÓN DEL TEXTO
     let text = '';
     
     // A) Texto Normal
     if (msg.message?.conversation) text = msg.message.conversation;
     else if (msg.message?.extendedTextMessage?.text) text = msg.message.extendedTextMessage.text;
     
-    // B) Respuesta de Botón Interactivo (Native Flow)
+    // B) Respuesta de Botón
     else if (msg.message?.interactiveResponseMessage) {
         const resp = msg.message.interactiveResponseMessage;
         try {
@@ -348,34 +352,35 @@ const handleMessage = async (sock, msg) => {
             }
         } catch(e) { console.log("Error parseando botón:", e); }
     }
-    
-    // C) Legacy
     else if (msg.message?.listResponseMessage) text = msg.message.listResponseMessage.singleSelectReply.selectedRowId;
     else if (msg.message?.templateButtonReplyMessage) text = msg.message.templateButtonReplyMessage.selectedId;
 
     text = (text || '').trim();
     if (!text) return; 
 
-    // --- INICIO LÓGICA COMÚN ---
+    // --- CORRECCIÓN JID EN ENTRADA ---
     let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, '');
     
-    // CORRECCIÓN LID EN ENTRADA: Si entra mensaje de LID, buscar si ya conocemos el número real
+    // Si viene de un LID, intentamos usar el número real si lo tenemos, o el ID crudo
     if (remoteJid.includes('@lid')) {
-        // Buscamos si existe un usuario que tenga este JID o cuyo teléfono coincida (aunque es difícil saber el número desde LID sin decodificar)
-        // Por ahora, usamos el ID tal cual, pero intentamos limpiarlo si es posible.
-        // Nota: Baileys suele manejar esto, pero si falla, usamos el ID crudo.
+         console.log(`📩 Mensaje recibido desde LID: ${incomingPhone}`);
     }
 
     let user = getUser(incomingPhone);
     let dbKey = incomingPhone;
 
+    // Búsqueda de usuario existente (Manejo +521 vs +52)
     if (!user?.phone) {
         let altKey = null;
         if (incomingPhone.startsWith('521') && incomingPhone.length === 13) altKey = incomingPhone.replace('521', '52');
         else if (incomingPhone.startsWith('52') && incomingPhone.length === 12) altKey = incomingPhone.replace('52', '521');
+        
         if (altKey) {
             const altUser = getUser(altKey);
-            if (altUser?.phone) { user = altUser; dbKey = altKey; }
+            if (altUser?.phone) { 
+                user = altUser; 
+                dbKey = altKey; 
+            }
         }
     }
 
@@ -383,15 +388,17 @@ const handleMessage = async (sock, msg) => {
 
     if (!user?.phone) {
         console.log(`✨ Nuevo Cliente: ${dbKey}`);
+        // IMPORTANTE: Guardamos el JID original, pero el teléfono es la llave
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
         user = getUser(dbKey);
-    }
-
-    if (user.jid !== remoteJid) {
-        await updateUser(dbKey, { jid: remoteJid, last_active: timestamp });
-        user.jid = remoteJid;
     } else {
-        await updateUser(dbKey, { last_active: timestamp });
+        // Actualizamos JID solo si cambió (ej: pasó de usar celular a multidispositivo web)
+        if (user.jid !== remoteJid) {
+            await updateUser(dbKey, { jid: remoteJid, last_active: timestamp });
+            user.jid = remoteJid;
+        } else {
+            await updateUser(dbKey, { last_active: timestamp });
+        }
     }
 
     if (user.blocked) return;
@@ -443,7 +450,11 @@ const handleMessage = async (sock, msg) => {
             if (match) {
                 await sock.sendMessage(remoteJid, { text: `✅ Acción: ${match.label}` });
                 await updateUser(targetClientPhone, { current_step: match.next_step });
-                const targetJid = targetUser.jid || targetClientPhone + '@s.whatsapp.net';
+                
+                // Aseguramos JID de cliente destino
+                let targetJid = targetUser.jid;
+                if(!targetJid || targetJid.includes('@lid')) targetJid = targetClientPhone + '@s.whatsapp.net';
+                
                 await sendStepMessage(sock, targetJid, match.next_step, targetUser);
                 return;
             }
@@ -487,10 +498,10 @@ const handleMessage = async (sock, msg) => {
 
     else if (currentConfig.type === 'menu') {
         let match = null;
-        // Intento 1: Match exacto por trigger (usado por botones)
+        // Intento 1: Match exacto
         match = currentConfig.options?.find(opt => opt.trigger.toLowerCase() === cleanText);
         
-        // Intento 2: Match por similitud (si escriben a mano)
+        // Intento 2: Match por similitud
         if (!match) {
              match = currentConfig.options?.find(opt => {
                 const t = opt.trigger.toLowerCase();
@@ -499,7 +510,7 @@ const handleMessage = async (sock, msg) => {
             });
         }
         
-        // Intento 3: Números (1, 2, 3...)
+        // Intento 3: Números
         if (!match) {
             const numberMatches = cleanText.match(/^(\d+)[\s.)]*$/);
             if (numberMatches) {
@@ -608,7 +619,11 @@ const handleMessage = async (sock, msg) => {
     if (nextStepId) {
         console.log(`➡️ Avanzando al paso: ${nextStepId}`);
         await updateUser(dbKey, { current_step: nextStepId });
-        await sendStepMessage(sock, remoteJid, nextStepId, getUser(dbKey));
+        // Aseguramos JID correcto de nuevo
+        let targetJid = user.jid;
+        if(!targetJid || targetJid.includes('@lid')) targetJid = user.phone + '@s.whatsapp.net';
+        
+        await sendStepMessage(sock, targetJid, nextStepId, getUser(dbKey));
     }
 };
 
