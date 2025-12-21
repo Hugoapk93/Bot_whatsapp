@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { proto, generateWAMessageFromContent } = require('@whiskeysockets/baileys');
 
-console.log("✅ CÓDIGO CARGADO: v4 (Sin Header - Estabilidad Total)");
+console.log("✅ CÓDIGO CARGADO: v5 (Soporte Híbrido LID + Real)");
 
 // --- CONFIGURACIÓN ---
 const SIMULATOR_PHONE = '5218991234567';
@@ -131,13 +131,9 @@ const typing = async (sock, jid, length) => {
 // --- ENVÍO DE MENSAJES (Manejador de Botones) ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     
+    // CAMBIO V5: Aceptamos el JID tal cual viene (sea LID o Real)
+    // Solo hacemos limpieza si es necesario, pero no bloqueamos LIDs.
     let targetJid = jid;
-    if (jid.includes('@lid') || !jid.includes('@s.whatsapp.net')) {
-        if (userData.phone) {
-            const cleanNum = userData.phone.replace(/[^0-9]/g, '');
-            targetJid = cleanNum + '@s.whatsapp.net';
-        }
-    }
     
     console.log(`📤 Enviando paso: ${stepId} a ${targetJid}`);
     
@@ -170,6 +166,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (step.type === 'fin_bot') {
+        // Intento de limpiar para guardar contacto, pero si es LID se guarda tal cual
         const cleanPhone = targetJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
         const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
         addManualContact(cleanPhone, contactName, false);
@@ -180,16 +177,16 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (step.type === 'filtro') {
-        const cleanClientPhone = targetJid.replace(/[^0-9]/g, '');
+        const cleanClientPhone = targetJid.replace(/[^0-9]/g, ''); // Si es LID saldrá el hash, es normal
         if (global.sendPushNotification) {
-             global.sendPushNotification("⚠️ Solicitud Pendiente", `Cliente ${cleanClientPhone} espera aprobación.`);
+             global.sendPushNotification("⚠️ Solicitud Pendiente", `Cliente requiere aprobación.`);
         }
     }
 
     try { await typing(sock, targetJid, messageText.length); } catch (e) {}
 
     // -----------------------------------------------------------------
-    //  🚀 LÓGICA DE INTERACTIVE MESSAGES (SIN HEADER PARA EVITAR ERROR 400)
+    //  🚀 LÓGICA DE INTERACTIVE MESSAGES
     // -----------------------------------------------------------------
     
     if (esSimulador(targetJid)) {
@@ -204,7 +201,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     if (step.type === 'menu' && step.options && step.options.length > 0) {
         try {
-            // Generamos el mensaje RAW para tener control total
             const sections = [{
                 title: "Opciones Disponibles",
                 rows: step.options.map((opt) => ({
@@ -219,7 +215,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                 viewOnceMessage: {
                     message: {
                         interactiveMessage: {
-                            // ⚠️ TRUCO: Sin Header. El título va en el body en negritas.
+                            // Sin header para evitar errores 400
                             body: { text: `*MENÚ DE OPCIONES*\n\n${messageText}` },
                             footer: { text: "Selecciona una opción 👇" },
                             nativeFlowMessage: {
@@ -236,17 +232,19 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                 }
             };
 
-            // Usamos relayMessage para evitar validaciones estrictas de sendMessage
             const waMsg = generateWAMessageFromContent(targetJid, msgContent, { userJid: sock.user.id });
             await sock.relayMessage(targetJid, waMsg.message, { messageId: waMsg.key.id });
             return; 
 
         } catch (err) {
-            console.error("⚠️ Error crítico en listas (Fallback a texto):", err.message);
+            console.error("⚠️ Error enviando Lista (Posiblemente LID no soportado), enviando texto:", err.message);
+            // El catch permite que el código continúe abajo al fallback
         }
     }
 
     // --- FALLBACK / TEXTO NORMAL / MEDIA ---
+    // (Esto se ejecuta si no hay menú o si el envío de lista falló)
+    
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
     let sent = false;
 
@@ -270,6 +268,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (!sent && messageText) {
+        // Fallback visual de menú si falló la lista
         if (step.type === 'menu' && step.options) {
              messageText += '\n';
              step.options.forEach((opt, idx) => messageText += `\n${idx+1}. ${opt.label}`);
@@ -279,7 +278,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     if (step.type === 'message' && step.next_step) {
         setTimeout(async () => {
-            const freshUser = getUser(userData.phone);
+            const freshUser = getUser(userData.phone); // Nota: userData.phone aquí es la Key de la DB (puede ser LID o número)
             if (freshUser && freshUser.current_step !== stepId && freshUser.current_step !== step.next_step) return;
             await updateUser(userData.phone, { current_step: step.next_step });
             await sendStepMessage(sock, targetJid, step.next_step, getUser(userData.phone));
@@ -296,11 +295,8 @@ const handleMessage = async (sock, msg) => {
 
     let text = '';
     
-    // A) Texto Normal
     if (msg.message?.conversation) text = msg.message.conversation;
     else if (msg.message?.extendedTextMessage?.text) text = msg.message.extendedTextMessage.text;
-    
-    // B) Respuesta de Botón / Lista
     else if (msg.message?.interactiveResponseMessage) {
         const resp = msg.message.interactiveResponseMessage;
         try {
@@ -316,27 +312,21 @@ const handleMessage = async (sock, msg) => {
     text = (text || '').trim();
     if (!text) return; 
 
-    // Limpieza de JID en la entrada
-    let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, '');
+    // LIMPIEZA CLAVE: Usamos el ID tal cual viene para asegurar respuesta
+    let dbKey = remoteJid.split('@')[0].replace(/:[0-9]+/, ''); 
+    // Si es LID, la dbKey será larga. Si es número, será corta. Ambos sirven como ID único.
     
-    let user = getUser(incomingPhone);
-    let dbKey = incomingPhone;
+    let user = getUser(dbKey);
 
-    if (!user?.phone) {
-        let altKey = null;
-        if (incomingPhone.startsWith('521') && incomingPhone.length === 13) altKey = incomingPhone.replace('521', '52');
-        else if (incomingPhone.startsWith('52') && incomingPhone.length === 12) altKey = incomingPhone.replace('52', '521');
-        if (altKey) {
-            const altUser = getUser(altKey);
-            if (altUser?.phone) { user = altUser; dbKey = altKey; }
-        }
-    }
+    // Intento de compatibilidad: Si llega un número normal pero tenemos guardado un LID (o viceversa), es difícil saberlo sin la sesión.
+    // Por eso, confiamos en el ID que llega en este mensaje.
 
     const timestamp = new Date().toISOString();
 
-    if (!user?.phone) {
-        console.log(`✨ Nuevo Cliente: ${dbKey}`);
-        await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
+    if (!user) {
+        console.log(`✨ Nuevo Cliente Detectado (${dbKey})`);
+        // Guardamos 'phone' como el ID de la base de datos para consistencia
+        await updateUser(dbKey, { phone: dbKey, current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
         user = getUser(dbKey);
     } else {
         if (user.jid !== remoteJid) {
@@ -359,19 +349,21 @@ const handleMessage = async (sock, msg) => {
         }
     }
 
-    // 1. ADMIN
+    // 1. ADMIN - Mantenemos lógica de Admin solo para números reales si es posible
+    // Si el admin envía desde un LID, tendríamos que agregar su LID al paso 'filtro'.
     const words = cleanText.split(/\s+/);
     let targetClientPhone = null;
     let commandOption = "";
 
     for (const word of words) {
         const potentialNum = word.replace(/[^0-9]/g, '');
-        if (potentialNum.length >= 10 && potentialNum.length <= 13 && potentialNum !== incomingPhone) {
+        if (potentialNum.length >= 10 && potentialNum.length <= 13) {
+            // Buscamos si existe ese número en la DB
             let checkUser = getUser(potentialNum);
             if (!checkUser && potentialNum.startsWith('52') && potentialNum.length === 12) checkUser = getUser('521' + potentialNum.slice(2));
             if (!checkUser && potentialNum.length === 10) checkUser = getUser('521' + potentialNum);
 
-            if (checkUser) {
+            if (checkUser && checkUser.phone !== dbKey) {
                 targetClientPhone = checkUser.phone;
                 commandOption = cleanText.replace(word, '').trim();
                 break;
@@ -394,10 +386,8 @@ const handleMessage = async (sock, msg) => {
                 await sock.sendMessage(remoteJid, { text: `✅ Acción: ${match.label}` });
                 await updateUser(targetClientPhone, { current_step: match.next_step });
                 
-                let targetJid = targetUser.jid;
-                if(!targetJid || targetJid.includes('@lid')) targetJid = targetClientPhone + '@s.whatsapp.net';
-                
-                await sendStepMessage(sock, targetJid, match.next_step, targetUser);
+                // Responder al JID que tenga ese usuario guardado (sea LID o real)
+                await sendStepMessage(sock, targetUser.jid || targetClientPhone + '@s.whatsapp.net', match.next_step, targetUser);
                 return;
             }
         }
@@ -518,9 +508,7 @@ const handleMessage = async (sock, msg) => {
     if (nextStepId) {
         console.log(`➡️ Avanzando al paso: ${nextStepId}`);
         await updateUser(dbKey, { current_step: nextStepId });
-        let targetJid = user.jid;
-        if(!targetJid || targetJid.includes('@lid')) targetJid = user.phone + '@s.whatsapp.net';
-        await sendStepMessage(sock, targetJid, nextStepId, getUser(dbKey));
+        await sendStepMessage(sock, remoteJid, nextStepId, getUser(dbKey));
     }
 };
 
