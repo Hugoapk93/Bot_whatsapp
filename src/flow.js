@@ -2,7 +2,7 @@ const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow
 const { isBotDisabled, addManualContact } = require('./contacts');
 const fs = require('fs');
 const path = require('path');
-// Importamos proto para construir mensajes nativos si es necesario, aunque Baileys lo suele manejar
+// Importamos proto por si necesitamos estructuras avanzadas
 const { proto } = require('@whiskeysockets/baileys');
 
 // --- CONFIGURACIÓN ---
@@ -130,6 +130,15 @@ const typing = async (sock, jid, length) => {
 // --- ENVÍO DE MENSAJES (Manejador de Botones) ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId} a ${jid}`);
+    
+    // CORRECCIÓN JID: Asegurar que no enviamos a @lid si tenemos el número
+    if (jid.includes('@lid')) {
+        // Intentar rescatar el número del userData si existe, sino limpiarlo
+        if (userData.phone && !userData.phone.includes('@')) {
+            jid = userData.phone.includes('@') ? userData.phone : `${userData.phone}@s.whatsapp.net`;
+        }
+    }
+
     let step = getFlowStep(stepId);
 
     if (!step && stepId === INITIAL_STEP) {
@@ -142,7 +151,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     const settings = getSettings();
 
     // Reemplazo de Variables
-    // SALUDO
     const mxDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
     const hour = mxDate.getHours();
     let saludo = 'Hola';
@@ -159,16 +167,27 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         });
     }
 
-    // Guardar contacto final
     if (step.type === 'fin_bot') {
         const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
         const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
         addManualContact(cleanPhone, contactName, false);
     }
 
-    // Filtro horario
     if (step.type === 'filtro' && isBusinessClosed()) {
         messageText = settings.schedule.offline_message || "⛔ Horario de atención terminado.";
+    }
+
+    // Notificación Push para Filtros
+    if (step.type === 'filtro') {
+        const cleanClientPhone = jid.replace(/[^0-9]/g, '');
+        if (global.sendPushNotification) {
+             global.sendPushNotification(
+                 "⚠️ Solicitud Pendiente", 
+                 `El cliente ${cleanClientPhone} requiere aprobación.`
+             );
+        }
+        // Nota: Quitamos el envío de mensaje al admin aquí para simplificar, 
+        // ya que la prioridad es que funcione el flujo con el cliente.
     }
 
     try { await typing(sock, jid, messageText.length); } catch (e) {}
@@ -177,102 +196,92 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     //  🚀 LÓGICA DE INTERACTIVE MESSAGES (BOTONES Y LISTAS)
     // -----------------------------------------------------------------
     
-    // Si estamos en el SIMULADOR, usamos texto simple para no romperlo
     if (esSimulador(jid)) {
-        // Enviar Texto Base
         enviarAlFrontend(jid, messageText, 'text');
-        // Simular botones como texto de ayuda
         if(step.options && step.options.length > 0) {
             let helpText = "👉 Opciones:\n";
             step.options.forEach((opt, idx) => helpText += `[${opt.label}]\n`);
             enviarAlFrontend(jid, helpText, 'text');
         }
-        return; // Terminamos aquí para simulador
-    }
-
-    // LÓGICA WHATSAPP REAL
-    if (step.type === 'menu' && step.options && step.options.length > 0) {
-
-        // ESTRATEGIA:
-        // - Si son 1-3 opciones -> Botones (Quick Reply)
-        // - Si son > 3 opciones -> Lista (List Message)
-        
-        const isList = step.options.length > 3;
-
-        if (isList) {
-            // --- MODO LISTA ---
-            const sections = [{
-                title: "Opciones Disponibles",
-                rows: step.options.map((opt, index) => ({
-                    header: "",
-                    title: opt.label,
-                    description: "", 
-                    id: opt.trigger // Usamos el trigger como ID único
-                }))
-            }];
-
-            const listMessage = {
-                viewOnceMessage: {
-                    message: {
-                        interactiveMessage: {
-                            header: { title: "Menú", hasMediaAttachment: false },
-                            body: { text: messageText },
-                            footer: { text: "Selecciona una opción" },
-                            nativeFlowMessage: {
-                                buttons: [
-                                    {
-                                        name: "single_select",
-                                        buttonParamsJson: JSON.stringify({
-                                            title: "Abrir Menú",
-                                            sections: sections
-                                        })
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }
-            };
-
-            await sock.sendMessage(jid, listMessage);
-
-        } else {
-            // --- MODO BOTONES (Quick Reply) ---
-            // Nota: Usamos nativeFlowMessage con 'quick_reply' que es lo actual.
-            
-            const buttons = step.options.map((opt, index) => ({
-                name: "quick_reply",
-                buttonParamsJson: JSON.stringify({
-                    display_text: opt.label,
-                    id: opt.trigger
-                })
-            }));
-
-            const btnMessage = {
-                viewOnceMessage: {
-                    message: {
-                        interactiveMessage: {
-                            body: { text: messageText },
-                            footer: { text: "👇 Elige una opción" },
-                            header: { hasMediaAttachment: false },
-                            nativeFlowMessage: {
-                                buttons: buttons
-                            }
-                        }
-                    }
-                }
-            };
-
-            await sock.sendMessage(jid, btnMessage);
-        }
-        
-        // No enviamos el texto plano después para no duplicar
         return; 
     }
 
-    // Si no es menú, o no tiene opciones, enviamos normal (Texto + Media)
-    
-    // MEDIA
+    // ¿Es un menú con opciones?
+    if (step.type === 'menu' && step.options && step.options.length > 0) {
+        
+        try {
+            const isList = step.options.length > 3;
+
+            if (isList) {
+                // --- MODO LISTA ---
+                const sections = [{
+                    title: "Opciones",
+                    rows: step.options.map((opt) => ({
+                        header: "",
+                        title: opt.label,
+                        description: "", 
+                        id: opt.trigger 
+                    }))
+                }];
+
+                const listMessage = {
+                    viewOnceMessage: {
+                        message: {
+                            interactiveMessage: {
+                                header: { title: "Menú" }, // Lista requiere título en header
+                                body: { text: messageText },
+                                footer: { text: "Selecciona una opción" },
+                                nativeFlowMessage: {
+                                    buttons: [{
+                                        name: "single_select",
+                                        buttonParamsJson: JSON.stringify({
+                                            title: "Ver Opciones",
+                                            sections: sections
+                                        })
+                                    }]
+                                }
+                            }
+                        }
+                    }
+                };
+                await sock.sendMessage(jid, listMessage);
+
+            } else {
+                // --- MODO BOTONES (CORREGIDO) ---
+                // Eliminamos 'header' si no es necesario para evitar error 400 'Invalid media type'
+                const buttons = step.options.map((opt) => ({
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: opt.label,
+                        id: opt.trigger
+                    })
+                }));
+
+                const btnMessage = {
+                    viewOnceMessage: {
+                        message: {
+                            interactiveMessage: {
+                                body: { text: messageText },
+                                footer: { text: "👇 Elige una opción" },
+                                // CORRECCIÓN: Quitamos el header vacío. Si quieres header, pon { title: "Titulo" }
+                                nativeFlowMessage: {
+                                    buttons: buttons
+                                }
+                            }
+                        }
+                    }
+                };
+                await sock.sendMessage(jid, btnMessage);
+            }
+            return; // Éxito, salimos.
+
+        } catch (err) {
+            console.error("❌ Error enviando botones (Fallback a texto):", err);
+            // Si fallan los botones, el flujo sigue abajo y envía texto normal.
+        }
+    }
+
+    // --- FALLBACK / TEXTO NORMAL / MEDIA ---
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
     let sent = false;
 
@@ -296,10 +305,15 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (!sent && messageText) {
+        // Opción Texto simple + Lista de opciones manual
+        if (step.type === 'menu' && step.options) {
+             messageText += '\n';
+             step.options.forEach((opt, idx) => messageText += `\n${idx+1}. ${opt.label}`);
+        }
         await sock.sendMessage(jid, { text: messageText });
     }
 
-    // --- MANEJO DE PASO SIGUIENTE AUTOMÁTICO ---
+    // Auto-avance
     if (step.type === 'message' && step.next_step) {
         setTimeout(async () => {
             const freshUser = getUser(userData.phone);
@@ -310,7 +324,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 };
 
-// --- HANDLER PRINCIPAL (Modificado para leer Botones) ---
+// --- HANDLER PRINCIPAL ---
 const handleMessage = async (sock, msg) => {
     const remoteJid = msg.key.remoteJid;
 
@@ -327,24 +341,31 @@ const handleMessage = async (sock, msg) => {
     // B) Respuesta de Botón Interactivo (Native Flow)
     else if (msg.message?.interactiveResponseMessage) {
         const resp = msg.message.interactiveResponseMessage;
-        // Botones Quick Reply o Lista suelen venir en paramsJson
         try {
             if (resp.nativeFlowResponseMessage) {
                 const params = JSON.parse(resp.nativeFlowResponseMessage.paramsJson);
-                text = params.id || ''; // Aquí viene el ID que pusimos en el botón
+                text = params.id || ''; 
             }
         } catch(e) { console.log("Error parseando botón:", e); }
     }
     
-    // C) Respuesta de Lista (Legacy) o Template (Legacy) - Por compatibilidad
+    // C) Legacy
     else if (msg.message?.listResponseMessage) text = msg.message.listResponseMessage.singleSelectReply.selectedRowId;
     else if (msg.message?.templateButtonReplyMessage) text = msg.message.templateButtonReplyMessage.selectedId;
 
     text = (text || '').trim();
-    if (!text) return; // Si no hay texto ni interacción, ignoramos
+    if (!text) return; 
 
     // --- INICIO LÓGICA COMÚN ---
     let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, '');
+    
+    // CORRECCIÓN LID EN ENTRADA: Si entra mensaje de LID, buscar si ya conocemos el número real
+    if (remoteJid.includes('@lid')) {
+        // Buscamos si existe un usuario que tenga este JID o cuyo teléfono coincida (aunque es difícil saber el número desde LID sin decodificar)
+        // Por ahora, usamos el ID tal cual, pero intentamos limpiarlo si es posible.
+        // Nota: Baileys suele manejar esto, pero si falla, usamos el ID crudo.
+    }
+
     let user = getUser(incomingPhone);
     let dbKey = incomingPhone;
 
@@ -491,7 +512,6 @@ const handleMessage = async (sock, msg) => {
             nextStepId = match.next_step;
         } else {
             if (user.current_step === INITIAL_STEP) return;
-            // Si falla el botón o escriben mal
             let helpText = "⚠️ Opción no válida. Por favor selecciona una de las opciones del menú.";
             if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, helpText);
             else await sock.sendMessage(remoteJid, { text: helpText });
@@ -500,7 +520,6 @@ const handleMessage = async (sock, msg) => {
     }
 
     else if (currentConfig.type === 'filtro') {
-        // Ignorar input del usuario en filtros
         return;
     }
 
