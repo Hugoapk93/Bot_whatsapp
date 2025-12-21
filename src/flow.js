@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { proto } = require('@whiskeysockets/baileys');
 
-console.log("✅ CÓDIGO NUEVO CARGADO: Corrección de Botones v2");
+console.log("✅ CÓDIGO CARGADO: Botones con Header v3");
 
 // --- CONFIGURACIÓN ---
 const SIMULATOR_PHONE = '5218991234567';
@@ -223,7 +223,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                     viewOnceMessage: {
                         message: {
                             interactiveMessage: {
-                                header: { title: "Menú" }, // Lista requiere título
+                                header: { title: "Menú" }, 
                                 body: { text: messageText },
                                 footer: { text: "Selecciona una opción" },
                                 nativeFlowMessage: {
@@ -253,9 +253,10 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                     viewOnceMessage: {
                         message: {
                             interactiveMessage: {
+                                // CORRECCIÓN: Agregamos Título en header para evitar error 400
+                                header: { title: "Opciones", hasMediaAttachment: false }, 
                                 body: { text: messageText },
-                                footer: { text: "👇 Elige una opción" },
-                                // SIN HEADER PARA EVITAR ERROR 400
+                                footer: { text: "👇" },
                                 nativeFlowMessage: {
                                     buttons: buttons
                                 }
@@ -268,8 +269,8 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             return; 
 
         } catch (err) {
-            console.error("❌ Error enviando botones (Fallback a texto):", err);
-            // Si falla, el código continúa y manda texto normal abajo
+            // Este log se verá en 'pm2 logs' si falla, pero el bot no morirá
+            console.error("⚠️ Fallaron los botones, enviando texto plano:", err.message);
         }
     }
 
@@ -297,7 +298,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (!sent && messageText) {
-        // Fallback texto menú
+        // Fallback texto menú si los botones fallaron arriba (el catch deja seguir el flujo)
         if (step.type === 'menu' && step.options) {
              messageText += '\n';
              step.options.forEach((opt, idx) => messageText += `\n${idx+1}. ${opt.label}`);
