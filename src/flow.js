@@ -2,9 +2,9 @@ const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow
 const { isBotDisabled, addManualContact } = require('./contacts');
 const fs = require('fs');
 const path = require('path');
-const { proto } = require('@whiskeysockets/baileys');
+const { proto, generateWAMessageFromContent } = require('@whiskeysockets/baileys');
 
-console.log("✅ CÓDIGO CARGADO: Modo Lista Forzada (Estabilidad Máxima)");
+console.log("✅ CÓDIGO CARGADO: v4 (Sin Header - Estabilidad Total)");
 
 // --- CONFIGURACIÓN ---
 const SIMULATOR_PHONE = '5218991234567';
@@ -189,7 +189,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     try { await typing(sock, targetJid, messageText.length); } catch (e) {}
 
     // -----------------------------------------------------------------
-    //  🚀 LÓGICA DE INTERACTIVE MESSAGES (MODO LISTA SIEMPRE)
+    //  🚀 LÓGICA DE INTERACTIVE MESSAGES (SIN HEADER PARA EVITAR ERROR 400)
     // -----------------------------------------------------------------
     
     if (esSimulador(targetJid)) {
@@ -202,34 +202,31 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         return; 
     }
 
-    // ¿Es un menú con opciones?
     if (step.type === 'menu' && step.options && step.options.length > 0) {
         try {
-            // ESTRATEGIA: USAR SIEMPRE LISTAS. 
-            // Las listas son mucho más estables que los botones simples y no dan error 400.
-            
+            // Generamos el mensaje RAW para tener control total
             const sections = [{
                 title: "Opciones Disponibles",
                 rows: step.options.map((opt) => ({
                     header: "",
                     title: opt.label,
-                    description: "", // Descripción opcional
+                    description: "",
                     id: opt.trigger 
                 }))
             }];
 
-            const listMessage = {
+            const msgContent = {
                 viewOnceMessage: {
                     message: {
                         interactiveMessage: {
-                            header: { title: "MENÚ" }, // Las listas SÍ aceptan y requieren Header
-                            body: { text: messageText },
+                            // ⚠️ TRUCO: Sin Header. El título va en el body en negritas.
+                            body: { text: `*MENÚ DE OPCIONES*\n\n${messageText}` },
                             footer: { text: "Selecciona una opción 👇" },
                             nativeFlowMessage: {
                                 buttons: [{
                                     name: "single_select",
                                     buttonParamsJson: JSON.stringify({
-                                        title: "Ver Opciones", // Texto del botón principal
+                                        title: "Ver Lista",
                                         sections: sections
                                     })
                                 }]
@@ -238,12 +235,14 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                     }
                 }
             };
-            
-            await sock.sendMessage(targetJid, listMessage);
+
+            // Usamos relayMessage para evitar validaciones estrictas de sendMessage
+            const waMsg = generateWAMessageFromContent(targetJid, msgContent, { userJid: sock.user.id });
+            await sock.relayMessage(targetJid, waMsg.message, { messageId: waMsg.key.id });
             return; 
 
         } catch (err) {
-            console.error("⚠️ Fallaron las listas, enviando texto plano:", err.message);
+            console.error("⚠️ Error crítico en listas (Fallback a texto):", err.message);
         }
     }
 
@@ -271,7 +270,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     if (!sent && messageText) {
-        // Fallback texto menú si falla lo anterior
         if (step.type === 'menu' && step.options) {
              messageText += '\n';
              step.options.forEach((opt, idx) => messageText += `\n${idx+1}. ${opt.label}`);
