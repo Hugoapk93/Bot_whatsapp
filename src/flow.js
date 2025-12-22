@@ -42,17 +42,34 @@ function timeToMinutes(timeStr) {
 
 function normalizeDate(input) {
     if (!input) return null;
-    let text = input.toLowerCase().trim().replace(/\b(de|del|el)\b/g, ' ').replace(/\s+/g, ' ').replace(/[.\/]/g, '-');
+    // Limpieza básica
+    let text = input.toLowerCase().trim()
+        .replace(/\b(de|del|el|para|el día)\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/[.\/]/g, '-');
+    
     const parts = text.split('-');
-    const tokens = parts.length === 3 ? parts : text.split(' ');
+    const tokens = parts.length >= 2 ? parts : text.split(' ');
+
+    // Si solo hay 2 datos (ej: 25 diciembre), agregamos el año actual
+    if (tokens.length === 2) {
+        tokens.push(new Date().getFullYear().toString());
+    }
+
     if (tokens.length === 3) {
         let day = tokens[0].padStart(2, '0');
         let monthRaw = tokens[1];
         let year = tokens[2];
+
         const months = { 'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12' };
-        let month = months[monthRaw] || (parseInt(monthRaw) ? monthRaw.padStart(2, '0') : null);
+        
+        // Intentar parsear mes (texto o número)
+        let month = months[monthRaw.substring(0, 3)] || (parseInt(monthRaw) ? monthRaw.padStart(2, '0') : null);
+        
         if (year.length === 2) year = '20' + year;
+
         if (!month || isNaN(day) || isNaN(year)) return null;
+        
         return `${year}-${month}-${day}`;
     }
     return null;
@@ -491,7 +508,7 @@ const handleMessage = async (sock, msg) => {
         nextStepId = currentConfig.next_step;
     }
 
-    // --- LÓGICA CITAS BLINDADA v2 (CON DEBUG) ---
+    // --- LÓGICA CITAS CORREGIDA (VALIDACIÓN ESTRICTA) ---
     if (nextStepId || currentConfig.type === 'cita') {
         
         let targetStep = nextStepId || user.current_step;
@@ -499,110 +516,129 @@ const handleMessage = async (sock, msg) => {
         
         if (nextStepConfig && nextStepConfig.type === 'cita') {
 
-            // 1. CAPTURA INTELIGENTE
+            // 1. CAPTURA INTELIGENTE DE DATOS
             const detectedDate = normalizeDate(text); 
             const detectedTime = normalizeTime(text); 
 
-            console.log(`🔍 Input Recibido: "${text}"`);
+            console.log(`🔍 Input Citas: "${text}" | Fecha detectada: ${detectedDate} | Hora detectada: ${detectedTime}`);
 
+            // Si detectamos fecha nueva en el mensaje, actualizamos
             if (detectedDate) {
-                console.log(`✅ CORRECCIÓN DETECTADA: El usuario cambió la fecha a ${text}`);
-                // Sobrescribimos TODAS las variables de fecha posibles para evitar conflictos
                 user.history['fecha_cita'] = text; 
                 user.history['fecha'] = text; 
-                user.history['dia'] = text; 
+                // Limpiamos hora previa si cambian de fecha para evitar conflictos
+                // delete user.history['hora_cita']; 
                 await updateUser(dbKey, { history: user.history }); 
             }
 
+            // Si detectamos hora nueva en el mensaje, actualizamos
             if (detectedTime) {
-                console.log(`✅ HORA DETECTADA: ${text}`);
                 user.history['hora_cita'] = text;
-                await updateUser(dbKey, { history: { ...user.history, hora_cita: text } });
+                await updateUser(dbKey, { history: user.history });
             }
 
-            // 2. LECTURA DE DATOS
-            let rawDate = user.history['fecha_cita'] || user.history['fecha'] || user.history['dia'];
-            let rawTime = user.history['hora_cita'] || user.history['hora'];
-            let fecha = normalizeDate(rawDate);
-            
-            console.log(`📊 Datos actuales en memoria -> Fecha: ${rawDate} | Hora: ${rawTime}`);
+            // 2. LEER ESTADO ACTUAL
+            // Recuperamos lo que el usuario escribió originalmente
+            let rawDateInput = user.history['fecha_cita'] || user.history['fecha'];
+            let rawTimeInput = user.history['hora_cita'];
 
-            // 3. VALIDACIONES
-            if (!fecha || fecha < new Date().toISOString().split('T')[0]) {
-                if (fecha) { 
-                    const txt = `⚠️ La fecha ${rawDate} no es válida o ya pasó.\n📅 Por favor escribe una nueva fecha (Ej: 25/12/2025)`;
+            // Normalizamos para validar
+            let fechaValida = normalizeDate(rawDateInput);
+            let horaValida = normalizeTime(rawTimeInput);
+
+            // 3. VALIDACIÓN DE FECHA (Evitar fallo silencioso)
+            if (rawDateInput && !fechaValida) {
+                const txt = `⚠️ No entendí la fecha "${rawDateInput}".\nPor favor escríbela así: *25 de diciembre* o *25/12/2025*.`;
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                return; // Detenemos para que el usuario corrija
+            }
+
+            if (fechaValida) {
+                const hoy = new Date().toISOString().split('T')[0];
+                if (fechaValida < hoy) {
+                    const txt = `⚠️ La fecha ${fechaValida} ya pasó.\nPor favor indica una fecha futura.`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    return; 
+                    // Borramos la fecha inválida del historial para obligar a pedirla de nuevo
+                    delete user.history['fecha_cita'];
+                    delete user.history['fecha'];
+                    await updateUser(dbKey, { history: user.history });
+                    return;
                 }
             }
 
-            if (fecha) {
-                let hora = normalizeTime(rawTime);
+            // 4. INTENTO DE AGENDAR (Solo si tenemos ambos datos válidos)
+            if (fechaValida && horaValida) {
                 
-                // Si falta la hora, dejamos pasar para que el bot pregunte en el siguiente paso (si así está configurado)
-                // O si el usuario ya puso hora, intentamos agendar.
+                console.log(`⚡ Intentando agendar: ${fechaValida} @ ${horaValida}`);
                 
-                if (hora) {
-                    // --- INTENTO DE AGENDAR ---
-                    try {
-                        const settings = getSettings();
-                        const rules = validateBusinessRules(hora, settings);
-                        
-                        if (!rules.valid) {
-                            const txt = `⚠️ ${rules.reason}\nHorario laboral: ${settings.schedule?.start} - ${settings.schedule?.end}`;
-                            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                            return; 
-                        }
-                        
-                        const db = getAgenda(); 
-                        if (db[fecha] && db[fecha].some(c => c.time === hora)) {
-                            const txt = `❌ Horario ocupado (${hora}). Por favor escribe otra hora.`;
-                            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                            return; 
-                        }
-                        
-                        // --- ESCRITURA ---
-                        if (!db[fecha]) db[fecha] = [];
-                        const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
-                        
-                        db[fecha].push({ time: hora, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
-                        saveAgenda(db); 
-                        console.log(`🎉 Cita agendada con éxito`);
-                        
-                        // ---> TRIGGER PUSH NOTIFICATION (CITA) <---
-                        if (global.sendPushNotification) {
-                             global.sendPushNotification(
-                                 "📅 Cliente Agendado", 
-                                 `Nueva cita para el ${fecha} a las ${hora}.`
-                             );
-                        }
-
-                        // Mensaje de éxito forzado si no hay siguiente paso
-                        if (!nextStepConfig.next_step) {
-                            const txt = `✅ Cita confirmada: ${fecha} a las ${hora}.`;
-                            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                        } else {
-                            nextStepId = nextStepConfig.next_step;
-                        }
-
-                        // Limpieza
-                        await updateUser(dbKey, { history: user.history });
-                        
-                        if (!nextStepConfig.next_step) return;
-
-                    } catch (error) {
-                        console.error("🔥 Error:", error);
-                        const txt = `⚠️ Error interno. Intenta de nuevo.`;
+                try {
+                    const settings = getSettings();
+                    const rules = validateBusinessRules(horaValida, settings);
+                    
+                    // Validación de Reglas de Negocio (Horario y Minutos)
+                    if (!rules.valid) {
+                        const txt = `⚠️ ${rules.reason}\n🕒 Horario: ${settings.schedule?.start || '09:00'} - ${settings.schedule?.end || '18:00'}`;
                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                        return;
+                        // Borramos la hora incorrecta
+                        delete user.history['hora_cita'];
+                        await updateUser(dbKey, { history: user.history });
+                        return; 
                     }
-                } 
-                else if (rawTime && !hora) {
-                      const txt = `⚠️ Hora no reconocida. Usa formato: 4:00 PM`;
-                      if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                      return;
+                    
+                    // Validación de Disponibilidad (Agenda llena)
+                    const db = getAgenda(); 
+                    if (db[fechaValida] && db[fechaValida].some(c => c.time === horaValida)) {
+                        const txt = `❌ El horario de las ${horaValida} ya está ocupado.\nPor favor escribe otra hora.`;
+                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                        return; 
+                    }
+                    
+                    // --- GUARDAR CITA ---
+                    if (!db[fechaValida]) db[fechaValida] = [];
+                    const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
+                    
+                    db[fechaValida].push({ 
+                        time: horaValida, 
+                        phone: dbKey, 
+                        name: finalName, 
+                        created_at: new Date().toISOString() 
+                    });
+                    
+                    saveAgenda(db); 
+                    console.log(`🎉 Cita guardada en agenda.json`);
+                    
+                    // Notificación Push
+                    if (global.sendPushNotification) {
+                         global.sendPushNotification("📅 Nueva Cita", `El ${fechaValida} a las ${horaValida} con ${finalName}`);
+                    }
+
+                    // ÉXITO: Avanzamos
+                    if (!nextStepConfig.next_step) {
+                        const txt = `✅ ¡Listo! Tu cita quedó agendada para el *${fechaValida}* a las *${horaValida}*.`;
+                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    } else {
+                        nextStepId = nextStepConfig.next_step;
+                    }
+
+                    // Limpiamos memoria temporal si es necesario, o la dejamos para el resumen
+                    return; // Salimos aquí si todo fue bien, el handler principal moverá el paso si hay nextStepId
+
+                } catch (error) {
+                    console.error("🔥 Error crítico al guardar cita:", error);
+                    const txt = `⚠️ Error del sistema. Intenta más tarde.`;
+                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    return;
                 }
+            } 
+            
+            // 5. MANEJO DE HORA INVÁLIDA (Si puso algo que parece hora pero no es válida)
+            else if (rawTimeInput && !horaValida) {
+                  const txt = `⚠️ No reconocí la hora "${rawTimeInput}".\nUsa el formato: *4:00 PM* o *16:00*.`;
+                  if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                  return;
             }
+
+            // Si llegamos aquí, es que falta un dato (fecha o hora) y el bot mostrará el mensaje del paso 'cita'
             if (!nextStepId) nextStepId = targetStep;
         }
     }
