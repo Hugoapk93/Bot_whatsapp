@@ -15,12 +15,11 @@ const publicFolder = path.join(__dirname, '../public');
 
 // --- UTILIDADES MEJORADAS ---
 
-// 1. 🔥 NORMALIZADOR DE TEXTO (La clave para Sí vs Si)
-// Quita acentos y pone todo en minúsculas
+// 1. NORMALIZADOR DE TEXTO (La clave para Sí vs Si)
 function normalizeText(str) {
     if (!str) return "";
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita tildes (á -> a, ñ -> n)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita tildes
         .trim();
 }
 
@@ -28,20 +27,13 @@ function normalizeText(str) {
 function isSimilar(input, keyword) {
     if (!input || !keyword) return false;
     
-    // Usamos la versión normalizada para comparar
     const cleanInput = normalizeText(input);
     const cleanKeyword = normalizeText(keyword);
     
-    // Coincidencia Exacta Limpia (arregla "sí" vs "si")
     if (cleanInput === cleanKeyword) return true;
-
-    // Si es palabra corta (menos de 4 letras), solo aceptamos coincidencia exacta normalizada
     if (cleanKeyword.length < 4) return cleanInput === cleanKeyword;
-    
-    // Coincidencia contenida (ej: "quiero una bateria" contiene "bateria")
     if (cleanInput.includes(cleanKeyword)) return true;
     
-    // Coincidencia aproximada simple (para errores de dedo en palabras largas)
     let errors = 0;
     const maxErrors = Math.floor(cleanKeyword.length / 3); 
     if (Math.abs(cleanInput.length - cleanKeyword.length) > maxErrors) return false;
@@ -75,9 +67,7 @@ function timeToMinutes(timeStr) {
 
 // 🔥 INTELIGENCIA NLP: Detecta fecha Y hora
 function analyzeNaturalLanguage(text) {
-    // Configuración para español (Latam)
     const results = chrono.es.parse(text, new Date(), { forwardDate: true });
-    
     if (results.length === 0) return { date: null, time: null };
 
     const result = results[0];
@@ -107,14 +97,10 @@ function analyzeNaturalLanguage(text) {
 function validateBusinessRules(timeStr, settings) {
     if (!timeStr) return { valid: false, reason: "Falta la hora." };
     const [h, m] = timeStr.split(':').map(Number);
-    
-    // Regla: Intervalos exactos o medias
     if (m !== 0 && m !== 30) return { valid: false, reason: "Solo agendamos en horas exactas o medias (ej: 4:00 o 4:30)." };
-
     const reqMins = (h * 60) + m;
     const startMins = timeToMinutes(settings.schedule?.start || "09:00");
     const endMins = timeToMinutes(settings.schedule?.end || "18:00");
-
     if (reqMins < startMins || reqMins >= endMins) return { valid: false, reason: "Estamos cerrados a esa hora." };
     return { valid: true };
 }
@@ -142,7 +128,7 @@ const typing = async (sock, jid, length) => {
     await sock.sendPresenceUpdate('paused', jid);
 };
 
-// --- FUNCIÓN DE ENVÍO DE PASOS ---
+// --- FUNCIÓN DE ENVÍO DE PASOS (RESTAURADA) ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId}`);
     let step = getFlowStep(stepId);
@@ -155,7 +141,16 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     let messageText = step.message || "";
     
-    // Renderizado de Variables
+    // 1. 🔥 SALUDO INTELIGENTE RESTAURADO
+    const mxDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+    const hour = mxDate.getHours();
+    let saludo = 'Hola';
+    if (hour >= 5 && hour < 12) saludo = 'Buenos días';
+    else if (hour >= 12 && hour < 19) saludo = 'Buenas tardes';
+    else saludo = 'Buenas noches';
+    messageText = messageText.replace(/{{saludo}}/gi, saludo);
+
+    // 2. Renderizado de Variables de Usuario
     if (userData.history) {
         Object.keys(userData.history).forEach(key => {
             const val = userData.history[key] || '';
@@ -164,15 +159,23 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         });
     }
     
-    // Renderizado de Opciones
+    // 3. 🔥 MENÚ CON EMOJIS RESTAURADO
     if (step.type === 'menu' && step.options) {
         messageText += '\n';
-        step.options.forEach((opt, idx) => {
-            messageText += `\n${idx + 1}. ${opt.label}`;
+        const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+        step.options.forEach((opt, index) => {
+            // Si el trigger es igual al label, asumimos que es una opción numérica
+            if (opt.trigger === opt.label || !isNaN(opt.trigger)) {
+                const bullet = emojis[index] || '👉';
+                messageText += `\n${bullet} ${opt.label}`;
+            } else {
+                // Si tiene un trigger específico (ej: "Soporte")
+                messageText += `\n👉 ${opt.label}`; 
+            }
         });
     }
 
-    // Enviar Media (Imágenes)
+    // Enviar Media
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
     let sentImage = false;
 
@@ -181,7 +184,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             const url = mediaList[i];
             const relativePath = url.startsWith('/') ? url.slice(1) : url;
             const finalPath = path.join(publicFolder, relativePath);
-            // const altPath = path.join(__dirname, '../public', url); // Opcional si usas estructura distinta
             
             if (fs.existsSync(finalPath)) {
                 const caption = (i === 0) ? messageText : "";
@@ -199,7 +201,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // Enviar Texto (si no se envió como caption de imagen)
     if (!sentImage && messageText) {
         await typing(sock, jid, messageText.length);
         try {
@@ -285,7 +286,6 @@ const handleMessage = async (sock, msg) => {
         let match = currentStepConfig.options?.[index];
 
         if (!match) {
-            // 🔥 BÚSQUEDA NORMALIZADA (Soporta Sí/Si, Canción/Cancion)
             match = currentStepConfig.options?.find(opt => 
                 isSimilar(text, opt.trigger) || isSimilar(text, opt.label)
             );
@@ -310,7 +310,6 @@ const handleMessage = async (sock, msg) => {
 
     // CASO: FILTRO (Admin)
     else if (currentStepConfig.type === 'filtro') {
-        // Ignora mensajes de usuario en paso filtro (espera acción de admin)
         return; 
     }
 
@@ -325,21 +324,15 @@ const handleMessage = async (sock, msg) => {
             console.log(`🧠 Analizando lenguaje natural: "${text}"`);
             const analysis = analyzeNaturalLanguage(text);
             
-            if (analysis.date) {
-                user.history['fecha'] = analysis.date; 
-                console.log(`✅ Fecha detectada: ${analysis.date}`);
-            }
-            if (analysis.time) {
-                user.history['hora'] = analysis.time; 
-                console.log(`✅ Hora detectada: ${analysis.time}`);
-            }
+            if (analysis.date) user.history['fecha'] = analysis.date; 
+            if (analysis.time) user.history['hora'] = analysis.time; 
 
             await updateUser(dbKey, { history: user.history });
             
             const fechaMemoria = user.history['fecha'];
             const horaMemoria = user.history['hora'];
 
-            // Validaciones de Cita
+            // Validaciones
             if (!fechaMemoria) {
                 const txt = "📅 ¿Para qué día te gustaría agendar? (Ej: Mañana, El viernes)";
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
