@@ -494,7 +494,20 @@
                 if(res.status === 'connected') {
                     document.getElementById('setupWizard').classList.add('step-hidden');
                     document.getElementById('mainApp').classList.add('visible');
-                    loadAll(); loadActivity();
+    
+                    loadAll(); 
+                    loadActivity();
+
+                    // --- LÓGICA DE REDIRECCIÓN ---
+                    if (window.location.hash === '#agenda') {
+                        nav('agenda'); // Va a Agenda
+                        history.replaceState(null, null, ' '); 
+                    } 
+                    else if (window.location.hash === '#activity') { 
+                        nav('activity'); // 🔥 Va a Monitor (Activity)
+                        history.replaceState(null, null, ' '); 
+                    }
+
                 } else if(res.qr) {
                     document.getElementById('stepLoading').classList.add('step-hidden');
                     document.getElementById('stepQR').classList.remove('step-hidden');

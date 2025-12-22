@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flow-crm-v3';
+const CACHE_NAME = 'flow-crm-v4';
 const urlsToCache = [
   './',
   './index.html',
@@ -40,28 +40,47 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// --- PUSH RECIBIDO (Segundo plano) ---
+// --- PUSH RECIBIDO (LÓGICA MEJORADA) ---
 self.addEventListener('push', event => {
-  console.log('🔔 Push recibido en SW'); // Log para confirmar llegada
+  console.log('🔔 Push recibido en SW');
   
-  let data = { title: 'Notificación', body: 'Nuevo evento' };
+  let data = { title: 'CRM Bot', body: 'Tienes una nueva notificación' };
   
   if (event.data) {
     try {
       data = event.data.json();
     } catch (e) {
-      console.log('Push no es JSON:', event.data.text());
       data.body = event.data.text();
     }
   }
 
+  // 1. DETECCIÓN DE RUTA (Monitor vs Agenda)
+  // Si el título o el cuerpo mencionan "Cita", "Agenda" o "Fecha", asumimos que es para la Agenda.
+  const textoMinuscula = (data.title + " " + data.body).toLowerCase();
+  let targetUrl = './index.html#activity';
+
+  if (textoMinuscula.includes('cita') || textoMinuscula.includes('agenda') || textoMinuscula.includes('agendado')) {
+      targetUrl = './index.html#agenda';
+  }
+
+  // 2. CONFIGURACIÓN PARA "HEADS-UP" (BANNER FLOTANTE)
   const options = {
     body: data.body,
     icon: 'logo.svg', 
     badge: 'logo.svg',
-    vibrate: [100, 50, 100],
-    data: { url: './index.html' }, // Guardamos la URL destino aquí
-    requireInteraction: true // Mantiene la notificación hasta que el usuario la toque
+    
+    // 🔥 CLAVE PARA ANDROID: Vibración distinta
+    vibrate: [200, 100, 200, 100, 200, 100, 400], 
+    
+    // 🔥 CLAVE PARA QUE SUENE SIEMPRE (incluso si hay otra notif)
+    tag: 'crm-notification', 
+    renotify: true, 
+
+    // Mantiene la notificación visible
+    requireInteraction: true,
+
+    // Guardamos la URL calculada para usarla al hacer clic
+    data: { url: targetUrl }
   };
 
   event.waitUntil(
@@ -69,24 +88,31 @@ self.addEventListener('push', event => {
   );
 });
 
-// --- CLIC EN LA NOTIFICACIÓN ---
+// --- CLIC EN LA NOTIFICACIÓN (REDIRECCIÓN) ---
 self.addEventListener('notificationclick', event => {
   console.log('👆 Click en notificación');
   event.notification.close();
 
+  // Recuperamos la URL que guardamos en el evento push
+  const targetUrl = event.notification.data.url || './index.html';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // Intentar enfocar una ventana ya abierta
+      
+      // 1. Buscar si ya hay una ventana abierta del CRM
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        // Verificamos si la URL contiene tu dominio base, no solo '/'
-        if (client.url.includes(self.registration.scope) && 'focus' in client) {
+        
+        // Si encontramos la ventana, la enfocamos y la navegamos a la sección correcta
+        if (client.url.includes('index.html') && 'focus' in client) {
+          client.navigate(targetUrl); // 🔄 Recarga en la sección correcta
           return client.focus();
         }
       }
-      // Si no hay ventana, abrir una nueva
+      
+      // 2. Si no hay ventana abierta, abrir una nueva directo en la sección
       if (clients.openWindow) {
-        return clients.openWindow('./index.html');
+        return clients.openWindow(targetUrl);
       }
     })
   );
