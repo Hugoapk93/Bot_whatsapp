@@ -1,7 +1,9 @@
-const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow, getAllUsers } = require('./database');
+const { getUser, updateUser, getFlowStep, getSettings, saveFlowStep, getFullFlow } = require('./database');
 const { isBotDisabled, addManualContact } = require('./contacts');
 const fs = require('fs');
 const path = require('path');
+// 🔥 RECUERDA: npm install chrono-node
+const chrono = require('chrono-node');
 
 // --- CONFIGURACIÓN ---
 const SIMULATOR_PHONE = '5218991234567';
@@ -11,20 +13,52 @@ const MAX_INACTIVE_MINUTES = 2880;
 const agendaPath = path.join(__dirname, '../data/agenda.json');
 const publicFolder = path.join(__dirname, '../public');
 
-// --- UTILIDADES ---
-function isSimilar(a, b) {
-    if(!a || !b) return false;
-    a = a.toLowerCase().trim();
-    b = b.toLowerCase().trim();
-    if (a === b) return true;
-    if (a.includes(b) && b.length > 3) return true;
-    if (b.includes(a) && a.length > 3) return true;
-    if (a.length < 4 || b.length < 4) return false;
-    const maxLen = Math.max(a.length, b.length);
-    if (Math.abs(a.length - b.length) > 2) return false;
-    let matches = 0;
-    for (let i = 0; i < Math.min(a.length, b.length); i++) { if (a[i] === b[i]) matches++; }
-    return (matches / maxLen) > 0.7;
+// --- UTILIDADES MEJORADAS ---
+
+// 1. 🔥 NORMALIZADOR DE TEXTO (La clave para Sí vs Si)
+// Quita acentos y pone todo en minúsculas
+function normalizeText(str) {
+    if (!str) return "";
+    return str.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita tildes (á -> a, ñ -> n)
+        .trim();
+}
+
+// 2. Buscador de similitud (Fuzzy Match)
+function isSimilar(input, keyword) {
+    if (!input || !keyword) return false;
+    
+    // Usamos la versión normalizada para comparar
+    const cleanInput = normalizeText(input);
+    const cleanKeyword = normalizeText(keyword);
+    
+    // Coincidencia Exacta Limpia (arregla "sí" vs "si")
+    if (cleanInput === cleanKeyword) return true;
+
+    // Si es palabra corta (menos de 4 letras), solo aceptamos coincidencia exacta normalizada
+    if (cleanKeyword.length < 4) return cleanInput === cleanKeyword;
+    
+    // Coincidencia contenida (ej: "quiero una bateria" contiene "bateria")
+    if (cleanInput.includes(cleanKeyword)) return true;
+    
+    // Coincidencia aproximada simple (para errores de dedo en palabras largas)
+    let errors = 0;
+    const maxErrors = Math.floor(cleanKeyword.length / 3); 
+    if (Math.abs(cleanInput.length - cleanKeyword.length) > maxErrors) return false;
+
+    let i = 0, j = 0;
+    while (i < cleanInput.length && j < cleanKeyword.length) {
+        if (cleanInput[i] !== cleanKeyword[j]) {
+            errors++;
+            if (errors > maxErrors) return false;
+            if (cleanInput.length > cleanKeyword.length) i++;
+            else if (cleanKeyword.length > cleanInput.length) j++;
+            else { i++; j++; }
+        } else {
+            i++; j++;
+        }
+    }
+    return true;
 }
 
 function getAgenda() {
@@ -36,117 +70,83 @@ function saveAgenda(data) { fs.writeFileSync(agendaPath, JSON.stringify(data, nu
 function timeToMinutes(timeStr) {
     if(!timeStr) return -1;
     const [h, m] = timeStr.split(':').map(Number);
-    if(isNaN(h) || isNaN(m)) return -1;
     return (h * 60) + m;
 }
 
-function normalizeDate(input) {
-    if (!input) return null;
-    // Limpieza básica
-    let text = input.toLowerCase().trim()
-        .replace(/\b(de|del|el|para|el día)\b/g, ' ')
-        .replace(/\s+/g, ' ')
-        .replace(/[.\/]/g, '-');
+// 🔥 INTELIGENCIA NLP: Detecta fecha Y hora
+function analyzeNaturalLanguage(text) {
+    // Configuración para español (Latam)
+    const results = chrono.es.parse(text, new Date(), { forwardDate: true });
     
-    const parts = text.split('-');
-    const tokens = parts.length >= 2 ? parts : text.split(' ');
+    if (results.length === 0) return { date: null, time: null };
 
-    // Si solo hay 2 datos (ej: 25 diciembre), agregamos el año actual
-    if (tokens.length === 2) {
-        tokens.push(new Date().getFullYear().toString());
+    const result = results[0];
+    const components = result.start; 
+
+    let detectedDate = null;
+    let detectedTime = null;
+
+    if (components.isCertain('day') || components.isCertain('weekday')) {
+        const dateObj = components.date();
+        const yyyy = dateObj.getFullYear();
+        const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const dd = String(dateObj.getDate()).padStart(2, '0');
+        detectedDate = `${yyyy}-${mm}-${dd}`;
     }
 
-    if (tokens.length === 3) {
-        let day = tokens[0].padStart(2, '0');
-        let monthRaw = tokens[1];
-        let year = tokens[2];
-
-        const months = { 'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12' };
-        
-        // Intentar parsear mes (texto o número)
-        let month = months[monthRaw.substring(0, 3)] || (parseInt(monthRaw) ? monthRaw.padStart(2, '0') : null);
-        
-        if (year.length === 2) year = '20' + year;
-
-        if (!month || isNaN(day) || isNaN(year)) return null;
-        
-        return `${year}-${month}-${day}`;
+    if (components.isCertain('hour')) {
+        const dateObj = components.date();
+        const hh = String(dateObj.getHours()).padStart(2, '0');
+        const min = String(dateObj.getMinutes()).padStart(2, '0');
+        detectedTime = `${hh}:${min}`;
     }
-    return null;
-}
 
-function normalizeTime(input) {
-    if (!input) return null;
-    let text = input.toLowerCase().trim().replace(/[.,]/g, ':').replace(/\s+/g, '');
-    const match = text.match(/^(\d{1,2})(?::(\d{2}))?([ap]m)?$/);
-    if (!match) return null;
-    let h = parseInt(match[1]);
-    let m = match[2] ? parseInt(match[2]) : 0;
-    const period = match[3];
-    if (h > 23 || m > 59) return null;
-    if (period) { if (period === 'pm' && h < 12) h += 12; if (period === 'am' && h === 12) h = 0; }
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    return { date: detectedDate, time: detectedTime };
 }
 
 function validateBusinessRules(timeStr, settings) {
-    if (!/^\d{1,2}:\d{2}$/.test(timeStr)) return { valid: false, reason: "Formato de hora incorrecto." };
-    const reqMins = timeToMinutes(timeStr);
+    if (!timeStr) return { valid: false, reason: "Falta la hora." };
+    const [h, m] = timeStr.split(':').map(Number);
+    
+    // Regla: Intervalos exactos o medias
+    if (m !== 0 && m !== 30) return { valid: false, reason: "Solo agendamos en horas exactas o medias (ej: 4:00 o 4:30)." };
+
+    const reqMins = (h * 60) + m;
     const startMins = timeToMinutes(settings.schedule?.start || "09:00");
     const endMins = timeToMinutes(settings.schedule?.end || "18:00");
+
     if (reqMins < startMins || reqMins >= endMins) return { valid: false, reason: "Estamos cerrados a esa hora." };
-    const [h, m] = timeStr.split(':').map(Number);
-    if (m !== 0 && m !== 30) return { valid: false, reason: "Solo agendamos en intervalos de 30 min (ej: 4:00, 4:30)." };
     return { valid: true };
 }
 
-const isBusinessClosed = () => {
-    const settings = getSettings();
-    if (!settings.schedule || !settings.schedule.active) return false;
-    const nowServer = new Date();
-    const mxDate = new Date(nowServer.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-    const currentMins = (mxDate.getHours() * 60) + mxDate.getMinutes();
-    const currentDay = mxDate.getDay();
-    if (settings.schedule.days && !settings.schedule.days.includes(currentDay)) return true;
-    const [sh, sm] = (settings.schedule.start || "09:00").split(':').map(Number);
-    const [eh, em] = (settings.schedule.end || "18:00").split(':').map(Number);
-    const startMins = (sh * 60) + sm;
-    const endMins = (eh * 60) + em;
-    return (currentMins < startMins || currentMins >= endMins);
-};
+// --- UTILS DE ENVÍO ---
+const esSimulador = (jid) => jid.includes(SIMULATOR_PHONE);
 
-// --- SOCKET INTERCEPTOR ---
-const enviarAlFrontend = (jid, contenido, tipo = 'text') => {
-    console.log(`\n🤖 [SIMULADOR] Respuesta generada (${tipo})`);
+const enviarAlFrontend = (jid, contenido) => {
     if (global.io) {
-        const rawText = typeof contenido === 'string' ? contenido : (contenido.caption || '');
-        const formattedText = rawText.replace(/\n/g, '<br>');
-        const payload = {
+        global.io.emit('message', {
             to: jid,
             message: contenido,
-            text: formattedText,
-            mediaUrl: typeof contenido === 'object' ? contenido.url : null,
-            type: tipo,
+            text: (typeof contenido === 'string' ? contenido : contenido.caption).replace(/\n/g, '<br>'),
+            type: typeof contenido === 'string' ? 'text' : 'image',
             fromMe: true
-        };
-        global.io.emit('message', payload);
+        });
     }
 };
 
-const esSimulador = (jid) => jid.includes(SIMULATOR_PHONE);
-
 const typing = async (sock, jid, length) => {
     if (esSimulador(jid)) return;
-    const ms = Math.min(Math.max(length * 50, 1000), 5000);
+    const ms = Math.min(Math.max(length * 30, 400), 1500); 
     await sock.sendPresenceUpdate('composing', jid);
-    await new Promise(resolve => setTimeout(resolve, ms));
+    await new Promise(r => setTimeout(r, ms));
     await sock.sendPresenceUpdate('paused', jid);
 };
 
-// --- ENVÍO DE MENSAJES ---
+// --- FUNCIÓN DE ENVÍO DE PASOS ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
-    console.log(`📤 Enviando paso: ${stepId} a ${jid}`);
+    console.log(`📤 Enviando paso: ${stepId}`);
     let step = getFlowStep(stepId);
-
+    
     if (!step && stepId === INITIAL_STEP) {
         step = { type: 'menu', message: '¡Hola! Bienvenido.', options: [] };
         await saveFlowStep(INITIAL_STEP, step);
@@ -154,100 +154,8 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     if (!step) return;
 
     let messageText = step.message || "";
-    const settings = getSettings();
-
-    if (step.type === 'fin_bot') {
-        const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
-        const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
-        addManualContact(cleanPhone, contactName, false);
-    }
-
-    // ==========================================================
-    // NOTIFICACIÓN AL ADMIN (FILTRO) - CON TODAS LAS VARIABLES
-    // ==========================================================
-    if (step.type === 'filtro') {
-        
-        const cleanClientPhone = jid.replace(/[^0-9]/g, '');
-        const hist = userData.history || {};
-        
-        // 1. CONSTRUIR TEXTO CON TODAS LAS VARIABLES
-        let variablesResumen = "";
-        Object.keys(hist).forEach(key => {
-            const val = hist[key];
-            // Formatea "tipo_servicio" a "Tipo Servicio" para que se vea bonito
-            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            variablesResumen += `\n📝 ${label}: ${val}`;
-        });
-
-        // 2. SIEMPRE MANDAR PUSH AL MONITOR / APP
-        if (global.sendPushNotification) {
-             global.sendPushNotification(
-                 "⚠️ Solicitud Pendiente", 
-                 `Cliente: ${cleanClientPhone}\n${variablesResumen || '(Sin datos adicionales)'}`
-             );
-        }
-
-        // 3. WHATSAPP AL ADMIN (SOLO SI HAY NUMERO CONFIGURADO)
-        if (step.admin_number) {
-            const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
-
-            // Construir Ficha para WhatsApp
-            let adminMsg = `🔔 *Solicitud de Aprobación*\n\n`;
-            adminMsg += `🆔 *ID:* ${cleanClientPhone}\n`;
-            adminMsg += `------------------------------\n`;
-            
-            if (variablesResumen) {
-                // Reutilizamos las variables formateadas pero quitamos los emojis para WhatsApp si prefieres
-                // O usamos el loop de nuevo para formato específico de WhatsApp (Bold)
-                 Object.keys(hist).forEach(key => {
-                    const val = hist[key];
-                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    adminMsg += `📄 *${label}:* ${val}\n`;
-                });
-            } else {
-                adminMsg += `(Sin datos capturados aún)\n`;
-            }
-
-            adminMsg += `------------------------------\n`;
-            adminMsg += `🤖 *Bot:* "${messageText}"\n\n`;
-            adminMsg += `👇 *Escribe una opción (copia y pega):*`;
-
-            try { await sock.sendMessage(adminJid, { text: adminMsg }); } catch (e) {}
-
-            // Enviar Botones (Simulados como texto para compatibilidad total)
-            const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
-            if(step.options && Array.isArray(step.options)){
-                for (let idx = 0; idx < step.options.length; idx++) {
-                    const opt = step.options[idx];
-                    const icon = emojis[idx] || '👉';
-                    const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
-                    await new Promise(r => setTimeout(r, 200));
-                    try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
-                }
-            } else {
-                 await new Promise(r => setTimeout(r, 200));
-                 try { await sock.sendMessage(adminJid, { text: `👉 Aprobar ${cleanClientPhone}` }); } catch (e) {}
-                 await new Promise(r => setTimeout(r, 200));
-                 try { await sock.sendMessage(adminJid, { text: `👉 Rechazar ${cleanClientPhone}` }); } catch (e) {}
-            }
-            console.log(`👮 WhatsApp enviado al Admin: ${step.admin_number}`);
-        }
-    }
-
-    if (step.type === 'filtro' && isBusinessClosed()) {
-        messageText = settings.schedule.offline_message || "⛔ Horario de atención terminado.";
-    }
-
-    // SALUDO
-    const mxDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-    const hour = mxDate.getHours();
-    let saludo = 'Hola';
-    if (hour >= 5 && hour < 12) saludo = 'Buenos días';
-    else if (hour >= 12 && hour < 19) saludo = 'Buenas tardes';
-    else saludo = 'Buenas noches';
-    messageText = messageText.replace(/{{saludo}}/gi, saludo);
-
-    // VARIABLES EN MENSAJE AL USUARIO
+    
+    // Renderizado de Variables
     if (userData.history) {
         Object.keys(userData.history).forEach(key => {
             const val = userData.history[key] || '';
@@ -255,44 +163,35 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             messageText = messageText.replace(new RegExp(`{{${key}_primer}}`, 'gi'), val.split(' ')[0]);
         });
     }
-
-    // MENÚ INTELIGENTE
+    
+    // Renderizado de Opciones
     if (step.type === 'menu' && step.options) {
         messageText += '\n';
-        const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
-        step.options.forEach((opt, index) => {
-            if (opt.trigger === opt.label) {
-                const bullet = emojis[index] || '👉';
-                messageText += `\n${bullet} ${opt.label}`;
-            } else {
-                messageText += `\n${opt.trigger} ${opt.label}`;
-            }
+        step.options.forEach((opt, idx) => {
+            messageText += `\n${idx + 1}. ${opt.label}`;
         });
     }
 
-    try { await typing(sock, jid, messageText.length); } catch (e) {}
-
-    // MEDIA
+    // Enviar Media (Imágenes)
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
-    let sent = false;
+    let sentImage = false;
 
     if (mediaList.length > 0) {
         for (let i = 0; i < mediaList.length; i++) {
             const url = mediaList[i];
             const relativePath = url.startsWith('/') ? url.slice(1) : url;
             const finalPath = path.join(publicFolder, relativePath);
-            const altPath = path.join(__dirname, '../public', url);
-            const imageToSend = fs.existsSync(finalPath) ? finalPath : (fs.existsSync(altPath) ? altPath : null);
-
-            if (imageToSend) {
+            // const altPath = path.join(__dirname, '../public', url); // Opcional si usas estructura distinta
+            
+            if (fs.existsSync(finalPath)) {
                 const caption = (i === 0) ? messageText : "";
                 try {
                     if (esSimulador(jid)) {
                         enviarAlFrontend(jid, { url: url, caption: caption }, 'image');
-                        sent = true;
+                        sentImage = true;
                     } else {
-                        await sock.sendMessage(jid, { image: { url: imageToSend }, caption: caption });
-                        sent = true;
+                        await sock.sendMessage(jid, { image: { url: finalPath }, caption: caption });
+                        sentImage = true;
                     }
                     if(mediaList.length > 1) await new Promise(r => setTimeout(r, 500));
                 } catch (e) {}
@@ -300,19 +199,23 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    if (!sent && messageText) {
+    // Enviar Texto (si no se envió como caption de imagen)
+    if (!sentImage && messageText) {
+        await typing(sock, jid, messageText.length);
         try {
-            if (esSimulador(jid)) enviarAlFrontend(jid, messageText, 'text');
-            else { await sock.sendMessage(jid, { text: messageText }); }
+            if (esSimulador(jid)) enviarAlFrontend(jid, messageText);
+            else await sock.sendMessage(jid, { text: messageText });
         } catch (e) {}
     }
 
+    // Auto-Avance
     if (step.type === 'message' && step.next_step) {
         setTimeout(async () => {
-            const freshUser = getUser(userData.phone);
-            if (freshUser && freshUser.current_step !== stepId && freshUser.current_step !== step.next_step) return;
-            await updateUser(userData.phone, { current_step: step.next_step });
-            await sendStepMessage(sock, jid, step.next_step, getUser(userData.phone));
+             const checkUser = getUser(userData.phone);
+             if (checkUser && checkUser.current_step === stepId) {
+                 await updateUser(userData.phone, { current_step: step.next_step });
+                 await sendStepMessage(sock, jid, step.next_step, userData);
+             }
         }, 1500);
     }
 };
@@ -320,348 +223,191 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 // --- HANDLER PRINCIPAL ---
 const handleMessage = async (sock, msg) => {
     const remoteJid = msg.key.remoteJid;
-
-    if (isBotDisabled(remoteJid)) return;
-    if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
+    if (isBotDisabled(remoteJid) || remoteJid.includes('@g.us')) return;
 
     const text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
     if (!text) return;
 
     let incomingPhone = remoteJid.split('@')[0].replace(/:[0-9]+/, '');
+    if (incomingPhone.startsWith('52') && incomingPhone.length === 12) incomingPhone = '521' + incomingPhone.slice(2);
+    
     let user = getUser(incomingPhone);
-    let dbKey = incomingPhone;
-
-    if (!user?.phone) {
-        let altKey = null;
-        if (incomingPhone.startsWith('521') && incomingPhone.length === 13) altKey = incomingPhone.replace('521', '52');
-        else if (incomingPhone.startsWith('52') && incomingPhone.length === 12) altKey = incomingPhone.replace('52', '521');
-        if (altKey) {
-            const altUser = getUser(altKey);
-            if (altUser?.phone) { user = altUser; dbKey = altKey; }
-        }
-    }
-
+    const dbKey = incomingPhone;
     const timestamp = new Date().toISOString();
 
     if (!user?.phone) {
-        console.log(`✨ Nuevo Cliente: ${dbKey}`);
+        console.log(`✨ Nuevo usuario: ${dbKey}`);
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
         user = getUser(dbKey);
-    }
-
-    if (user.jid !== remoteJid) {
-        await updateUser(dbKey, { jid: remoteJid, last_active: timestamp });
-        user.jid = remoteJid;
     } else {
-        await updateUser(dbKey, { last_active: timestamp });
+        await updateUser(dbKey, { last_active: timestamp, jid: remoteJid });
     }
 
     if (user.blocked) return;
-    const cleanText = text.toLowerCase();
 
-    if (user.last_active && user.current_step !== INITIAL_STEP) {
-        const diffMinutes = (new Date().getTime() - new Date(user.last_active).getTime()) / 60000;
-        if (diffMinutes > MAX_INACTIVE_MINUTES) {
-            console.log(`⏱️ Timeout. Reinicio.`);
-            await updateUser(dbKey, { current_step: INITIAL_STEP, history: {} });
-            user = getUser(dbKey);
-        }
+    // Timeout Inactividad
+    const lastActive = new Date(user.last_active || timestamp).getTime();
+    if ((new Date().getTime() - lastActive) / 60000 > MAX_INACTIVE_MINUTES && user.current_step !== INITIAL_STEP) {
+        await updateUser(dbKey, { current_step: INITIAL_STEP, history: {} });
+        user = getUser(dbKey);
     }
 
-    // =================================================================
-    // 1. LÓGICA DE ADMINISTRADOR
-    // =================================================================
-    const words = cleanText.split(/\s+/);
-    let targetClientPhone = null;
-    let commandOption = "";
-
-    for (const word of words) {
-        const potentialNum = word.replace(/[^0-9]/g, '');
-        if (potentialNum.length >= 10 && potentialNum.length <= 13 && potentialNum !== incomingPhone) {
-
-            let checkUser = getUser(potentialNum);
-            if (!checkUser && potentialNum.startsWith('52') && potentialNum.length === 12) {
-                 checkUser = getUser('521' + potentialNum.slice(2));
-            }
-            if (!checkUser && potentialNum.length === 10) {
-                 checkUser = getUser('521' + potentialNum);
-            }
-
-            if (checkUser) {
-                targetClientPhone = checkUser.phone;
-                commandOption = cleanText.replace(word, '').trim();
-                break;
-            }
-        }
-    }
-
-    if (targetClientPhone) {
-        const targetUser = getUser(targetClientPhone);
-        const targetStepConfig = getFlowStep(targetUser.current_step);
-
-        if (targetStepConfig && targetStepConfig.type === 'filtro' && targetStepConfig.admin_number) {
-
-            const senderLast10 = incomingPhone.slice(-10);
-            const adminLast10 = targetStepConfig.admin_number.replace(/[^0-9]/g, '').slice(-10);
-
-            if (senderLast10 === adminLast10) {
-                console.log(`👮 Admin autorizado (${incomingPhone}) -> Cliente (${targetClientPhone})`);
-
-                const match = targetStepConfig.options?.find(opt => {
-                    const t = opt.trigger.toLowerCase();
-                    const l = opt.label.toLowerCase();
-                    return isSimilar(commandOption, t) || isSimilar(commandOption, l) || commandOption.includes(t) || commandOption.includes(l);
-                });
-
-                if (match) {
-                    await sock.sendMessage(remoteJid, { text: `✅ Acción: ${match.label}` });
-                    await updateUser(targetClientPhone, { current_step: match.next_step });
-                    const targetJid = targetUser.jid || targetClientPhone + '@s.whatsapp.net';
-                    await sendStepMessage(sock, targetJid, match.next_step, targetUser);
-                    return;
-                } else {
-                    await sock.sendMessage(remoteJid, { text: `⚠️ Opción no válida.` });
-                    return;
-                }
-            }
-        }
-    }
-
-    // =================================================================
-    // 2. LÓGICA DE USUARIO / CLIENTE
-    // =================================================================
-
+    // --- CEREBRO ---
+    
+    // 1. Detección Global de Keywords
     const fullFlow = getFullFlow();
-    let jumpToStep = null;
-    Object.keys(fullFlow).forEach(stepName => {
-        const stepData = fullFlow[stepName];
-        if (stepData.keywords && Array.isArray(stepData.keywords)) {
-            if (stepData.keywords.some(k => isSimilar(cleanText, k))) jumpToStep = stepName;
+    let jumpStep = null;
+    for (const [sKey, sVal] of Object.entries(fullFlow)) {
+        if (sVal.keywords?.some(k => isSimilar(text, k))) {
+            jumpStep = sKey;
+            break;
         }
-    });
-
-    if (jumpToStep) {
-        console.log(`🔀 Salto por keyword a: ${jumpToStep}`);
-        await updateUser(dbKey, { current_step: jumpToStep });
-        await sendStepMessage(sock, remoteJid, jumpToStep, user);
+    }
+    if (jumpStep) {
+        console.log(`🔀 Keyword detectada: saltando a ${jumpStep}`);
+        await updateUser(dbKey, { current_step: jumpStep });
+        await sendStepMessage(sock, remoteJid, jumpStep, user);
         return;
     }
 
-    const currentConfig = getFlowStep(user.current_step);
-    if (!currentConfig) {
+    // 2. Procesamiento Paso Actual
+    const currentStepConfig = getFlowStep(user.current_step);
+    if (!currentStepConfig) {
         await updateUser(dbKey, { current_step: INITIAL_STEP });
         return;
     }
 
     let nextStepId = null;
 
-    if (currentConfig.type === 'input') {
-        const varName = currentConfig.save_var || 'temp';
-        const newHistory = { ...user.history, [varName]: text };
-        await updateUser(dbKey, { history: newHistory });
-        user = getUser(dbKey);
-        nextStepId = currentConfig.next_step;
-    }
-
-    // CORRECCIÓN MENÚ
-    else if (currentConfig.type === 'menu') {
-        let match = null;
-        const numberMatches = cleanText.match(/^(\d+)[\s.)]*$/);
-        if (numberMatches) {
-             const index = parseInt(numberMatches[1]) - 1;
-             if (index >= 0 && index < (currentConfig.options?.length || 0)) match = currentConfig.options[index];
-        }
+    // --- CASO MENÚ MEJORADO ---
+    if (currentStepConfig.type === 'menu') {
+        const index = parseInt(text) - 1;
+        let match = currentStepConfig.options?.[index];
 
         if (!match) {
-            match = currentConfig.options?.find(opt => {
-                const t = opt.trigger.toLowerCase();
-                const l = opt.label.toLowerCase();
-                const tLimpio = t.replace(/[^0-9a-zñáéíóúü]/g, '');
-                return isSimilar(cleanText, t) || isSimilar(cleanText, tLimpio) || isSimilar(cleanText, l);
-            });
+            // 🔥 BÚSQUEDA NORMALIZADA (Soporta Sí/Si, Canción/Cancion)
+            match = currentStepConfig.options?.find(opt => 
+                isSimilar(text, opt.trigger) || isSimilar(text, opt.label)
+            );
         }
 
         if (match) {
             nextStepId = match.next_step;
         } else {
-            if (user.current_step === INITIAL_STEP) return;
-
-            // --- CORRECCIÓN SOLICITADA: FORMATO DE ERROR LIMPIO ---
-            let helpText = "⚠️ No entendí.\nPor favor escribe las siguientes opciones:\n";
-            currentConfig.options.forEach((opt, index) => {
-                // Muestra: 👉 *1* o *Nombre Opción*
-                helpText += `👉 *${index + 1}* o *${opt.label}*\n`;
-            });
-
-            if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, helpText);
-            else await sock.sendMessage(remoteJid, { text: helpText });
+            const txt = `⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.`;
+            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
             return;
         }
     }
 
-    else if (currentConfig.type === 'filtro') {
-        console.log(`🔒 Cliente ${dbKey} intentó escribir en FILTRO. Ignorado.`);
-        return;
+    // CASO: INPUT
+    else if (currentStepConfig.type === 'input') {
+        const varName = currentStepConfig.save_var || 'temp';
+        user.history[varName] = text;
+        await updateUser(dbKey, { history: user.history });
+        nextStepId = currentStepConfig.next_step;
     }
 
-    else if (currentConfig.type === 'message') {
-        nextStepId = currentConfig.next_step;
+    // CASO: FILTRO (Admin)
+    else if (currentStepConfig.type === 'filtro') {
+        // Ignora mensajes de usuario en paso filtro (espera acción de admin)
+        return; 
     }
 
-    // --- LÓGICA CITAS CORREGIDA (VALIDACIÓN ESTRICTA) ---
-    if (nextStepId || currentConfig.type === 'cita') {
+    // CASO: CITA INTELIGENTE
+    else if (currentStepConfig.type === 'cita' || nextStepId) { 
         
         let targetStep = nextStepId || user.current_step;
-        const nextStepConfig = getFlowStep(targetStep);
-        
-        if (nextStepConfig && nextStepConfig.type === 'cita') {
+        const targetStepConfig = getFlowStep(targetStep);
 
-            // 1. CAPTURA INTELIGENTE DE DATOS
-            const detectedDate = normalizeDate(text); 
-            const detectedTime = normalizeTime(text); 
-
-            console.log(`🔍 Input Citas: "${text}" | Fecha detectada: ${detectedDate} | Hora detectada: ${detectedTime}`);
-
-            // Si detectamos fecha nueva en el mensaje, actualizamos
-            if (detectedDate) {
-                user.history['fecha_cita'] = text; 
-                user.history['fecha'] = text; 
-                // Limpiamos hora previa si cambian de fecha para evitar conflictos
-                // delete user.history['hora_cita']; 
-                await updateUser(dbKey, { history: user.history }); 
-            }
-
-            // Si detectamos hora nueva en el mensaje, actualizamos
-            if (detectedTime) {
-                user.history['hora_cita'] = text;
-                await updateUser(dbKey, { history: user.history });
-            }
-
-            // 2. LEER ESTADO ACTUAL
-            // Recuperamos lo que el usuario escribió originalmente
-            let rawDateInput = user.history['fecha_cita'] || user.history['fecha'];
-            let rawTimeInput = user.history['hora_cita'];
-
-            // Normalizamos para validar
-            let fechaValida = normalizeDate(rawDateInput);
-            let horaValida = normalizeTime(rawTimeInput);
-
-            // 3. VALIDACIÓN DE FECHA (Evitar fallo silencioso)
-            if (rawDateInput && !fechaValida) {
-                const txt = `⚠️ No entendí la fecha "${rawDateInput}".\nPor favor escríbela así: *25 de diciembre* o *25/12/2025*.`;
-                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                return; // Detenemos para que el usuario corrija
-            }
-
-            if (fechaValida) {
-                const hoy = new Date().toISOString().split('T')[0];
-                if (fechaValida < hoy) {
-                    const txt = `⚠️ La fecha ${fechaValida} ya pasó.\nPor favor indica una fecha futura.`;
-                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    // Borramos la fecha inválida del historial para obligar a pedirla de nuevo
-                    delete user.history['fecha_cita'];
-                    delete user.history['fecha'];
-                    await updateUser(dbKey, { history: user.history });
-                    return;
-                }
-            }
-
-            // 4. INTENTO DE AGENDAR (Solo si tenemos ambos datos válidos)
-            if (fechaValida && horaValida) {
-                
-                console.log(`⚡ Intentando agendar: ${fechaValida} @ ${horaValida}`);
-                try {
-                    const settings = getSettings();
-                    const rules = validateBusinessRules(horaValida, settings);
-                    
-                    // 1. Validar reglas de negocio
-                    if (!rules.valid) {
-                        const txt = `⚠️ ${rules.reason}\nHorario laboral: ${settings.schedule?.start || '09:00'} - ${settings.schedule?.end || '18:00'}`;
-                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                        
-                        // Borramos la hora mala para que la pida de nuevo
-                        delete user.history['hora_cita'];
-                        await updateUser(dbKey, { history: user.history });
-                        return; 
-                    }
-                    
-                    // 2. Validar disponibilidad
-                    const db = getAgenda(); 
-                    if (db[fechaValida] && db[fechaValida].some(c => c.time === horaValida)) {
-                        const txt = `❌ Horario ocupado (${horaValida}). Por favor escribe otra hora.`;
-                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                        return; 
-                    }
-                    
-                    // 3. --- GUARDAR EN AGENDA ---
-                    if (!db[fechaValida]) db[fechaValida] = [];
-                    const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
-                    
-                    db[fechaValida].push({ time: horaValida, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
-                    saveAgenda(db); 
-                    
-                    console.log(`🎉 Cita agendada exitosamente para ${finalName}`);
-
-                    // 4. Notificación Push al Admin
-                    if (global.sendPushNotification) {
-                         global.sendPushNotification(
-                             "📅 Cliente Agendado", 
-                             `Nueva cita: ${fechaValida} a las ${horaValida}.`
-                         );
-                    }
-
-                    // 5. 🔥 ACTUALIZAR VARIABLES DE HISTORIA (CRUCIAL PARA TU PLANTILLA)
-                    // Aseguramos que {{fecha}} y {{hora}} existan limpios para el mensaje de confirmación
-                    user.history['fecha'] = fechaValida;
-                    user.history['hora'] = horaValida;
-                    
-                    // Borramos fecha_cita y hora_cita para limpiar el buffer
-                    delete user.history['fecha_cita'];
-                    delete user.history['hora_cita'];
-                    
-                    await updateUser(dbKey, { history: user.history });
-
-                    // 6. 🔥 FORZAR EL SIGUIENTE PASO (AQUÍ ESTABA EL ERROR ANTES)
-                    if (nextStepConfig.next_step) {
-                        console.log(`➡️ Avanzando al paso de confirmación: ${nextStepConfig.next_step}`);
-                        
-                        // Guardamos el nuevo paso en la DB
-                        await updateUser(dbKey, { current_step: nextStepConfig.next_step });
-                        
-                        // Enviamos el mensaje MANUALMENTE ahora mismo
-                        await sendStepMessage(sock, remoteJid, nextStepConfig.next_step, user);
-                        
-                        return; // Detenemos la ejecución aquí porque ya cumplimos
-                    } else {
-                        // Si NO conectaste ningún paso, manda mensaje genérico
-                        const txt = `✅ Cita confirmada: ${fechaValida} a las ${horaValida}.`;
-                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                        return;
-                    }
-
-                } catch (error) {
-                    console.error("🔥 Error crítico en agenda:", error);
-                    const txt = `⚠️ Error interno. Intenta de nuevo.`;
-                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    return;
-                }
-                    
-            } 
+        if (targetStepConfig && targetStepConfig.type === 'cita') {
             
-            // 5. MANEJO DE HORA INVÁLIDA (Si puso algo que parece hora pero no es válida)
-            else if (rawTimeInput && !horaValida) {
-                  const txt = `⚠️ No reconocí la hora "${rawTimeInput}".\nUsa el formato: *4:00 PM* o *16:00*.`;
-                  if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                  return;
+            console.log(`🧠 Analizando lenguaje natural: "${text}"`);
+            const analysis = analyzeNaturalLanguage(text);
+            
+            if (analysis.date) {
+                user.history['fecha'] = analysis.date; 
+                console.log(`✅ Fecha detectada: ${analysis.date}`);
+            }
+            if (analysis.time) {
+                user.history['hora'] = analysis.time; 
+                console.log(`✅ Hora detectada: ${analysis.time}`);
             }
 
-            // Si llegamos aquí, es que falta un dato (fecha o hora) y el bot mostrará el mensaje del paso 'cita'
-            if (!nextStepId) nextStepId = targetStep;
+            await updateUser(dbKey, { history: user.history });
+            
+            const fechaMemoria = user.history['fecha'];
+            const horaMemoria = user.history['hora'];
+
+            // Validaciones de Cita
+            if (!fechaMemoria) {
+                const txt = "📅 ¿Para qué día te gustaría agendar? (Ej: Mañana, El viernes)";
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                return; 
+            }
+
+            if (fechaMemoria < new Date().toISOString().split('T')[0]) {
+                const txt = `⚠️ La fecha ${fechaMemoria} ya pasó. Dime una fecha futura.`;
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                delete user.history['fecha']; 
+                await updateUser(dbKey, { history: user.history });
+                return;
+            }
+
+            if (!horaMemoria) {
+                const txt = `Perfecto para el ${fechaMemoria}. 🕒 ¿A qué hora? (Ej: 4pm, 10:30)`;
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                return; 
+            }
+
+            const settings = getSettings();
+            const rules = validateBusinessRules(horaMemoria, settings);
+            if (!rules.valid) {
+                const txt = `⚠️ ${rules.reason}\nHorario: ${settings.schedule?.start || '9:00'} - ${settings.schedule?.end || '18:00'}`;
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                delete user.history['hora']; 
+                await updateUser(dbKey, { history: user.history });
+                return;
+            }
+
+            const db = getAgenda();
+            if (db[fechaMemoria] && db[fechaMemoria].some(c => c.time === horaMemoria)) {
+                const txt = `❌ Horario ${horaMemoria} ocupado. ¿Otra hora?`;
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                delete user.history['hora'];
+                await updateUser(dbKey, { history: user.history });
+                return;
+            }
+
+            // AGENDAR
+            if (!db[fechaMemoria]) db[fechaMemoria] = [];
+            const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
+            
+            db[fechaMemoria].push({ 
+                time: horaMemoria, 
+                phone: dbKey, 
+                name: finalName, 
+                created_at: new Date().toISOString() 
+            });
+            saveAgenda(db);
+
+            if (global.sendPushNotification) {
+                global.sendPushNotification("📅 Nueva Cita", `El ${fechaMemoria} a las ${horaMemoria} - ${finalName}`);
+            }
+
+            // Transición
+            if (targetStepConfig.next_step) {
+                nextStepId = targetStepConfig.next_step;
+            } else {
+                const txt = `✅ ¡Listo! Agendado el *${fechaMemoria}* a las *${horaMemoria}*.`;
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                return;
+            }
         }
     }
 
+    // 3. Ejecutar Cambio de Paso
     if (nextStepId) {
-        console.log(`➡️ Avanzando al paso: ${nextStepId}`);
         await updateUser(dbKey, { current_step: nextStepId });
         await sendStepMessage(sock, remoteJid, nextStepId, getUser(dbKey));
     }
