@@ -570,65 +570,82 @@ const handleMessage = async (sock, msg) => {
             if (fechaValida && horaValida) {
                 
                 console.log(`⚡ Intentando agendar: ${fechaValida} @ ${horaValida}`);
-                
                 try {
                     const settings = getSettings();
                     const rules = validateBusinessRules(horaValida, settings);
                     
-                    // Validación de Reglas de Negocio (Horario y Minutos)
+                    // 1. Validar reglas de negocio
                     if (!rules.valid) {
-                        const txt = `⚠️ ${rules.reason}\n🕒 Horario: ${settings.schedule?.start || '09:00'} - ${settings.schedule?.end || '18:00'}`;
+                        const txt = `⚠️ ${rules.reason}\nHorario laboral: ${settings.schedule?.start || '09:00'} - ${settings.schedule?.end || '18:00'}`;
                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                        // Borramos la hora incorrecta
+                        
+                        // Borramos la hora mala para que la pida de nuevo
                         delete user.history['hora_cita'];
                         await updateUser(dbKey, { history: user.history });
                         return; 
                     }
                     
-                    // Validación de Disponibilidad (Agenda llena)
+                    // 2. Validar disponibilidad
                     const db = getAgenda(); 
                     if (db[fechaValida] && db[fechaValida].some(c => c.time === horaValida)) {
-                        const txt = `❌ El horario de las ${horaValida} ya está ocupado.\nPor favor escribe otra hora.`;
+                        const txt = `❌ Horario ocupado (${horaValida}). Por favor escribe otra hora.`;
                         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                         return; 
                     }
                     
-                    // --- GUARDAR CITA ---
+                    // 3. --- GUARDAR EN AGENDA ---
                     if (!db[fechaValida]) db[fechaValida] = [];
                     const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
                     
-                    db[fechaValida].push({ 
-                        time: horaValida, 
-                        phone: dbKey, 
-                        name: finalName, 
-                        created_at: new Date().toISOString() 
-                    });
-                    
+                    db[fechaValida].push({ time: horaValida, phone: dbKey, name: finalName, created_at: new Date().toISOString() });
                     saveAgenda(db); 
-                    console.log(`🎉 Cita guardada en agenda.json`);
                     
-                    // Notificación Push
+                    console.log(`🎉 Cita agendada exitosamente para ${finalName}`);
+
+                    // 4. Notificación Push al Admin
                     if (global.sendPushNotification) {
-                         global.sendPushNotification("📅 Nueva Cita", `El ${fechaValida} a las ${horaValida} con ${finalName}`);
+                         global.sendPushNotification(
+                             "📅 Cliente Agendado", 
+                             `Nueva cita: ${fechaValida} a las ${horaValida}.`
+                         );
                     }
 
-                    // ÉXITO: Avanzamos
-                    if (!nextStepConfig.next_step) {
-                        const txt = `✅ ¡Listo! Tu cita quedó agendada para el *${fechaValida}* a las *${horaValida}*.`;
-                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    // 5. 🔥 ACTUALIZAR VARIABLES DE HISTORIA (CRUCIAL PARA TU PLANTILLA)
+                    // Aseguramos que {{fecha}} y {{hora}} existan limpios para el mensaje de confirmación
+                    user.history['fecha'] = fechaValida;
+                    user.history['hora'] = horaValida;
+                    
+                    // Borramos fecha_cita y hora_cita para limpiar el buffer
+                    delete user.history['fecha_cita'];
+                    delete user.history['hora_cita'];
+                    
+                    await updateUser(dbKey, { history: user.history });
+
+                    // 6. 🔥 FORZAR EL SIGUIENTE PASO (AQUÍ ESTABA EL ERROR ANTES)
+                    if (nextStepConfig.next_step) {
+                        console.log(`➡️ Avanzando al paso de confirmación: ${nextStepConfig.next_step}`);
+                        
+                        // Guardamos el nuevo paso en la DB
+                        await updateUser(dbKey, { current_step: nextStepConfig.next_step });
+                        
+                        // Enviamos el mensaje MANUALMENTE ahora mismo
+                        await sendStepMessage(sock, remoteJid, nextStepConfig.next_step, user);
+                        
+                        return; // Detenemos la ejecución aquí porque ya cumplimos
                     } else {
-                        nextStepId = nextStepConfig.next_step;
+                        // Si NO conectaste ningún paso, manda mensaje genérico
+                        const txt = `✅ Cita confirmada: ${fechaValida} a las ${horaValida}.`;
+                        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                        return;
                     }
-
-                    // Limpiamos memoria temporal si es necesario, o la dejamos para el resumen
-                    return; // Salimos aquí si todo fue bien, el handler principal moverá el paso si hay nextStepId
 
                 } catch (error) {
-                    console.error("🔥 Error crítico al guardar cita:", error);
-                    const txt = `⚠️ Error del sistema. Intenta más tarde.`;
+                    console.error("🔥 Error crítico en agenda:", error);
+                    const txt = `⚠️ Error interno. Intenta de nuevo.`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                     return;
                 }
+                    
             } 
             
             // 5. MANEJO DE HORA INVÁLIDA (Si puso algo que parece hora pero no es válida)
