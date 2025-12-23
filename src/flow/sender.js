@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const { getFlowStep, saveFlowStep, updateUser, getUser } = require('../database');
+// 🔥 Importamos getSettings para leer el mensaje offline
+const { getFlowStep, saveFlowStep, updateUser, getUser, getSettings } = require('../database');
 const { addManualContact } = require('../contacts');
+// 🔥 Importamos la validación de horario
+const { isBusinessClosed } = require('./agenda');
 
 const SIMULATOR_PHONE = '5218991234567';
 const INITIAL_STEP = 'BIENVENIDA';
@@ -51,52 +54,68 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     const cleanClientPhone = jid.replace(/[^0-9]/g, '');
 
     // ==========================================================
-    // 🔥 AQUÍ ESTÁ LA LÓGICA DE FILTRO (RESTAURADA)
+    // 👮 LÓGICA DE FILTRO ADMIN CON HORARIO
     // ==========================================================
     if (step.type === 'filtro') {
-        const hist = userData.history || {};
         
-        // 1. Construir Resumen
-        let variablesResumen = "";
-        Object.keys(hist).forEach(key => {
-            const val = hist[key];
-            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            variablesResumen += `\n📝 ${label}: ${val}`;
-        });
-
-        // 2. Notificación Push al Monitor (ESTO ES LO QUE QUERÍAS)
-        if (global.sendPushNotification) {
-             global.sendPushNotification(
-                 "⚠️ Solicitud Pendiente", 
-                 `Cliente: ${cleanClientPhone}\n${variablesResumen || '(Sin datos)'}`
-             );
-        }
-
-        // 3. WhatsApp al Admin (si está configurado)
-        if (step.admin_number) {
-            const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
-            let adminMsg = `🔔 *Solicitud de Aprobación*\n🆔 *ID:* ${cleanClientPhone}\n------------------------------\n`;
+        // 1. 🔥 VERIFICAR SI ESTÁ CERRADO (FrontEnd Config)
+        if (isBusinessClosed()) {
+            console.log("🌙 Paso Filtro: Negocio Cerrado. Enviando mensaje offline.");
+            const settings = getSettings();
             
-            if (variablesResumen) {
-                 Object.keys(hist).forEach(key => {
-                    const val = hist[key];
-                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    adminMsg += `📄 *${label}:* ${val}\n`;
-                });
+            // Reemplazamos el mensaje del paso por el mensaje Offline
+            messageText = settings.schedule?.offline_message || "⛔ Nuestro horario de atención ha terminado. Te contactaremos mañana.";
+            
+            // ⚠️ IMPORTANTE: Al estar cerrado, NO ejecutamos la notificación al Admin
+            // El código saltará la parte de Push y WhatsApp Admin.
+
+        } else {
+            // 2. 🔥 SI ESTÁ ABIERTO: Ejecutamos notificaciones normales
+            
+            const hist = userData.history || {};
+            
+            // Construir Resumen
+            let variablesResumen = "";
+            Object.keys(hist).forEach(key => {
+                const val = hist[key];
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                variablesResumen += `\n📝 ${label}: ${val}`;
+            });
+
+            // Notificación Push al Monitor
+            if (global.sendPushNotification) {
+                 global.sendPushNotification(
+                     "⚠️ Solicitud Pendiente", 
+                     `Cliente: ${cleanClientPhone}\n${variablesResumen || '(Sin datos)'}`
+                 );
             }
-            adminMsg += `------------------------------\n🤖 *Bot:* "${messageText}"\n\n👇 *Escribe una opción:*`;
 
-            try { await sock.sendMessage(adminJid, { text: adminMsg }); } catch (e) {}
+            // WhatsApp al Admin (si está configurado)
+            if (step.admin_number) {
+                const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
+                let adminMsg = `🔔 *Solicitud de Aprobación*\n🆔 *ID:* ${cleanClientPhone}\n------------------------------\n`;
+                
+                if (variablesResumen) {
+                     Object.keys(hist).forEach(key => {
+                        const val = hist[key];
+                        const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        adminMsg += `📄 *${label}:* ${val}\n`;
+                    });
+                }
+                adminMsg += `------------------------------\n🤖 *Bot:* "${messageText}"\n\n👇 *Escribe una opción:*`;
 
-            // Enviar Botones simulados al Admin
-            const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
-            if(step.options && Array.isArray(step.options)){
-                for (let idx = 0; idx < step.options.length; idx++) {
-                    const opt = step.options[idx];
-                    const icon = emojis[idx] || '👉';
-                    const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
-                    await new Promise(r => setTimeout(r, 200));
-                    try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
+                try { await sock.sendMessage(adminJid, { text: adminMsg }); } catch (e) {}
+
+                // Enviar Botones simulados al Admin
+                const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+                if(step.options && Array.isArray(step.options)){
+                    for (let idx = 0; idx < step.options.length; idx++) {
+                        const opt = step.options[idx];
+                        const icon = emojis[idx] || '👉';
+                        const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
+                        await new Promise(r => setTimeout(r, 200));
+                        try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
+                    }
                 }
             }
         }
@@ -121,7 +140,11 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
     
     // 3. Menú con Emojis
-    if (step.type === 'menu' && step.options) {
+    // Si estamos cerrados en paso filtro, Ocultamos opciones (botones)
+    let showOptions = true;
+    if (step.type === 'filtro' && isBusinessClosed()) showOptions = false;
+
+    if (showOptions && step.type === 'menu' && step.options) {
         messageText += '\n';
         const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
         step.options.forEach((opt, index) => {
@@ -134,8 +157,11 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         });
     }
 
-    // 4. Enviar Media
+    // 4. Enviar Media 
+    // Si estamos cerrados en paso filtro, NO enviamos fotos (solo el texto de cerrado)
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
+    if (step.type === 'filtro' && isBusinessClosed()) mediaList = [];
+
     let sentImage = false;
 
     if (mediaList.length > 0) {
@@ -170,6 +196,9 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     // 6. Auto-Avance
+    // Si estamos cerrados en filtro, detenemos auto-avance por seguridad
+    if (step.type === 'filtro' && isBusinessClosed()) return;
+
     if (step.type === 'message' && step.next_step) {
         setTimeout(async () => {
              const checkUser = getUser(userData.phone);
