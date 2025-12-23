@@ -38,33 +38,46 @@ const isDateInPast = (dateStr, timeStr) => {
     return false;
 };
 
-// 🔥 NUEVA FUNCIÓN: Verifica si el negocio está CERRADO AHORA MISMO
-// Esta es la que necesita el frontend y el paso filtro
+// 🔥 FUNCIÓN CLAVE: Verifica si el negocio está CERRADO
 const isBusinessClosed = () => {
-    const settings = getSettings();
+    const settings = getSettings(); // Leemos la config más reciente
     
-    // Si no está activo el horario en el frontend, asumimos abierto siempre
-    if (!settings.schedule || !settings.schedule.active) return false;
+    // 1. Si no está activa la opción en el frontend, siempre está ABIERTO
+    if (!settings.schedule || !settings.schedule.active) {
+        // console.log("🕒 Horario: Inactivo (Abierto por defecto)");
+        return false;
+    }
 
-    const nowMx = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-    const currentMins = (nowMx.getHours() * 60) + nowMx.getMinutes();
-    const currentDay = nowMx.getDay(); // 0 Domingo, 1 Lunes...
+    // 2. Obtener hora actual CDMX forzada
+    const now = new Date();
+    const mxDate = new Date(now.toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
+    
+    const currentH = mxDate.getHours();
+    const currentM = mxDate.getMinutes();
+    const currentMins = (currentH * 60) + currentM;
 
-    // 1. Validar Días (Si hoy no se trabaja)
-    if (settings.schedule.days && !settings.schedule.days.includes(currentDay)) return true;
-
-    // 2. Validar Hora de Inicio y Fin
+    // 3. Obtener Límites del JSON
     const [sh, sm] = (settings.schedule.start || "09:00").split(':').map(Number);
     const [eh, em] = (settings.schedule.end || "18:00").split(':').map(Number);
     
     const startMins = (sh * 60) + sm;
     const endMins = (eh * 60) + em;
 
-    // Si es más temprano que la apertura O más tarde que el cierre
-    return (currentMins < startMins || currentMins >= endMins);
+    // --- 🕵️ DEBUG: ESTO SALDRÁ EN LA CONSOLA PARA QUE VEAS EL ERROR ---
+    console.log(`🕒 DEBUG HORARIO | Actual: ${currentH}:${currentM} (${currentMins}) | Cierre: ${eh}:${em} (${endMins})`);
+
+    // 4. Comparación
+    // Si la hora actual es MENOR a la apertura O MAYOR/IGUAL al cierre
+    if (currentMins < startMins || currentMins >= endMins) {
+        console.log("⛔ RESULTADO: CERRADO");
+        return true; 
+    }
+
+    console.log("✅ RESULTADO: ABIERTO");
+    return false;
 };
 
-// --- REGLAS DE NEGOCIO PARA CITAS ---
+// --- REGLAS DE NEGOCIO PARA CITAS (Agenda) ---
 const validateBusinessRules = (timeStr) => {
     const settings = getSettings();
     if (!timeStr) return { valid: false, reason: "Falta la hora." };
@@ -101,5 +114,5 @@ module.exports = {
     checkAvailability, 
     bookAppointment, 
     isDateInPast,
-    isBusinessClosed // <--- Exportada correctamente
+    isBusinessClosed
 };
