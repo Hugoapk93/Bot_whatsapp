@@ -5,18 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CRM - Flow Studio</title>
     
-    <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="logo.svg" type="image/svg+xml">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <!-- Fuentes e Iconos -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
-    <!-- Librerías JS -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
@@ -226,7 +223,6 @@
     <div id="toast-container"></div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
 
-    <!-- WIZARD -->
     <div id="setupWizard" class="step-hidden">
         <div id="stepLoading" style="text-align:center;">
             <i class="fas fa-circle-notch fa-spin" style="font-size:2.5rem; color:var(--primary);"></i>
@@ -241,7 +237,6 @@
         </div>
     </div>
 
-    <!-- APP -->
     <div id="mainApp">
         <div class="sidebar" id="sidebar">
             <div class="brand"><i class="fas fa-robot" style="color:var(--primary);"></i> MENÚ</div>
@@ -249,7 +244,6 @@
                 <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-project-diagram"></i> Flujo del Bot</div>
                 <div class="menu-item" onclick="nav('activity', this)">
                     <i class="fas fa-desktop"></i> Monitor
-                    <span id="socketDot" style="width:8px; height:8px; background:var(--danger); border-radius:50%; margin-left:auto; box-shadow:0 0 5px var(--danger);"></span>
                 </div>
                 <div class="menu-item" onclick="nav('agenda', this)"><i class="far fa-calendar-alt"></i> Agenda</div>
                 <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
@@ -264,10 +258,8 @@
             <div class="mobile-header">
                 <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.4rem;">☰</button>
                 <span id="pageTitle" style="font-weight:700;">FLOW CRM</span>
-                <div id="statusIndicator" class="status-badge disconnected">OFFLINE</div>
             </div>
 
-            <!-- VISTA: MONITOR -->
             <div id="view-activity" class="view view-padding">
                 <div class="card">
                     <h3 style="margin-top:0;">Monitor en Vivo</h3>
@@ -280,13 +272,11 @@
                 </div>
             </div>
 
-            <!-- VISTA: FLUJO -->
             <div id="view-flow" class="view active view-padding">
                 <div id="flowListContainer"></div>
                 <div class="fab" onclick="createNewStepPrompt()"><i class="fas fa-plus"></i></div>
             </div>
 
-            <!-- VISTA: AGENDA -->
             <div id="view-agenda" class="view view-padding">
                 <div class="card">
                     <div class="calendar-header">
@@ -299,7 +289,6 @@
                 </div>
             </div>
 
-            <!-- VISTA: CONTACTOS -->
             <div id="view-contacts" class="view view-padding">
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
@@ -310,7 +299,6 @@
                 </div>
             </div>
 
-            <!-- VISTA: CONFIGURACIÓN -->
             <div id="view-settings" class="view view-padding">
                 <div class="card">
                     <h3>Horario de Atención</h3>
@@ -328,7 +316,6 @@
                 </div>
             </div>
 
-            <!-- VISTA: SIMULADOR -->
             <div id="view-sim" class="view view-padding">
                 <div class="chat-container-wrapper">
                     <div class="chat-msgs" id="simMsgs"></div>
@@ -345,7 +332,6 @@
         </div>
     </div>
 
-    <!-- MODALES -->
     <div class="modal" id="stepNameModal">
         <div class="sheet" style="height:auto;">
             <h3>Nuevo Paso</h3>
@@ -478,10 +464,9 @@
         setTimeout(() => el.classList.remove('show'), 4000);
     }
 
+    // 🔥 FIX: Función vacía para evitar errores de JS porque borramos los indicadores
     function updateConnStatus(online) {
-        const dot = document.getElementById('socketDot'), badge = document.getElementById('statusIndicator');
-        if(online) { dot.style.background='var(--success)'; dot.style.boxShadow='0 0 5px var(--success)'; badge.className='status-badge connected'; badge.innerText='ONLINE'; } 
-        else { dot.style.background='var(--danger)'; dot.style.boxShadow='0 0 5px var(--danger)'; badge.className='status-badge disconnected'; badge.innerText='OFFLINE'; }
+       console.log('Socket status:', online ? 'Connected' : 'Disconnected');
     }
 
     window.onload = () => {
