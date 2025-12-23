@@ -1,3 +1,4 @@
+magh_hamg@instance-20251205-134302:~/bot_4_elektra$ cat app.js
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
@@ -34,14 +35,21 @@ webpush.setVapidDetails(
 );
 
 // --- FUNCIÓN GLOBAL PARA NOTIFICAR A TODOS LOS ADMINS ---
-global.sendPushNotification = (title, body) => {
-    const payload = JSON.stringify({ title, body });
+global.sendPushNotification = (title, body, url) => { // <--- Agregamos 'url' aquí
+    // Si no mandan URL, por defecto va al Monitor (#activity)
+    const targetUrl = url || '/index.html#activity';
+
+    const payload = JSON.stringify({ 
+        title, 
+        body,
+        url: targetUrl // <--- La empaquetamos en el envío
+    });
+    
     const subscriptions = getSubscriptions();
 
     subscriptions.forEach(subscription => {
         webpush.sendNotification(subscription, payload).catch(err => {
             console.error("Error enviando push:", err);
-            // Si da error 410 o 404, la suscripción ya no sirve (usuario borró caché), la quitamos
             if (err.statusCode === 410 || err.statusCode === 404) {
                 removeSubscription(subscription.endpoint);
             }

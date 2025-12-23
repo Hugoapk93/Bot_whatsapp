@@ -25,6 +25,16 @@ const handleMessage = async (sock, msg) => {
         console.log(`✨ Nuevo usuario: ${dbKey}`);
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
         user = getUser(dbKey);
+
+        // 🔥 DEEP LINKING: Redirige a Monitor
+        if (global.sendPushNotification) {
+             global.sendPushNotification(
+                 "🔔 Nuevo Cliente", 
+                 `El número ${dbKey} inició conversación.`,
+                 "/#activity" 
+             );
+        }
+
     } else {
         await updateUser(dbKey, { last_active: timestamp, jid: remoteJid });
     }
@@ -100,11 +110,10 @@ const handleMessage = async (sock, msg) => {
             console.log(`🧠 Analizando Cita: "${text}"`);
             const analysis = analyzeNaturalLanguage(text);
             
-            // 🔥 CORRECCIÓN 1: Si hay fecha nueva, PERO NO hora nueva, borramos la hora vieja
             if (analysis.date) {
                 user.history['fecha'] = analysis.date;
                 if (!analysis.time) {
-                    delete user.history['hora']; // Borrar basura antigua
+                    delete user.history['hora']; 
                 }
             }
             if (analysis.time) user.history['hora'] = analysis.time; 
@@ -114,33 +123,26 @@ const handleMessage = async (sock, msg) => {
             const fechaMemoria = user.history['fecha'];
             const horaMemoria = user.history['hora'];
 
-            // 1. Validar si falta fecha
             if (!fechaMemoria) {
                 const txt = "📅 ¿Para qué día te gustaría agendar? (Ej: Mañana, El viernes)";
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                 return; 
             }
 
-            // 2. Validar si falta hora
             if (!horaMemoria) {
                 const txt = `Perfecto para el ${fechaMemoria}. 🕒 ¿A qué hora? (Ej: 4pm, 10:30)`;
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                 return; 
             }
 
-            // 🔥 CORRECCIÓN 2: Validar si la fecha/hora es PASADO (incluyendo hora)
             if (isDateInPast(fechaMemoria, horaMemoria)) {
                 const txt = `⚠️ La fecha ${fechaMemoria} a las ${horaMemoria} ya pasó.\nPor favor indica una fecha y hora futura.`;
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                
-                // Borramos para obligar a corregir
                 delete user.history['hora'];
-                // Opcional: delete user.history['fecha']; si quieres que corrija todo
                 await updateUser(dbKey, { history: user.history });
                 return;
             }
 
-            // 3. Reglas de Negocio (Horario Local)
             const rules = validateBusinessRules(horaMemoria);
             if (!rules.valid) {
                 const s = rules.settings?.schedule;
@@ -151,7 +153,6 @@ const handleMessage = async (sock, msg) => {
                 return;
             }
 
-            // 4. Disponibilidad
             if (!checkAvailability(fechaMemoria, horaMemoria)) {
                 const txt = `❌ Horario ${horaMemoria} ocupado. ¿Otra hora?`;
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
@@ -160,13 +161,17 @@ const handleMessage = async (sock, msg) => {
                 return;
             }
 
-            // 5. Agendar
             const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
             bookAppointment(fechaMemoria, horaMemoria, dbKey, finalName);
             console.log("🎉 Cita guardada.");
 
+            // 🔥 DEEP LINKING: Redirige a Agenda
             if (global.sendPushNotification) {
-                global.sendPushNotification("📅 Nueva Cita", `El ${fechaMemoria} a las ${horaMemoria} - ${finalName}`);
+                global.sendPushNotification(
+                    "📅 Nueva Cita Agendada", 
+                    `Cliente: ${finalName} (${dbKey})\nFecha: ${fechaMemoria}\nHora: ${horaMemoria}`,
+                    "/#agenda"
+                );
             }
 
             if (targetStepConfig.next_step) {

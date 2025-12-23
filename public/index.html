@@ -244,7 +244,7 @@
     <!-- APP -->
     <div id="mainApp">
         <div class="sidebar" id="sidebar">
-            <div class="brand"><i class="fas fa-robot" style="color:var(--primary);"></i> FLOW CRM</div>
+            <div class="brand"><i class="fas fa-robot" style="color:var(--primary);"></i> MENÚ</div>
             <div class="menu">
                 <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-project-diagram"></i> Flujo del Bot</div>
                 <div class="menu-item" onclick="nav('activity', this)">
@@ -253,7 +253,7 @@
                 </div>
                 <div class="menu-item" onclick="nav('agenda', this)"><i class="far fa-calendar-alt"></i> Agenda</div>
                 <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
-                <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-cog"></i> Configuración</div>
+                <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-cog"></i> Horario</div>
                 <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-gamepad"></i> Simulador</div>
                 <div class="menu-item" id="installAppBtn" onclick="installPWA()"><i class="fas fa-download"></i> Instalar App</div>
                 <div class="menu-item logout" onclick="requestLogout()"><i class="fas fa-power-off"></i> Salir</div>
@@ -263,7 +263,7 @@
         <div class="content">
             <div class="mobile-header">
                 <button onclick="toggleMenu()" style="background:none; border:none; color:white; font-size:1.4rem;">☰</button>
-                <span id="pageTitle" style="font-weight:700;">MONITOR</span>
+                <span id="pageTitle" style="font-weight:700;">FLOW CRM</span>
                 <div id="statusIndicator" class="status-badge disconnected">OFFLINE</div>
             </div>
 
@@ -1012,6 +1012,13 @@
             }
         }
     }
+
+    // 🔥 PEGA ESTO AQUÍ (DETECTAR CAMBIOS DE URL EN VIVO) 🔥
+    window.addEventListener('hashchange', () => {
+        console.log("Cambio de sección detectado:", window.location.hash);
+        if (window.location.hash === '#agenda') nav('agenda');
+        if (window.location.hash === '#activity') nav('activity');
+    });
 
     window.addEventListener('load', () => {
         setTimeout(registerPush, 2000);

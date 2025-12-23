@@ -40,47 +40,36 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// --- PUSH RECIBIDO (LÓGICA MEJORADA) ---
+// --- PUSH RECIBIDO (LÓGICA EXACTA) ---
 self.addEventListener('push', event => {
   console.log('🔔 Push recibido en SW');
   
-  let data = { title: 'CRM Bot', body: 'Tienes una nueva notificación' };
+  let data = { title: 'CRM Bot', body: 'Nueva notificación', url: './index.html#activity' };
   
   if (event.data) {
     try {
-      data = event.data.json();
+      const json = event.data.json();
+      data.title = json.title;
+      data.body = json.body;
+      // Aquí tomamos la URL exacta que manda el backend. 
+      // Si no viene, usamos #activity por defecto.
+      data.url = json.url || './index.html#activity'; 
     } catch (e) {
       data.body = event.data.text();
     }
   }
 
-  // 1. DETECCIÓN DE RUTA (Monitor vs Agenda)
-  // Si el título o el cuerpo mencionan "Cita", "Agenda" o "Fecha", asumimos que es para la Agenda.
-  const textoMinuscula = (data.title + " " + data.body).toLowerCase();
-  let targetUrl = './index.html#activity';
-
-  if (textoMinuscula.includes('cita') || textoMinuscula.includes('agenda') || textoMinuscula.includes('agendado')) {
-      targetUrl = './index.html#agenda';
-  }
-
-  // 2. CONFIGURACIÓN PARA "HEADS-UP" (BANNER FLOTANTE)
   const options = {
     body: data.body,
     icon: 'logo.svg', 
     badge: 'logo.svg',
-    
-    // 🔥 CLAVE PARA ANDROID: Vibración distinta
     vibrate: [200, 100, 200, 100, 200, 100, 400], 
-    
-    // 🔥 CLAVE PARA QUE SUENE SIEMPRE (incluso si hay otra notif)
     tag: 'crm-notification', 
     renotify: true, 
-
-    // Mantiene la notificación visible
     requireInteraction: true,
 
-    // Guardamos la URL calculada para usarla al hacer clic
-    data: { url: targetUrl }
+    // 🔥 GUARDAMOS LA URL EXACTA EN LA NOTIFICACIÓN
+    data: { url: data.url } 
   };
 
   event.waitUntil(
