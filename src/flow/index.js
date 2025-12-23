@@ -7,6 +7,31 @@ const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const INITIAL_STEP = 'BIENVENIDA';
 const MAX_INACTIVE_MINUTES = 2880;
 
+// --- HELPERS ---
+
+// 1. Limpiar texto para búsqueda inteligente
+const cleanText = (str) => {
+    return str.toLowerCase()
+              .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+              .replace(/[^a-z0-9 ]/g, "") // Quitar caracteres raros
+              .trim();
+};
+
+// 2. Fecha amigable (YYYY-MM-DD -> Miércoles 24/12/2025)
+const friendlyDate = (dateStr) => {
+    if(!dateStr) return dateStr;
+    // dateStr viene como YYYY-MM-DD
+    // OJO: Al usar new Date(y, m-1, d), usamos hora local del servidor.
+    // Para asegurar que el día de la semana coincida con la fecha visual sin líos de zona horaria:
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d); 
+    
+    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diaSemana = dias[date.getDay()];
+    
+    return `${diaSemana} ${d}/${m}/${y}`;
+};
+
 const handleMessage = async (sock, msg) => {
     const remoteJid = msg.key.remoteJid;
     if (isBotDisabled(remoteJid) || remoteJid.includes('@g.us')) return;
@@ -73,11 +98,36 @@ const handleMessage = async (sock, msg) => {
 
     let nextStepId = null;
 
+    // --- LÓGICA DE MENÚ INTELIGENTE ---
     if (currentStepConfig.type === 'menu') {
+        const userClean = cleanText(text);
+        let match = null;
+
+        // A) Intentar por número (1, 2, 3...)
         const index = parseInt(text) - 1;
-        let match = currentStepConfig.options?.[index];
+        if (!isNaN(index) && currentStepConfig.options?.[index]) {
+            match = currentStepConfig.options[index];
+        }
+
+        // B) Si no es número, buscar por Texto (Trigger o Label Exacto)
         if (!match) {
-            match = currentStepConfig.options?.find(opt => isSimilar(text, opt.trigger) || isSimilar(text, opt.label));
+            match = currentStepConfig.options?.find(opt => 
+                isSimilar(text, opt.trigger) || isSimilar(text, opt.label)
+            );
+        }
+
+        // C) Si sigue sin match, usar LÓGICA PARCIAL (Inteligente)
+        if (!match && currentStepConfig.options) {
+            match = currentStepConfig.options.find(opt => {
+                const btnText = cleanText(opt.label);
+                
+                // Caso 1: Contención Directa (ej: btn="Prestamo Efectivo", user="Efectivo")
+                if (btnText.includes(userClean) && userClean.length > 3) return true;
+
+                // Caso 2: Intersección de Palabras (ej: user="Quiero dinero en efectivo")
+                const userWords = userClean.split(' ');
+                return userWords.some(w => w.length > 3 && btnText.includes(w));
+            });
         }
 
         if (match) {
@@ -130,7 +180,10 @@ const handleMessage = async (sock, msg) => {
             }
 
             if (!horaMemoria) {
-                const txt = `Perfecto para el ${fechaMemoria}. 🕒 ¿A qué hora? (Ej: 4pm, 10:30)`;
+                // 🔥 AQUI CAMBIAMOS EL MENSAJE COMO PEDISTE
+                const fechaTexto = friendlyDate(fechaMemoria);
+                const txt = `Perfecto te agende para el dia *${fechaTexto}*.\n¿A que hora puedes venir?\n(Escribe en formato 24 hrs o AM/PM)`;
+                
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                 return; 
             }
@@ -177,7 +230,9 @@ const handleMessage = async (sock, msg) => {
             if (targetStepConfig.next_step) {
                 nextStepId = targetStepConfig.next_step;
             } else {
-                const txt = `✅ ¡Listo! Agendado el *${fechaMemoria}* a las *${horaMemoria}*.`;
+                // Mensaje final también con fecha amigable
+                const fechaTextoFinal = friendlyDate(fechaMemoria);
+                const txt = `✅ ¡Listo! Agendado el *${fechaTextoFinal}* a las *${horaMemoria}*.`;
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                 return;
             }
