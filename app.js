@@ -1,4 +1,3 @@
-magh_hamg@instance-20251205-134302:~/bot_4_elektra$ cat app.js
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
