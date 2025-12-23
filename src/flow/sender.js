@@ -48,7 +48,60 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     let messageText = step.message || "";
-    
+    const cleanClientPhone = jid.replace(/[^0-9]/g, '');
+
+    // ==========================================================
+    // 🔥 AQUÍ ESTÁ LA LÓGICA DE FILTRO (RESTAURADA)
+    // ==========================================================
+    if (step.type === 'filtro') {
+        const hist = userData.history || {};
+        
+        // 1. Construir Resumen
+        let variablesResumen = "";
+        Object.keys(hist).forEach(key => {
+            const val = hist[key];
+            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            variablesResumen += `\n📝 ${label}: ${val}`;
+        });
+
+        // 2. Notificación Push al Monitor (ESTO ES LO QUE QUERÍAS)
+        if (global.sendPushNotification) {
+             global.sendPushNotification(
+                 "⚠️ Solicitud Pendiente", 
+                 `Cliente: ${cleanClientPhone}\n${variablesResumen || '(Sin datos)'}`
+             );
+        }
+
+        // 3. WhatsApp al Admin (si está configurado)
+        if (step.admin_number) {
+            const adminJid = step.admin_number.includes('@') ? step.admin_number : `${step.admin_number}@s.whatsapp.net`;
+            let adminMsg = `🔔 *Solicitud de Aprobación*\n🆔 *ID:* ${cleanClientPhone}\n------------------------------\n`;
+            
+            if (variablesResumen) {
+                 Object.keys(hist).forEach(key => {
+                    const val = hist[key];
+                    const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    adminMsg += `📄 *${label}:* ${val}\n`;
+                });
+            }
+            adminMsg += `------------------------------\n🤖 *Bot:* "${messageText}"\n\n👇 *Escribe una opción:*`;
+
+            try { await sock.sendMessage(adminJid, { text: adminMsg }); } catch (e) {}
+
+            // Enviar Botones simulados al Admin
+            const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣'];
+            if(step.options && Array.isArray(step.options)){
+                for (let idx = 0; idx < step.options.length; idx++) {
+                    const opt = step.options[idx];
+                    const icon = emojis[idx] || '👉';
+                    const btnMsg = `${icon} ${opt.trigger} ${cleanClientPhone}`;
+                    await new Promise(r => setTimeout(r, 200));
+                    try { await sock.sendMessage(adminJid, { text: btnMsg }); } catch (e) {}
+                }
+            }
+        }
+    }
+
     // 1. Saludo Inteligente
     const mxDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
     const hour = mxDate.getHours();
