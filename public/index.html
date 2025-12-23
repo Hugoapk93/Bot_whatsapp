@@ -609,14 +609,12 @@
         const c = document.getElementById('flowListContainer'); 
         c.innerHTML = '';
 
-        // 1. Barra de Navegación (Breadcrumbs) con SCROLL
+        // 1. Barra de Navegación (Breadcrumbs)
         if (flowPath.length > 0) {
-            // Botón para regresar un nivel (Padre inmediato)
             let navHtml = `<div class="flow-nav" id="breadcrumbNav">`;
-            
-            // Agregamos botón "Atrás" al inicio
+            // Botón atrás
             navHtml += `<button onclick="jumpToStep(${flowPath.length - 2})" class="admin-btn" style="margin-right:10px; border-radius:50%; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center;"><i class="fas fa-arrow-left"></i></button>`;
-
+            
             navHtml += `<span onclick="resetFlowNav()">Inicio</span>`;
             
             flowPath.forEach((step, index) => {
@@ -629,14 +627,13 @@
             navHtml += `</div>`;
             c.innerHTML += navHtml;
 
-            // AUTO-SCROLL: Mover la barra al final para ver el paso actual
             setTimeout(() => {
                 const nav = document.getElementById('breadcrumbNav');
                 if(nav) nav.scrollLeft = nav.scrollWidth;
             }, 50);
         }
 
-        // 2. Lógica de Jerarquía (Igual que antes)
+        // 2. Lógica de Jerarquía
         let stepsToShow = [];
         if (flowPath.length === 0) {
             stepsToShow = findFlowRoots();
@@ -657,31 +654,60 @@
             </div>`;
         }
 
-        // 3. Renderizar Tarjetas (Igual que antes)
+        // 3. Renderizar Tarjetas VISUALMENTE MEJORADAS
         stepsToShow.forEach(k => {
             const step = flow[k];
             if(!step) return; 
+
+            // Detectar si está incompleto
             let isInc = false;
             if (step.type !== 'fin_bot' && !step.next_step && (!step.options || step.options.length === 0)) {
                 isInc = true;
             }
 
+            // Iconos según el tipo
+            let typeIcon = '<i class="fas fa-cube"></i>';
+            let typeColor = '#94a3b8'; // Gris por defecto
+            
+            if(step.type === 'menu') { typeIcon = '<i class="fas fa-list-ul"></i>'; typeColor = '#a855f7'; } // Morado
+            else if(step.type === 'message') { typeIcon = '<i class="fas fa-comment-alt"></i>'; typeColor = '#3b82f6'; } // Azul
+            else if(step.type === 'input') { typeIcon = '<i class="fas fa-pen-alt"></i>'; typeColor = '#f59e0b'; } // Naranja
+            else if(step.type === 'cita') { typeIcon = '<i class="far fa-calendar-check"></i>'; typeColor = '#10b981'; } // Verde
+            else if(step.type === 'filtro') { typeIcon = '<i class="fas fa-user-shield"></i>'; typeColor = '#ef4444'; } // Rojo
+
+            // Indicador de Multimedia
+            const hasMedia = (step.media && step.media.length > 0) 
+                ? `<span style="font-size:0.75rem; background:#334155; padding:2px 6px; border-radius:4px; margin-left:8px;"><i class="fas fa-paperclip"></i> ${step.media.length}</span>` 
+                : '';
+
+            // Renderizado
             c.innerHTML += `
             <div class="flow-step-card ${isInc ? 'card-incomplete' : ''}" 
                  onclick="enterStep('${k}')" 
-                 style="position:relative; padding-right:50px;">
-                <div style="flex:1">
-                    <strong>${k}</strong> ${isInc ? '<i class="fas fa-exclamation-circle warning-icon" title="Paso incompleto"></i>' : ''}
-                    <br><small style="color:var(--text-muted);">${step.type}</small>
-                    ${step.message ? `<div style="font-size:0.85em; color:#64748b; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${step.message}</div>` : ''}
+                 style="position:relative; display:block; padding-right:10px;">
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="color:${typeColor}; font-size:1.1rem;">${typeIcon}</span>
+                        <strong style="font-size:1rem;">${k}</strong>
+                        ${hasMedia}
+                        ${isInc ? '<i class="fas fa-exclamation-circle warning-icon" title="Paso incompleto"></i>' : ''}
+                    </div>
+                    
+                    <button onclick="event.stopPropagation(); edit('${k}')" 
+                            style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-muted); width:32px; height:32px; border-radius:6px; cursor:pointer;">
+                        <i class="fas fa-pen" style="font-size:12px;"></i>
+                    </button>
                 </div>
-                <i class="fas fa-chevron-right" style="opacity:0.5;"></i>
-                <button onclick="event.stopPropagation(); edit('${k}')" 
-                        style="position:absolute; right:10px; top:50%; transform:translateY(-50%); 
-                               background:var(--bg-input); border:1px solid var(--border); 
-                               color:var(--text-muted); width:32px; height:32px; border-radius:6px; cursor:pointer; z-index:10;">
-                    <i class="fas fa-pen" style="font-size:12px;"></i>
-                </button>
+
+                ${step.message 
+                    ? `<div style="background:rgba(0,0,0,0.2); border-left:3px solid ${typeColor}; padding:8px 10px; border-radius:4px; font-size:0.9rem; color:#e2e8f0; white-space:pre-wrap; line-height:1.4;">${step.message}</div>` 
+                    : '<div style="font-size:0.8rem; color:#64748b; font-style:italic;">(Sin mensaje de texto)</div>'
+                }
+
+                <div style="text-align:right; margin-top:8px; opacity:0.5; font-size:0.8rem;">
+                    <i class="fas fa-chevron-right"></i> Ver opciones
+                </div>
             </div>`;
         });
     }
