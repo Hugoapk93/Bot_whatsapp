@@ -214,6 +214,12 @@
 
         /* Ajuste para evitar selección de texto al hacer doble click */
         .flow-step-card { user-select: none; }
+
+        #deleteApptModal, 
+        #deleteConfirmModal, 
+        #actionConfirmModal {
+            z-index: 400 !important;
+        }
     </style>
 </head>
 <body>
@@ -381,6 +387,25 @@
             <div style="display:flex; gap:10px;">
                 <button onclick="executeDeleteAppt()" class="btn-primary" style="background:var(--danger); flex:1;">Eliminar</button>
                 <button onclick="document.getElementById('deleteApptModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="actionConfirmModal">
+        <div class="sheet" style="height:auto; text-align:center;">
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(59, 130, 246, 0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+                <i class="fas fa-robot" style="font-size:1.5rem; color:var(--primary);"></i>
+            </div>
+            <h3>Confirmar Acción</h3>
+            <p style="color:var(--text-muted); margin-bottom:20px;">
+                ¿Seguro que quieres ejecutar 
+                <b id="actLabel" style="color:var(--text-main); background:var(--bg-input); padding:2px 6px; border-radius:4px;"></b> 
+                para el usuario <br>
+                <b id="actClient" style="color:var(--text-main); font-size:1.1rem;"></b>?
+            </p>
+            <div style="display:flex; gap:10px;">
+                <button onclick="executeCrmAction()" class="btn-primary" style="flex:1;">Confirmar</button>
+                <button onclick="document.getElementById('actionConfirmModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
             </div>
         </div>
     </div>
@@ -591,6 +616,10 @@
         try { const s = await (await fetch(`${API_BASE}/api/settings`)).json(); if(s.schedule) { document.getElementById('schedActive').checked = s.schedule.active; document.getElementById('schedStart').value = s.schedule.start; document.getElementById('schedEnd').value = s.schedule.end; document.getElementById('schedMsg').value = s.schedule.offline_message; } } catch(e){}
     }
     
+    // --- VARIABLES GLOBALES NUEVAS ---
+    let pendingCrmAction = null; // Guardará la acción pendiente
+
+    // 1. CARGAR ACTIVIDAD (MONITOR) - MODIFICADA
     async function loadActivity() {
         try {
             if (Object.keys(flow).length === 0) flow = await (await fetch(`${API_BASE}/api/flow`)).json();
@@ -608,18 +637,24 @@
                     let btns = '';
                     if(s.type === 'filtro' && s.options) {
                         s.options.forEach(o => {
-                            btns += `<button class="admin-btn" onclick="crmAction('${u.phone}', '${o.next_step}')" style="border-color:var(--primary); color:var(--primary); margin-top:5px;">${o.label}</button>`;
+                            // AQUÍ ESTÁ EL CAMBIO: Ahora llamamos a askCrmAction pasando el nombre y etiqueta
+                            // Usamos replace para evitar problemas si el nombre tiene comillas
+                            const clientName = (u.history && u.history.nombre) ? u.history.nombre : u.phone;
+                            const safeLabel = o.label.replace(/'/g, "\\'"); 
+                            
+                            btns += `<button class="admin-btn" 
+                                      onclick="askCrmAction('${u.phone}', '${o.next_step}', '${safeLabel}', '${clientName}')" 
+                                      style="border-color:var(--primary); color:var(--primary); margin-top:5px;">
+                                      ${o.label}
+                                     </button>`;
                         });
                     }
 
-                    // --- LOGICA NUEVA: FORMATEAR VARIABLES ---
+                    // --- FORMATEAR VARIABLES ---
                     let varsHtml = '<span style="color:var(--text-muted); font-size:0.8rem;">-</span>';
-                    
-                    // CORRECCIÓN: Usamos 'history' en lugar de 'variables'
                     if (u.history && Object.keys(u.history).length > 0) {
                         varsHtml = '';
                         Object.keys(u.history).forEach(key => {
-                            // Muestra: Nombre: Juan (en pequeñito)
                             varsHtml += `<div style="font-size:0.85rem; white-space:nowrap;">
                                 <span style="color:#64748b; font-weight:bold;">${key}:</span> 
                                 <span style="color:var(--text-main);">${u.history[key]}</span>
@@ -628,7 +663,6 @@
                     }
 
                     // --- RENDERIZAR FILA ---
-                    // Agregamos la celda nueva <td>${varsHtml}</td> en medio
                     tb.innerHTML += `
                     <tr>
                         <td>
@@ -644,6 +678,39 @@
                     </tr>`;
             });
         } catch(e){ console.error(e); }
+    }
+
+    // 2. NUEVAS FUNCIONES DE CONFIRMACIÓN
+    function askCrmAction(phone, step, label, clientName) {
+        // Guardamos los datos en la variable global
+        pendingCrmAction = { phone, step };
+        
+        // Llenamos el modal con la info
+        document.getElementById('actLabel').innerText = label;
+        document.getElementById('actClient').innerText = clientName;
+        
+        // Abrimos el modal
+        document.getElementById('actionConfirmModal').classList.add('active');
+    }
+
+    async function executeCrmAction() {
+        if(!pendingCrmAction) return;
+
+        // Ejecutamos la petición real
+        await fetch(`${API_BASE}/api/crm/execute`, { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body: JSON.stringify({ 
+                phone: pendingCrmAction.phone, 
+                stepId: pendingCrmAction.step 
+            }) 
+        });
+
+        // Limpiamos y recargamos
+        document.getElementById('actionConfirmModal').classList.remove('active');
+        pendingCrmAction = null;
+        loadActivity();
+        showToast('Acción ejecutada');
     }
     async function crmAction(phone, step) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) }); loadActivity(); }
     // --- VARIABLES DE NAVEGACIÓN ---
