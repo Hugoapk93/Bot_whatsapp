@@ -16,6 +16,7 @@ const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManual
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
 const { getSubscriptions, saveSubscription, removeSubscription } = require('./src/database');
+const { getAllUsers, updateUser, deleteUser } = require('./src/database');
 
 const app = express();
 app.use(cors());
@@ -321,6 +322,19 @@ async function connectToWhatsApp() {
 // ==========================================
 //              RUTAS API
 // ==========================================
+// RUTA PARA EDITAR (Actualizar nombre o activar/desactivar)
+app.post('/api/contacts/update', async (req, res) => {
+    const { phone, name, enable } = req.body;
+    await updateUser(phone, { name, bot_enabled: enable });
+    res.json({ success: true });
+});
+
+// RUTA PARA ELIMINAR
+app.post('/api/contacts/delete', async (req, res) => {
+    const { phone } = req.body;
+    const deleted = deleteUser(phone);
+    res.json({ success: deleted });
+});
 
 app.post('/api/subscribe', (req, res) => {
     const subscription = req.body;

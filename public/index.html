@@ -344,6 +344,23 @@
         </div>
     </div>
 
+    <div class="modal" id="deleteConfirmModal">
+        <div class="sheet" style="height:auto; text-align:center;">
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+                <i class="fas fa-trash-alt" style="font-size:1.5rem; color:var(--danger);"></i>
+            </div>
+            <h3>¿Eliminar Contacto?</h3>
+            <p style="color:var(--text-muted); margin-bottom:20px;">
+                Se borrará permanentemente este contacto y su historial.<br>
+                <b id="delContactName" style="color:var(--text-main);"></b>
+            </p>
+            <div style="display:flex; gap:10px;">
+                <button onclick="executeDelete()" class="btn-primary" style="background:var(--danger); flex:1;">Eliminar</button>
+                <button onclick="document.getElementById('deleteConfirmModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="logoutModal">
         <div class="sheet" style="height:auto; text-align:center;">
             <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
@@ -418,13 +435,16 @@
 
     <div class="modal" id="contactModal">
         <div class="sheet">
-            <h3>Nuevo Contacto</h3>
+            <h3 id="modalTitleContact">Nuevo Contacto</h3> 
+        
             <label>Nombre</label><input type="text" id="newContName">
             <label>Teléfono (con país)</label><input type="tel" id="newContPhone" placeholder="Ej: 521...">
+        
             <div style="display:flex; justify-content:space-between; margin:15px 0;">
                 <span>Activar Bot</span>
                 <label class="switch"><input type="checkbox" id="newContEnable" checked><span class="slider"></span></label>
             </div>
+        
             <div style="display:flex; gap:10px;">
                 <button onclick="saveNewContact()" class="btn-primary" style="flex:1;">Guardar</button>
                 <button onclick="document.getElementById('contactModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
@@ -912,26 +932,157 @@
         showToast('Guardado');
     }
     function showToast(m) { const c=document.getElementById('toast-container'); c.innerHTML+=`<div class="toast">${m}</div>`; setTimeout(()=>c.innerHTML='', 3000); }
-    
+    // --- LÓGICA DE CONTACTOS (Buscador, Editar, Eliminar) ---
+    let allContactsCache = []; 
+    let phoneToDelete = null; // Variable temporal para saber a quién borrar
+    let isEditingMode = false; // Variable para saber si estamos editando o creando
+
+    // 1. Cargar y Renderizar
     async function renderContacts() {
         try { 
-            const list = await (await fetch(`${API_BASE}/api/contacts`)).json(); 
-            const c = document.getElementById('contactsList'); 
-            if(!list || list.length === 0) {
-                c.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin usuarios registrados</div>';
-                return;
-            }
-            let htmlBuffer = ''; 
-            list.forEach(u => htmlBuffer += `<div style="display:flex; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row"><div style="display:flex; align-items:center; gap:12px;"><div style="width:36px; height:36px; background:var(--bg-input); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--text-muted);">${u.name?u.name[0].toUpperCase():'#'}</div><div><b style="color:var(--text-main); font-size:0.95rem; display:block;">${u.name||u.phone}</b><div style="color:var(--text-muted); font-size:0.8rem;">${u.phone}</div></div></div><label class="switch"><input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)"><span class="slider"></span></label></div>`); 
-            c.innerHTML = htmlBuffer; 
+            allContactsCache = await (await fetch(`${API_BASE}/api/contacts`)).json(); 
+            renderRows(allContactsCache);
         } catch (e) {
             console.error(e);
             document.getElementById('contactsList').innerHTML = '<div style="text-align:center; padding:20px; color:var(--danger);">Error cargando usuarios</div>';
         }
     }
-    async function toggleUser(phone, en) { await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); showToast('Actualizado'); }
+
+    // 2. Buscador en tiempo real
+    function filterContacts(query) {
+        const term = query.toLowerCase();
+        const filtered = allContactsCache.filter(u => 
+            (u.name && u.name.toLowerCase().includes(term)) || 
+            (u.phone && u.phone.includes(term))
+        );
+        renderRows(filtered);
+    }
+
+    // 3. Dibujar Filas
+    function renderRows(list) {
+        const c = document.getElementById('contactsList');
+        if(!list || list.length === 0) {
+            c.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No se encontraron contactos</div>';
+            return;
+        }
+
+        let htmlBuffer = ''; 
+        list.forEach(u => {
+            // Escapamos comillas para evitar errores en el HTML
+            const safeName = (u.name || '').replace(/'/g, "\\'"); 
+            
+            htmlBuffer += `
+            <div style="display:flex; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
+                <div style="display:flex; align-items:center; gap:12px; flex:1; overflow:hidden;">
+                    <div style="width:36px; height:36px; background:var(--bg-input); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--text-muted); flex-shrink:0;">
+                        ${u.name ? u.name[0].toUpperCase() : '#'}
+                    </div>
+                    <div style="overflow:hidden;">
+                        <b style="color:var(--text-main); font-size:0.95rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            ${u.name || 'Sin Nombre'}
+                        </b>
+                        <div style="color:var(--text-muted); font-size:0.8rem;">${u.phone}</div>
+                    </div>
+                </div>
+                
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button onclick="openEditModal('${u.phone}', '${safeName}', ${u.bot_enabled})" 
+                            style="background:none; border:none; color:var(--primary); cursor:pointer; padding:5px;">
+                        <i class="fas fa-pen"></i>
+                    </button>
+
+                    <button onclick="askDelete('${u.phone}', '${safeName}')" 
+                            style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+
+                    <label class="switch">
+                        <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>`; 
+        });
+        c.innerHTML = htmlBuffer; 
+    }
+
+    // 4. Modales de Edición / Creación
+    function openContactModal() { 
+        // Modo CREAR
+        isEditingMode = false;
+        document.getElementById('modalTitleContact').innerText = "Nuevo Contacto";
+        document.getElementById('newContName').value = '';
+        document.getElementById('newContPhone').value = '';
+        document.getElementById('newContPhone').disabled = false; // Habilitado
+        document.getElementById('newContPhone').style.opacity = "1";
+        document.getElementById('newContEnable').checked = true;
+        document.getElementById('contactModal').classList.add('active'); 
+    }
+
+    function openEditModal(phone, name, enabled) {
+        // Modo EDITAR
+        isEditingMode = true;
+        document.getElementById('modalTitleContact').innerText = "Editar Contacto";
+        document.getElementById('newContName').value = name;
+        document.getElementById('newContPhone').value = phone;
+        document.getElementById('newContPhone').disabled = true; // Deshabilitado (ID no cambia)
+        document.getElementById('newContPhone').style.opacity = "0.6";
+        document.getElementById('newContEnable').checked = enabled;
+        document.getElementById('contactModal').classList.add('active');
+    }
+
+    async function saveNewContact() { 
+        const name = document.getElementById('newContName').value;
+        const phone = document.getElementById('newContPhone').value;
+        const enable = document.getElementById('newContEnable').checked; 
+        
+        if(!phone) return alert("El teléfono es obligatorio"); 
+
+        // Endpoint dinámico (si editas usa update, si creas usa add)
+        const endpoint = isEditingMode ? '/api/contacts/update' : '/api/contacts/add';
+
+        await fetch(`${API_BASE}${endpoint}`, {
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({name, phone, enable})
+        }); 
+        
+        document.getElementById('contactModal').classList.remove('active'); 
+        showToast(isEditingMode ? 'Contacto actualizado' : 'Contacto creado');
+        renderContacts(); 
+    }
+
+    // 5. Lógica de Eliminación (Con Confirmación)
+    function askDelete(phone, name) {
+        phoneToDelete = phone; // Guardamos el teléfono en memoria
+        document.getElementById('delContactName').innerText = name || phone;
+        document.getElementById('deleteConfirmModal').classList.add('active');
+    }
+
+    async function executeDelete() {
+        if(!phoneToDelete) return;
+        
+        await fetch(`${API_BASE}/api/contacts/delete`, {
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify({phone: phoneToDelete})
+        });
+
+        // Borrar del cache local y cerrar modal
+        allContactsCache = allContactsCache.filter(u => u.phone !== phoneToDelete);
+        document.getElementById('deleteConfirmModal').classList.remove('active');
+        renderRows(allContactsCache); // Redibujar
+        showToast('Contacto eliminado');
+    }
+    
+    // Toggle rápido
+    async function toggleUser(phone, en) { 
+        await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); 
+        const u = allContactsCache.find(x => x.phone === phone);
+        if(u) u.bot_enabled = en;
+        showToast('Estado actualizado'); 
+    }
     function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
-    async function saveNewContact() { const name = document.getElementById('newContName').value, phone = document.getElementById('newContPhone').value, enable = document.getElementById('newContEnable').checked; if(!phone) return; await fetch(`${API_BASE}/api/contacts/add`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable})}); document.getElementById('contactModal').classList.remove('active'); renderContacts(); }
 
     // --- LÓGICA DE ENVÍO MEJORADA ---
     function sendSim() { 

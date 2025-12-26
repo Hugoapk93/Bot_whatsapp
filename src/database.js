@@ -145,6 +145,25 @@ function reloadDB() {
     }
 }
 
+// AGREGAR ESTA FUNCIÓN NUEVA
+function deleteUser(phone) {
+    // 1. Recargar datos por seguridad
+    reloadDB();
+    
+    // 2. Filtrar para quitar el usuario
+    if (db.data.users) {
+        const initialLength = db.data.users.length;
+        db.data.users = db.data.users.filter(u => u.phone !== phone);
+        
+        // Si hubo cambios, guardamos
+        if (db.data.users.length !== initialLength) {
+            saveDB();
+            return true;
+        }
+    }
+    return false;
+}
+
 module.exports = {
     db,
     initializeDB,
@@ -159,5 +178,6 @@ module.exports = {
     getFlowStep,
     getSubscriptions, 
     saveSubscription,
-    removeSubscription
+    removeSubscription,
+    deleteUser
 };
