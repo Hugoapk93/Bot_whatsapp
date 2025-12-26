@@ -295,6 +295,14 @@
                         <h3>Usuarios</h3>
                         <button class="admin-btn" onclick="openContactModal()">+ Nuevo</button>
                     </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <input type="text" 
+                               placeholder="🔍 Buscar por nombre o teléfono..." 
+                               onkeyup="filterContacts(this.value)"
+                               style="margin:0;">
+                    </div>
+
                     <div id="contactsList"></div>
                 </div>
             </div>
