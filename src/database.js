@@ -145,22 +145,39 @@ function reloadDB() {
     }
 }
 
-// AGREGAR ESTA FUNCIÓN NUEVA
 function deleteUser(phone) {
     // 1. Recargar datos por seguridad
     reloadDB();
     
-    // 2. Filtrar para quitar el usuario
+    let huboCambios = false;
+
+    // A) Borrar de la lista de USUARIOS (Historial y Flow)
     if (db.data.users) {
-        const initialLength = db.data.users.length;
+        const initialLen = db.data.users.length;
         db.data.users = db.data.users.filter(u => u.phone !== phone);
-        
-        // Si hubo cambios, guardamos
-        if (db.data.users.length !== initialLength) {
-            saveDB();
-            return true;
-        }
+        if (db.data.users.length !== initialLen) huboCambios = true;
     }
+
+    // B) Borrar de la lista de CONTACTOS (La que se ve en la pantalla "Contactos")
+    if (db.data.contacts) {
+        const initialLen = db.data.contacts.length;
+        // Filtramos buscando por 'phone' o por 'id' (formato de WhatsApp)
+        db.data.contacts = db.data.contacts.filter(c => {
+            // Normalizamos para comparar solo números
+            const cPhone = (c.phone || c.id || '').replace(/[^0-9]/g, '');
+            const target = phone.replace(/[^0-9]/g, '');
+            return !cPhone.includes(target); 
+        });
+        
+        if (db.data.contacts.length !== initialLen) huboCambios = true;
+    }
+
+    // 3. Guardar solo si borramos algo
+    if (huboCambios) {
+        saveDB();
+        return true;
+    }
+    
     return false;
 }
 
