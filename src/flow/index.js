@@ -20,9 +20,6 @@ const cleanText = (str) => {
 // 2. Fecha amigable (YYYY-MM-DD -> Miércoles 24/12/2025)
 const friendlyDate = (dateStr) => {
     if(!dateStr) return dateStr;
-    // dateStr viene como YYYY-MM-DD
-    // OJO: Al usar new Date(y, m-1, d), usamos hora local del servidor.
-    // Para asegurar que el día de la semana coincida con la fecha visual sin líos de zona horaria:
     const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d); 
     
@@ -46,10 +43,14 @@ const handleMessage = async (sock, msg) => {
     const dbKey = incomingPhone;
     const timestamp = new Date().toISOString();
 
+    // 🚩 BANDERA DE CONTROL (Para evitar el error del primer mensaje)
+    let isFlowReset = false;
+
     if (!user?.phone) {
         console.log(`✨ Nuevo usuario: ${dbKey}`);
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
         user = getUser(dbKey);
+        isFlowReset = true; // <--- ES NUEVO
 
         // 🔥 DEEP LINKING: Redirige a Monitor
         if (global.sendPushNotification) {
@@ -69,11 +70,13 @@ const handleMessage = async (sock, msg) => {
     if ((new Date().getTime() - lastActive) / 60000 > MAX_INACTIVE_MINUTES && user.current_step !== INITIAL_STEP) {
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {} });
         user = getUser(dbKey);
+        isFlowReset = true; // <--- SE REINICIÓ POR TIEMPO
     }
 
     // --- CEREBRO ---
     
     // 1. Keywords Globales
+    // (Esto tiene prioridad sobre el reset, por si el cliente escribe "Cita" directo)
     const fullFlow = getFullFlow();
     let jumpStep = null;
     for (const [sKey, sVal] of Object.entries(fullFlow)) {
@@ -87,6 +90,15 @@ const handleMessage = async (sock, msg) => {
         await updateUser(dbKey, { current_step: jumpStep });
         await sendStepMessage(sock, remoteJid, jumpStep, user);
         return;
+    }
+
+    // 🔥 CORRECCIÓN FINAL AQUÍ:
+    // Si el usuario es nuevo y NO usó una keyword mágica, 
+    // mandamos la bienvenida y NOS DETENEMOS. 
+    // Así evitamos que valide "Hola" o "Informes" contra el menú.
+    if (isFlowReset) {
+        await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
+        return; 
     }
 
     // 2. Procesar Paso Actual
@@ -180,7 +192,6 @@ const handleMessage = async (sock, msg) => {
             }
 
             if (!horaMemoria) {
-                // 🔥 AQUI CAMBIAMOS EL MENSAJE COMO PEDISTE
                 const fechaTexto = friendlyDate(fechaMemoria);
                 const txt = `Perfecto te agende para el dia *${fechaTexto}*.\n¿A que hora puedes venir?\n(Escribe en formato 24 hrs o AM/PM)`;
                 
@@ -218,7 +229,6 @@ const handleMessage = async (sock, msg) => {
             bookAppointment(fechaMemoria, horaMemoria, dbKey, finalName);
             console.log("🎉 Cita guardada.");
 
-            // 🔥 DEEP LINKING: Redirige a Agenda
             if (global.sendPushNotification) {
                 global.sendPushNotification(
                     "📅 Nueva Cita Agendada", 
@@ -230,7 +240,6 @@ const handleMessage = async (sock, msg) => {
             if (targetStepConfig.next_step) {
                 nextStepId = targetStepConfig.next_step;
             } else {
-                // Mensaje final también con fecha amigable
                 const fechaTextoFinal = friendlyDate(fechaMemoria);
                 const txt = `✅ ¡Listo! Agendado el *${fechaTextoFinal}* a las *${horaMemoria}*.`;
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
