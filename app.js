@@ -7,16 +7,30 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
-
-// --- IMPORTS ---
-const { handleMessage, sendStepMessage } = require('./src/flow');
-const { initializeDB, getFullFlow, saveFlowStep, deleteFlowStep, getSettings, saveSettings, getAllUsers, updateUser, getUser, clearAllSessions } = require('./src/database');
-// CORREGIDO: Se eliminó el guion "-" al final de la siguiente línea
-const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
-const { getSubscriptions, saveSubscription, removeSubscription } = require('./src/database');
-const { getAllUsers, updateUser, deleteUser } = require('./src/database');
+
+// --- IMPORTS DEL FLUJO ---
+const { handleMessage, sendStepMessage } = require('./src/flow');
+
+const { 
+    initializeDB, 
+    getFullFlow, 
+    saveFlowStep, 
+    deleteFlowStep, 
+    getSettings, 
+    saveSettings, 
+    getAllUsers, 
+    updateUser, 
+    getUser, 
+    deleteUser,
+    clearAllSessions,
+    getSubscriptions,
+    saveSubscription,
+    removeSubscription
+} = require('./src/database');
+
+const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
 
 const app = express();
 app.use(cors());
