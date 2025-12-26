@@ -1067,16 +1067,6 @@
         openDayModal(d.date); 
         renderCalendar();
     }
-
-    function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
-
-    async function saveEvent() {
-        const d = { date: document.getElementById('evtOldTime').dataset.date, time: document.getElementById('evtTime').value, name: document.getElementById('evtName').value, phone: document.getElementById('evtPhone').value, note: document.getElementById('evtNote').value };
-        if(!d.time || !d.name) return alert("Faltan datos");
-        await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
-        document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block';
-        openDayModal(d.date); renderCalendar();
-    }
     function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebarOverlay').classList.toggle('active'); }
     function nav(v, btn) { 
         document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
