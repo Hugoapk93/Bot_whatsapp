@@ -369,6 +369,22 @@
         </div>
     </div>
 
+    <div class="modal" id="deleteApptModal">
+        <div class="sheet" style="height:auto; text-align:center;">
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+                <i class="far fa-calendar-times" style="font-size:1.5rem; color:var(--danger);"></i>
+            </div>
+            <h3>¿Cancelar Cita?</h3>
+            <p style="color:var(--text-muted); margin-bottom:20px;">
+                Se eliminará el evento de las <b id="delApptTimeLbl" style="color:var(--text-main);"></b>.
+            </p>
+            <div style="display:flex; gap:10px;">
+                <button onclick="executeDeleteAppt()" class="btn-primary" style="background:var(--danger); flex:1;">Eliminar</button>
+                <button onclick="document.getElementById('deleteApptModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="logoutModal">
         <div class="sheet" style="height:auto; text-align:center;">
             <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
@@ -887,13 +903,20 @@
     
     async function delStep() { await fetch('/api/flow/step/'+document.getElementById('stId').value, {method:'DELETE'}); delete flow[document.getElementById('stId').value]; renderFlowList(); document.getElementById('editorModal').classList.remove('active'); }
 
+    // --- LÓGICA DE AGENDA CON CONFIRMACIÓN ---
+    let apptToDelete = null; // Variable temporal para saber qué cita borrar
+
     async function renderCalendar() {
         const now = currentRefDate, m = now.getMonth(), y = now.getFullYear();
         document.getElementById('monthDisplay').innerText = `${["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]} ${y}`;
         const g = document.getElementById('calendarDays'); g.innerHTML = '';
-        let appts = {}; try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
+        
+        let appts = {}; 
+        try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
+        
         const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m+1, 0).getDate();
         for(let i=0; i<firstDay; i++) g.innerHTML += `<div></div>`;
+        
         for(let i=1; i<=daysInMonth; i++) { 
             const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
             const count = (appts[k]||[]).length;
@@ -901,17 +924,85 @@
             g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}')">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`; 
         }
     }
+
     function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
+
     async function openDayModal(date) {
         document.getElementById('modalDateTitle').innerText = date;
-        const list = document.getElementById('modalApptList'); list.innerHTML = 'Cargando...';
+        const list = document.getElementById('modalApptList'); 
+        list.innerHTML = 'Cargando...';
+        
         const all = await (await fetch(`${API_BASE}/api/agenda`)).json();
         const appts = all[date] || [];
+        
         list.innerHTML = appts.length ? '' : '<div style="text-align:center; padding:20px; color:#666;">Sin citas</div>';
-        appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => list.innerHTML += `<div style="background:var(--bg-input); padding:10px; margin-bottom:5px; border-radius:8px;"><b>${c.time}</b> ${c.name} <br><small>${c.phone}</small> <button style="float:right; color:red; background:none; border:none;" onclick="delAppt('${date}','${c.time}')">x</button></div>`);
+        
+        // Ordenar y mostrar lista
+        appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
+            // Escapar comillas por seguridad
+            const safeName = (c.name || '').replace(/'/g, "\\'"); 
+            
+            list.innerHTML += `
+            <div style="background:var(--bg-input); padding:10px; margin-bottom:5px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <b>${c.time}</b> ${c.name} <br>
+                    <small style="color:var(--text-muted);">${c.phone}</small>
+                </div>
+                <button style="color:var(--danger); background:none; border:none; cursor:pointer; padding:5px;" 
+                        onclick="askDeleteAppt('${date}', '${c.time}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>`;
+        });
+        
         document.getElementById('evtOldTime').dataset.date = date;
         document.getElementById('dayModal').classList.add('active');
     }
+
+    // 1. Preguntar antes de borrar (Abre el modal)
+    function askDeleteAppt(date, time) {
+        apptToDelete = { date, time };
+        document.getElementById('delApptTimeLbl').innerText = time;
+        document.getElementById('deleteApptModal').classList.add('active');
+    }
+
+    // 2. Ejecutar borrado (Al confirmar)
+    async function executeDeleteAppt() {
+        if(!apptToDelete) return;
+        
+        await fetch(`${API_BASE}/api/agenda/delete`, { 
+            method:'POST', 
+            headers:{'Content-Type':'application/json'}, 
+            body:JSON.stringify(apptToDelete) 
+        });
+
+        // Cerrar modal de confirmación y recargar lista del día
+        document.getElementById('deleteApptModal').classList.remove('active');
+        openDayModal(apptToDelete.date); 
+        renderCalendar();
+        showToast('Cita eliminada');
+    }
+
+    async function saveEvent() {
+        const d = { 
+            date: document.getElementById('evtOldTime').dataset.date, 
+            time: document.getElementById('evtTime').value, 
+            name: document.getElementById('evtName').value, 
+            phone: document.getElementById('evtPhone').value, 
+            note: document.getElementById('evtNote').value 
+        };
+        if(!d.time || !d.name) return alert("Faltan datos");
+        
+        await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
+        
+        document.getElementById('eventForm').style.display='none'; 
+        document.getElementById('btnAddEvent').style.display='block';
+        openDayModal(d.date); 
+        renderCalendar();
+    }
+
+    function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
+
     async function saveEvent() {
         const d = { date: document.getElementById('evtOldTime').dataset.date, time: document.getElementById('evtTime').value, name: document.getElementById('evtName').value, phone: document.getElementById('evtPhone').value, note: document.getElementById('evtNote').value };
         if(!d.time || !d.name) return alert("Faltan datos");
@@ -919,8 +1010,6 @@
         document.getElementById('eventForm').style.display='none'; document.getElementById('btnAddEvent').style.display='block';
         openDayModal(d.date); renderCalendar();
     }
-    async function delAppt(d, t) { await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({date:d, time:t}) }); openDayModal(d); renderCalendar(); }
-
     function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebarOverlay').classList.toggle('active'); }
     function nav(v, btn) { 
         document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
@@ -940,10 +1029,10 @@
         showToast('Guardado');
     }
     function showToast(m) { const c=document.getElementById('toast-container'); c.innerHTML+=`<div class="toast">${m}</div>`; setTimeout(()=>c.innerHTML='', 3000); }
-    // --- LÓGICA DE CONTACTOS (Buscador, Editar, Eliminar) ---
+
     let allContactsCache = []; 
-    let phoneToDelete = null; // Variable temporal para saber a quién borrar
-    let isEditingMode = false; // Variable para saber si estamos editando o creando
+    let phoneToDelete = null;
+    let isEditingMode = false;
 
     // 1. Cargar y Renderizar
     async function renderContacts() {
