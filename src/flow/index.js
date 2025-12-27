@@ -1,3 +1,4 @@
+magh_hamg@instance-20251205-134302:~/carpeta_actualizacion/src/flow$ cat index.js
 const { getUser, updateUser, getFlowStep, getFullFlow } = require('../database');
 const { isBotDisabled } = require('../contacts');
 const { isSimilar, analyzeNaturalLanguage } = require('./utils');
@@ -70,35 +71,39 @@ const handleMessage = async (sock, msg) => {
     if ((new Date().getTime() - lastActive) / 60000 > MAX_INACTIVE_MINUTES && user.current_step !== INITIAL_STEP) {
         await updateUser(dbKey, { current_step: INITIAL_STEP, history: {} });
         user = getUser(dbKey);
-        isFlowReset = true; // <--- SE REINICIÓ POR TIEMPO
+        isFlowReset = true;
     }
 
     // --- CEREBRO ---
     
-    // 1. Keywords Globales
-    // (Esto tiene prioridad sobre el reset, por si el cliente escribe "Cita" directo)
+    // 1. Keywords Globales (MODIFICADO CON PROTECCIÓN POR TIPO)
     const fullFlow = getFullFlow();
     let jumpStep = null;
+
+    // A) Buscar si el texto coincide con alguna Keyword
     for (const [sKey, sVal] of Object.entries(fullFlow)) {
         if (sVal.keywords?.some(k => isSimilar(text, k))) {
             jumpStep = sKey;
             break;
         }
     }
-    if (jumpStep) {
-        console.log(`🔀 Keyword: ${jumpStep}`);
-        await updateUser(dbKey, { current_step: jumpStep });
-        await sendStepMessage(sock, remoteJid, jumpStep, user);
-        return;
-    }
 
-    // 🔥 CORRECCIÓN FINAL AQUÍ:
-    // Si el usuario es nuevo y NO usó una keyword mágica, 
-    // mandamos la bienvenida y NOS DETENEMOS. 
-    // Así evitamos que valide "Hola" o "Informes" contra el menú.
-    if (isFlowReset) {
-        await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
-        return; 
+    // B) Ejecutar salto (CON VALIDACIÓN DE TIPO)
+    if (jumpStep) {
+        // Obtenemos la configuración real del paso donde está el usuario
+        const currentStepConf = getFlowStep(user.current_step);
+
+        // Si el paso existe Y es de tipo 'filtro', ACTIVAMOS EL ESCUDO
+        if (currentStepConf && currentStepConf.type === 'filtro') {
+            console.log(`🛡️ Keyword detectada (${jumpStep}) pero IGNORADA: El usuario está en un FILTRO.`);
+            // No hacemos nada (no hay return), dejamos que el código siga bajando
+            // para que el Filtro procese el mensaje normalmente.
+        } else {
+            console.log(`🔀 Keyword detectada: Saltando a ${jumpStep}`);
+            await updateUser(dbKey, { current_step: jumpStep });
+            await sendStepMessage(sock, remoteJid, jumpStep, user);
+            return;
+        }
     }
 
     // 2. Procesar Paso Actual
