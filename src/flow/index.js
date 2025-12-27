@@ -1,4 +1,3 @@
-magh_hamg@instance-20251205-134302:~/carpeta_actualizacion/src/flow$ cat index.js
 const { getUser, updateUser, getFlowStep, getFullFlow } = require('../database');
 const { isBotDisabled } = require('../contacts');
 const { isSimilar, analyzeNaturalLanguage } = require('./utils');
