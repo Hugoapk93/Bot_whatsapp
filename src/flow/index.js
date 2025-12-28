@@ -159,7 +159,7 @@ const handleMessage = async (sock, msg) => {
                     matchesFound.forEach(m => {
                         txt += `\n👉 *${m.label}*`;
                     });
-                    txt += `\n\nPor favor sé más específico (ej: "Efectivo" o "Moto").`;
+                    txt += `\n\nPor favor sé más específico.`;
 
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
                     else await sock.sendMessage(remoteJid, { text: txt });
