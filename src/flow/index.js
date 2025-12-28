@@ -1,13 +1,11 @@
 const { getUser, updateUser, getFlowStep, getFullFlow } = require('../database');
 const { isBotDisabled } = require('../contacts');
-// 🔥 MEJORA: Importamos normalizeText para no repetir código
 const { isSimilar, analyzeNaturalLanguage, normalizeText } = require('./utils');
-// 🔥 MEJORA: Importamos las funciones de agenda (ahora son asíncronas)
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast } = require('./agenda');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 
 const INITIAL_STEP = 'BIENVENIDA';
-const MAX_INACTIVE_MINUTES = 2880; // 48 Horas
+const MAX_INACTIVE_MINUTES = 2880;
 
 // --- HELPERS ---
 
@@ -43,11 +41,10 @@ const handleMessage = async (sock, msg) => {
         let isFlowReset = false;
 
         if (!user?.phone) {
-            console.log(`✨ Nuevo usuario detectado: ${dbKey}`);
-            // Creamos usuario inicial
+            console.log(`✨ Nuevo usuario: ${dbKey}`);
             await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
             user = getUser(dbKey);
-            isFlowReset = true; // <--- ES NUEVO
+            isFlowReset = true;
 
             // 🔥 DEEP LINKING: Redirige a Monitor
             if (global.sendPushNotification) {
@@ -66,7 +63,6 @@ const handleMessage = async (sock, msg) => {
         // Reset por Inactividad
         const lastActive = new Date(user.last_active || timestamp).getTime();
         if ((new Date().getTime() - lastActive) / 60000 > MAX_INACTIVE_MINUTES && user.current_step !== INITIAL_STEP) {
-            console.log(`💤 Usuario ${dbKey} inactivo. Reseteando flujo.`);
             await updateUser(dbKey, { current_step: INITIAL_STEP, history: {} });
             user = getUser(dbKey);
             isFlowReset = true;
@@ -86,15 +82,13 @@ const handleMessage = async (sock, msg) => {
             }
         }
 
-        // B) Ejecutar salto (CON VALIDACIÓN DE TIPO "FILTRO")
+        // B) Ejecutar salto (CON VALIDACIÓN DE TIPO)
         if (jumpStep) {
-            // Obtenemos la configuración real del paso donde está el usuario
             const currentStepConf = getFlowStep(user.current_step);
 
             // Si el paso existe Y es de tipo 'filtro', ACTIVAMOS EL ESCUDO
             if (currentStepConf && currentStepConf.type === 'filtro') {
                 console.log(`🛡️ Keyword detectada (${jumpStep}) pero IGNORADA: El usuario está en un FILTRO.`);
-                // No saltamos, dejamos que el flujo siga para que el filtro capture el mensaje si es necesario
             } else {
                 console.log(`🔀 Keyword detectada: Saltando a ${jumpStep}`);
                 await updateUser(dbKey, { current_step: jumpStep });
@@ -121,7 +115,8 @@ const handleMessage = async (sock, msg) => {
 
         // --- LÓGICA DE MENÚ INTELIGENTE ---
         if (currentStepConfig.type === 'menu') {
-            const userClean = normalizeText(text); // Usamos el helper importado
+            // ✅ CORRECCIÓN 2: Usamos normalizeText importado
+            const userClean = normalizeText(text); 
             let match = null;
 
             // A) Intentar por número (1, 2, 3...)
@@ -137,9 +132,10 @@ const handleMessage = async (sock, msg) => {
                 );
             }
 
-            // C) Si sigue sin match, usar LÓGICA PARCIAL (Inteligente)
+            // C) Si sigue sin match, usar LÓGICA PARCIAL (Mejorada para Ambigüedad)
             if (!match && currentStepConfig.options) {
-                match = currentStepConfig.options.find(opt => {
+                // 1. Buscamos TODAS las coincidencias posibles
+                const matchesFound = currentStepConfig.options.filter(opt => {
                     const btnText = normalizeText(opt.label);
                     
                     // Caso 1: Contención Directa
@@ -149,6 +145,27 @@ const handleMessage = async (sock, msg) => {
                     const userWords = userClean.split(' ');
                     return userWords.some(w => w.length > 3 && btnText.includes(w));
                 });
+
+                // 2. Evaluamos cuántas encontramos
+                if (matchesFound.length === 1) {
+                    // ✅ Caso Ideal: Solo una opción coincide
+                    match = matchesFound[0];
+                } 
+                else if (matchesFound.length > 1) {
+                    // ⚠️ AMBIGÜEDAD DETECTADA
+                    console.log(`⚠️ Ambigüedad: "${text}" coincide con ${matchesFound.length} opciones.`);
+                    
+                    let txt = `🤔 Tu respuesta coincide con varias opciones:\n`;
+                    matchesFound.forEach(m => {
+                        txt += `\n👉 *${m.label}*`;
+                    });
+                    txt += `\n\nPor favor sé más específico (ej: "Efectivo" o "Moto").`;
+
+                    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+                    else await sock.sendMessage(remoteJid, { text: txt });
+                    
+                    return; // ⛔ IMPORTANTE: Cortamos flujo aquí
+                }
             }
 
             if (match) {
@@ -168,8 +185,6 @@ const handleMessage = async (sock, msg) => {
         }
 
         else if (currentStepConfig.type === 'filtro') {
-            // El filtro no hace nada automático, solo espera a que un humano conteste
-            // o a que el usuario active una keyword (si no está blindado)
             return; 
         }
 
@@ -186,7 +201,6 @@ const handleMessage = async (sock, msg) => {
                 
                 if (analysis.date) {
                     user.history['fecha'] = analysis.date;
-                    // Si cambian la fecha, borramos la hora anterior para evitar conflictos
                     if (!analysis.time) delete user.history['hora']; 
                 }
                 if (analysis.time) user.history['hora'] = analysis.time; 
@@ -207,7 +221,6 @@ const handleMessage = async (sock, msg) => {
                 if (!horaMemoria) {
                     const fechaTexto = friendlyDate(fechaMemoria);
                     const txt = `Perfecto te agende para el dia *${fechaTexto}*.\n¿A que hora puedes venir?\n(Escribe en formato 24 hrs o AM/PM)`;
-                    
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
                     return; 
                 }
@@ -216,36 +229,33 @@ const handleMessage = async (sock, msg) => {
                 if (isDateInPast(fechaMemoria, horaMemoria)) {
                     const txt = `⚠️ La fecha ${fechaMemoria} a las ${horaMemoria} ya pasó.\nPor favor indica una fecha y hora futura.`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    
                     delete user.history['hora'];
                     await updateUser(dbKey, { history: user.history });
                     return;
                 }
 
-                // 4. Reglas de Negocio (Horario Laboral)
+                // 4. Reglas de Negocio
                 const rules = validateBusinessRules(horaMemoria);
                 if (!rules.valid) {
                     const s = rules.settings?.schedule;
                     const txt = `⚠️ ${rules.reason}\nHorario: ${s?.start || '9:00'} - ${s?.end || '18:00'}`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    
                     delete user.history['hora']; 
                     await updateUser(dbKey, { history: user.history });
                     return;
                 }
 
-                // 5. Disponibilidad (🔥 AQUI ESTÁ EL CAMBIO CRÍTICO: await)
+                // 5. Disponibilidad (✅ CORRECCIÓN 3: Agregado await)
                 const isAvailable = await checkAvailability(fechaMemoria, horaMemoria);
                 if (!isAvailable) {
                     const txt = `❌ Horario ${horaMemoria} ocupado. ¿Otra hora?`;
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-                    
                     delete user.history['hora'];
                     await updateUser(dbKey, { history: user.history });
                     return;
                 }
 
-                // 6. Agendar (🔥 TAMBIÉN LLEVA await)
+                // 6. Agendar (✅ CORRECCIÓN 4: Agregado await)
                 const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
                 await bookAppointment(fechaMemoria, horaMemoria, dbKey, finalName);
                 console.log("🎉 Cita guardada correctamente.");
@@ -258,7 +268,6 @@ const handleMessage = async (sock, msg) => {
                     );
                 }
 
-                // 7. Decidir siguiente paso (O mensaje final)
                 if (targetStepConfig.next_step) {
                     nextStepId = targetStepConfig.next_step;
                 } else {
@@ -277,8 +286,6 @@ const handleMessage = async (sock, msg) => {
 
     } catch (err) {
         console.error("🔥 ERROR CRÍTICO EN FLOW:", err);
-        // Opcional: Avisar al usuario que hubo un error
-        // await sock.sendMessage(msg.key.remoteJid, { text: "Ocurrió un error temporal, intenta de nuevo." });
     }
 };
 
