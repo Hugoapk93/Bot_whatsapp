@@ -87,21 +87,42 @@ const isBusinessClosed = () => {
     }
 };
 
+// 🔥 FUNCIÓN MEJORADA: Lógica robusta + Mensaje dinámico
 const validateBusinessRules = (timeStr) => {
     const settings = getSettings();
     if (!timeStr) return { valid: false, reason: "Falta la hora." };
     
     const [h, m] = timeStr.split(':').map(Number);
     
-    // MEJORA: Validar intervalo flexible (ahora soporta 00, 15, 30, 45 si quieres)
-    // Si quieres mantener solo media hora, deja: if (m !== 0 && m !== 30)
+    // Validar intervalo (30 min)
     if (m % 30 !== 0) return { valid: false, reason: "Solo agendamos en horas exactas o medias (ej: 4:00, 4:30)." };
     
     const reqMins = (h * 60) + m;
-    const startMins = timeToMinutes(settings.schedule?.start || "09:00");
-    const endMins = timeToMinutes(settings.schedule?.end || "18:00");
     
-    if (reqMins < startMins || reqMins >= endMins) return { valid: false, reason: "Estamos cerrados a esa hora." };
+    // Obtener configuración o defaults
+    const sStart = settings.schedule?.start || "09:00";
+    const sEnd = settings.schedule?.end || "18:00";
+    
+    const startMins = timeToMinutes(sStart);
+    const endMins = timeToMinutes(sEnd);
+    
+    let isClosed = false;
+
+    // Lógica robusta (Diurna vs Nocturna)
+    if (startMins < endMins) {
+        // Horario estándar (ej: 9 a 18) -> Cerrado si es ANTES de abrir o DESPUES de cerrar
+        if (reqMins < startMins || reqMins >= endMins) isClosed = true;
+    } else {
+        // Horario nocturno (ej: 22 a 02) -> Cerrado si está en el "hueco" del día
+        if (reqMins >= endMins && reqMins < startMins) isClosed = true;
+    }
+
+    if (isClosed) {
+        return { 
+            valid: false, 
+            reason: `⛔ Lo siento, estamos cerrados a esa hora.\n🕒 Nuestro horario es de *${sStart}* a *${sEnd}*.` 
+        };
+    }
     
     return { valid: true, settings };
 };
