@@ -410,6 +410,28 @@
         </div>
     </div>
 
+    <div class="modal" id="moveUserModal">
+        <div class="sheet" style="height:auto;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                <h3 style="margin:0;">Mover Cliente</h3>
+                <button onclick="document.getElementById('moveUserModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
+            </div>
+            
+            <p style="color:var(--text-muted); margin-bottom:15px;">
+                Selecciona el paso al que quieres enviar a <br>
+                <b id="moveUserPhoneLbl" style="color:var(--text-main); font-size:1.1rem;"></b>
+            </p>
+
+            <label>Seleccionar Paso Destino</label>
+            <select id="moveStepSelect" style="margin-bottom:20px;"></select>
+
+            <div style="display:flex; gap:10px;">
+                <button onclick="executeMoveUser()" class="btn-primary" style="flex:1;">Mover Ahora</button>
+                <button onclick="document.getElementById('moveUserModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="logoutModal">
         <div class="sheet" style="height:auto; text-align:center;">
             <div style="width:60px; height:60px; border-radius:50%; background:rgba(239,68,68,0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
@@ -670,8 +692,10 @@
                             <small>${timeAgo(u.last_active)}</small>
                         </td>
                         <td>
-                            <span class="status-badge connected" style="background:var(--bg-input); color:var(--text-muted);">
-                                ${u.current_step}
+                            <span class="status-badge connected" 
+                                  onclick="openMoveModal('${u.phone}', '${u.current_step}')"
+                                  style="background:var(--bg-input); color:var(--primary); cursor:pointer; border:1px solid rgba(59, 130, 246, 0.3);">
+                                ${u.current_step} <i class="fas fa-exchange-alt" style="margin-left:5px; font-size:0.7em;"></i>
                             </span>
                         </td>
                         <td>${varsHtml}</td> <td>${btns}</td>
@@ -1328,7 +1352,44 @@
             }
         }
     }
+    let userToMove = null;
 
+    function openMoveModal(phone, currentStep) {
+        userToMove = phone;
+        document.getElementById('moveUserPhoneLbl').innerText = phone;
+        
+        // Usamos tu función existente getSelectOptions para llenar la lista
+        // y pre-seleccionamos el paso actual
+        const select = document.getElementById('moveStepSelect');
+        select.innerHTML = getSelectOptions(currentStep);
+        
+        document.getElementById('moveUserModal').classList.add('active');
+    }
+
+    async function executeMoveUser() {
+        const targetStep = document.getElementById('moveStepSelect').value;
+        if (!userToMove || !targetStep) return;
+
+        // Reutilizamos el endpoint de CRM Execute. 
+        // Esto actualizará el paso en la BD y el bot enviará el mensaje de ese paso al cliente.
+        try {
+            await fetch(`${API_BASE}/api/crm/execute`, { 
+                method: 'POST', 
+                headers: {'Content-Type':'application/json'}, 
+                body: JSON.stringify({ 
+                    phone: userToMove, 
+                    stepId: targetStep 
+                }) 
+            });
+
+            showToast(`Cliente movido a ${targetStep}`);
+            document.getElementById('moveUserModal').classList.remove('active');
+            loadActivity(); // Recargamos el monitor para ver el cambio
+        } catch (e) {
+            console.error(e);
+            alert("Error al mover el cliente");
+        }
+    }
     // 🔥 PEGA ESTO AQUÍ (DETECTAR CAMBIOS DE URL EN VIVO) 🔥
     window.addEventListener('hashchange', () => {
         console.log("Cambio de sección detectado:", window.location.hash);
