@@ -237,9 +237,16 @@ const handleMessage = async (sock, msg) => {
                 // 4. Reglas de Negocio
                 const rules = validateBusinessRules(horaMemoria);
                 if (!rules.valid) {
-                    const s = rules.settings?.schedule;
-                    const txt = `⚠️ ${rules.reason}\nHorario: ${s?.start || '9:00'} - ${s?.end || '18:00'}`;
+                    // ❌ ANTES (Bórralo):
+                    // const s = rules.settings?.schedule;
+                    // const txt = `⚠️ ${rules.reason}\nHorario: ${s?.start || '9:00'} - ${s?.end || '18:00'}`;
+
+                    // ✅ AHORA (Déjalo limpio):
+                    // Como agenda.js ya incluye emojis y el horario formateado, solo mostramos rules.reason
+                    const txt = rules.reason; 
+
                     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+                    
                     delete user.history['hora']; 
                     await updateUser(dbKey, { history: user.history });
                     return;
