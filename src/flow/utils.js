@@ -1,7 +1,6 @@
-// --- UTILIDADES DE TEXTO Y FECHAS (Optimizado 2025) ---
+// --- UTILIDADES DE TEXTO Y FECHAS (Optimizado con Anti-Repetición) ---
 
 // 1. Algoritmo de Distancia (Levenshtein) nativo
-// Mantenemos esta joya, es eficiente y sin dependencias.
 const getEditDistance = (a, b) => {
     if (a.length === 0) return b.length;
     if (b.length === 0) return a.length;
@@ -20,58 +19,66 @@ const getEditDistance = (a, b) => {
     return matrix[b.length][a.length];
 };
 
-// 2. Normalizar texto (Mejorada)
+// 2. Normalizar texto
 const normalizeText = (str) => {
     if (!str) return "";
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
-        // Permitimos letras, números y espacios. Eliminamos puntuación excesiva.
-        .replace(/[^a-z0-9 ]/g, "") 
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos (sí -> si)
+        .replace(/[^a-z0-9 ]/g, "")  // Solo letras y números
         .trim()
-        .replace(/\s+/g, ' '); // Colapsar espacios múltiples
+        .replace(/\s+/g, ' '); 
 };
 
-// 3. Comparación inteligente (Fuzzy Match)
+// 🔥 HELPER NUEVO: Colapsar letras repetidas (ej: "siii" -> "si", "nooo" -> "no")
+const collapseChars = (str) => {
+    // Esta expresión regular busca cualquier caracter (.) seguido de sí mismo (\1) una o más veces (+)
+    // y lo reemplaza por una sola instancia del caracter ($1)
+    return str.replace(/(.)\1+/g, '$1');
+};
+
+// 3. Comparación inteligente (Fuzzy Match Mejorado)
 const isSimilar = (input, keyword) => {
     if (!input || !keyword) return false;
     
     const cleanInput = normalizeText(input);
     const cleanKeyword = normalizeText(keyword);
     
-    // Coincidencia exacta
+    // A) Coincidencia exacta
     if (cleanInput === cleanKeyword) return true;
+
+    // B) 🔥 MAGIA DE REPETICIÓN: "sii" vs "si"
+    // Si al quitar las letras repetidas son iguales, es match.
+    // Ejemplo: usuario "siii" -> "si"  ===  bot "si" -> "si" -> TRUE
+    if (collapseChars(cleanInput) === collapseChars(cleanKeyword)) return true;
     
-    // Contención (si keyword es larga)
+    // C) Contención (si keyword es larga)
     if (cleanKeyword.length > 4 && cleanInput.includes(cleanKeyword)) return true;
     
-    // Distancia Levenshtein (Errores de dedo)
+    // D) Distancia Levenshtein (Errores de dedo reales como "so" en vez de "si")
     const distance = getEditDistance(cleanInput, cleanKeyword);
     
     // Ajuste dinámico de tolerancia
-    // < 4 letras: Debe ser exacto (ej: "si", "no", "pan")
-    // 4-7 letras: 1 error
-    // > 7 letras: 2 errores
-    let maxErrors = 0;
-    if (cleanKeyword.length > 7) maxErrors = 2;
-    else if (cleanKeyword.length > 3) maxErrors = 1;
+    // < 4 letras: Debe ser exacto (salvo por repeticiones que ya cubrimos arriba)
+    let maxErrors = 0; 
+    
+    if (cleanKeyword.length > 7) maxErrors = 2;       // Palabras largas aguantan 2 errores
+    else if (cleanKeyword.length > 3) maxErrors = 1;  // Palabras medias aguantan 1 error
     
     return distance <= maxErrors;
 };
 
-// 4. Inteligencia para Fechas (SIN CHRONO-NODE)
+// 4. Inteligencia para Fechas
 const analyzeNaturalLanguage = (text) => {
     const response = { date: null, time: null };
     const lower = normalizeText(text);
 
-    // --- A. OBTENER FECHA BASE (HORA MÉXICO REAL) ---
     const now = new Date();
-    // Forzamos "en-US" para obtener formato consistente MM/DD/YYYY
     const mxDateStr = now.toLocaleString("en-US", {timeZone: "America/Mexico_City"});
     const todayMx = new Date(mxDateStr); 
 
-    let targetDate = new Date(todayMx); // Copia para manipular
+    let targetDate = new Date(todayMx); 
 
-    // --- B. DETECTAR FECHAS RELATIVAS ---
+    // Fechas relativas
     if (lower.includes('manana')) {
         if (!lower.includes('en la manana') && !lower.includes('por la manana')) {
             targetDate.setDate(todayMx.getDate() + 1);
@@ -86,19 +93,13 @@ const analyzeNaturalLanguage = (text) => {
         response.date = formatDate(targetDate);
     }
 
-    // --- C. DETECTAR DÍAS DE LA SEMANA ---
+    // Días de la semana
     const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     dias.forEach((dia, index) => {
-        // "el lunes", "proximo martes", "este viernes"
         if (lower.includes(dia)) {
-            const currentDay = todayMx.getDay(); // 0-6
+            const currentDay = todayMx.getDay();
             let diff = index - currentDay;
-            
-            // Si el día ya pasó o es hoy, asumimos la próxima semana 
-            if (diff <= 0) {
-                diff += 7;
-            }
-            // Si dicen "hoy lunes", corregimos
+            if (diff <= 0) diff += 7;
             if (diff === 7 && lower.includes('hoy')) diff = 0;
 
             targetDate.setDate(todayMx.getDate() + diff);
@@ -106,49 +107,31 @@ const analyzeNaturalLanguage = (text) => {
         }
     });
 
-    // --- D. DETECTAR FECHAS EXACTAS (24/12, 24-05) ---
+    // Fechas exactas (24/12)
     const dateMatch = text.match(/(\d{1,2})[\/.-](\d{1,2})/); 
     if (dateMatch) {
         const day = parseInt(dateMatch[1]);
         const month = parseInt(dateMatch[2]);
         let year = todayMx.getFullYear();
-        
-        // Crear fecha tentativa este año
-        // Nota: Mes en JS es 0-11
         const tentativeDate = new Date(year, month - 1, day);
-        
-        // Si la fecha ya pasó (ej: hoy es Mayo y piden Febrero), es el otro año
-        if (tentativeDate < todayMx) {
-            year++;
-        }
-        
+        if (tentativeDate < todayMx) year++;
         response.date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     }
 
-    // --- E. DETECTAR HORAS (Con Inferencia de Negocio) ---
-    // Soporta: 4pm, 4:30pm, 16:00, 10 am, "a las 5"
+    // Horas
     const timeMatch = text.match(/(\d{1,2})(:(\d{2}))?\s?(am|pm|a\.m\.|p\.m\.)?/i);
-    
     if (timeMatch) {
         let h = parseInt(timeMatch[1]);
         let m = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
         const period = timeMatch[4] ? timeMatch[4].toLowerCase().replace(/\./g, '') : null;
 
-        // Lógica AM/PM explícita
         if (period === 'pm' && h < 12) h += 12;
         if (period === 'am' && h === 12) h = 0;
-        
-        // Lógica IMPLÍCITA (Inferencia de Negocio)
-        // Si no dicen AM/PM y la hora es pequeña (1, 2, 3, 4, 5, 6, 7), 
-        // asumimos que es PM porque nadie atiende a las 2 de la mañana.
-        if (!period && h > 0 && h < 8) {
-            h += 12;
-        }
+        if (!period && h > 0 && h < 8) h += 12;
 
         response.time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
     }
 
-    // Fallback: Si detectamos intención relativa pero no fecha calculada
     if (!response.date && (lower.includes('manana') || lower.includes('hoy'))) {
          response.date = formatDate(targetDate);
     }
@@ -156,7 +139,6 @@ const analyzeNaturalLanguage = (text) => {
     return response;
 };
 
-// Helper: Formato YYYY-MM-DD
 const formatDate = (date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
