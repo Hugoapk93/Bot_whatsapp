@@ -11,6 +11,17 @@ const publicFolder = path.resolve(__dirname, '../../public');
 
 const esSimulador = (jid) => jid && jid.includes(SIMULATOR_PHONE);
 
+// HELPER: Resolver JID Real (Vital para que no se vaya al limbo del LID)
+const resolveTargetJid = (incomingJid, userData) => {
+    if (incomingJid && incomingJid.includes('@s.whatsapp.net')) return incomingJid;
+    if (incomingJid && incomingJid.includes('@lid') && userData && userData.phone) {
+        let phone = userData.phone; 
+        if (!phone.includes('@')) phone += '@s.whatsapp.net';
+        return phone;
+    }
+    return incomingJid;
+};
+
 const enviarAlFrontend = (jid, contenido, type = 'text') => {
     if (global.io) {
         const textPayload = (typeof contenido === 'string' ? contenido : (contenido.caption || '')).replace(/\n/g, '<br>');
@@ -34,7 +45,10 @@ const typing = async (sock, jid, length) => {
 };
 
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
-    if (!jid) return; // Validación básica
+    // 1. Resolver JID
+    const targetJid = resolveTargetJid(jid, userData);
+    if (!targetJid) return;
+
     if (userData._lastStep === stepId && userData._recursionCount > 2) return;
 
     let step = getFlowStep(stepId);
@@ -45,7 +59,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     if (!step) return;
 
     if (step.type === 'fin_bot') {
-        const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
+        const cleanPhone = targetJid.replace('@s.whatsapp.net', '').replace('@c.us', '');
         addManualContact(cleanPhone, userData.pushName || 'Cliente', false);
     }
 
@@ -64,24 +78,23 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         });
     }
 
-    // --- LOGICA DE BOTONES (HYDRATED TEMPLATE) ---
-    // Esta es la estructura clásica que usan los bots oficiales
+    // --- PREPARAR BOTONES (ESTILO CLÁSICO/AEROLÍNEA) ---
     let useButtons = (step.type === 'menu' && step.options && step.options.length > 0);
     
-    // 🔥 MODO PRUEBA DE BOTONES (Si quieres probar botones dummy, cambia a true)
-    const FORCE_TEST = true; 
+    const FORCE_TEST = true; // 🔥 Mantenlo en true para la prueba, luego a false.
 
     let buttons = [];
     if (useButtons) {
-        if (FORCE_TEST && !esSimulador(jid)) {
-            console.log("⚠️ Usando Botones Dummy (Hydrated)");
+        if (FORCE_TEST && !esSimulador(targetJid)) {
+            console.log("⚠️ MODO PRUEBA: Botones Clásicos (Hydrated)");
+            messageText += "\n(Prueba Clásica)";
+            // Estructura oficial de botones
             buttons = [
-                { index: 1, quickReplyButton: { displayText: 'Prueba SI', id: 'si' } },
-                { index: 2, quickReplyButton: { displayText: 'Prueba NO', id: 'no' } }
+                { index: 1, quickReplyButton: { displayText: 'SI ✅', id: 'si' } },
+                { index: 2, quickReplyButton: { displayText: 'NO ❌', id: 'no' } }
             ];
-            messageText += "\n(Modo Prueba)";
         } else {
-            // Mapeamos tus opciones reales a la estructura Hydrated
+            // Mapeo real
             buttons = step.options.map((opt, index) => ({
                 index: index + 1,
                 quickReplyButton: {
@@ -104,26 +117,25 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             if (fs.existsSync(finalPath)) {
                 const caption = (!useButtons && i === mediaList.length - 1) ? messageText : ""; 
                 try {
-                    if (esSimulador(jid)) enviarAlFrontend(jid, { url, caption }, 'image');
-                    else await sock.sendMessage(jid, { image: { url: finalPath }, caption });
+                    if (esSimulador(targetJid)) enviarAlFrontend(targetJid, { url, caption }, 'image');
+                    else await sock.sendMessage(targetJid, { image: { url: finalPath }, caption });
                     if(caption) sentImage = true;
                 } catch (e) {}
             }
         }
     }
 
-    // --- ENVÍO FINAL ---
+    // --- ENVÍO FINAL (TEMPLATE MESSAGE - CLÁSICO) ---
     if (!sentImage) { 
-        if (esSimulador(jid)) {
-            enviarAlFrontend(jid, messageText + (useButtons ? " [BOTONES]" : ""));
+        if (esSimulador(targetJid)) {
+            enviarAlFrontend(targetJid, messageText + (useButtons ? " [BOTONES]" : ""));
         } else {
             if (useButtons) {
-                console.log(`🔘 Generando Template Message para: ${jid}`);
+                console.log(`🔘 Enviando TEMPLATE a: ${targetJid}`);
                 
-                // 🔥 ESTRUCTURA ESPÍA (Hydrated Template)
-                // Usamos viewOnceMessage envolviendo un templateMessage.
-                // Esta combinación suele saltarse filtros de "Media Type".
-                const msg = generateWAMessageFromContent(jid, {
+                // 🔥 ESTRUCTURA "AEROLÍNEA" (Hydrated Template)
+                // Esta es la estructura que WhatsApp Web suele tolerar mejor (o al menos el celular sí la muestra)
+                const msg = generateWAMessageFromContent(targetJid, {
                     viewOnceMessage: {
                         message: {
                             templateMessage: {
@@ -138,14 +150,14 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                 }, { userJid: sock.user.id });
 
                 try {
-                    await sock.relayMessage(jid, msg.message, { messageId: msg.key.id });
-                    console.log(`✅ Template Relay OK. ID: ${msg.key.id}`);
+                    await sock.relayMessage(targetJid, msg.message, { messageId: msg.key.id });
+                    console.log(`✅ Relay Template OK. ID: ${msg.key.id}`);
                 } catch (relayError) {
                     console.error("❌ Falló relay:", relayError);
                 }
 
             } else {
-                await sock.sendMessage(jid, { text: messageText });
+                await sock.sendMessage(targetJid, { text: messageText });
             }
         }
     }
@@ -156,7 +168,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         setTimeout(async () => {
              const { updateUser } = require('../database');
              await updateUser(userData.phone, { current_step: step.next_step });
-             sendStepMessage(sock, jid, step.next_step, userData); 
+             sendStepMessage(sock, targetJid, step.next_step, userData); 
         }, 1500);
     }
 };
