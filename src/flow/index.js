@@ -26,7 +26,17 @@ const handleMessage = async (sock, msg) => {
         const remoteJid = msg.key.remoteJid;
         if (isBotDisabled(remoteJid) || remoteJid.includes('@g.us')) return;
 
+        // 🔥 MOVIDO AQUÍ ARRIBA 🔥
+        // Lo ponemos antes de validar 'text', porque los botones a veces no tienen texto simple
+        // y si lo dejas abajo, el "if (!text) return" lo mataría antes de mostrarlo.
+        if (msg.message?.viewOnceMessage || msg.message?.buttonsMessage || msg.message?.listMessage || msg.message?.interactiveMessage || msg.message?.templateMessage) {
+            console.log("🕵️ DETECTADO MENSAJE INTERACTIVO DE OTRO:");
+            console.log(JSON.stringify(msg.message, null, 2));
+        }
+
         const text = (msg.message?.conversation || msg.message?.extendedTextMessage?.text || '').trim();
+        
+        // Ahora sí validamos si hay texto para continuar con TU bot
         if (!text) return;
 
         // Normalizar teléfono
@@ -37,7 +47,7 @@ const handleMessage = async (sock, msg) => {
         const dbKey = incomingPhone;
         const timestamp = new Date().toISOString();
 
-        // 🚩 BANDERA DE CONTROL (Para evitar el error del primer mensaje)
+        // 🚩 BANDERA DE CONTROL
         let isFlowReset = false;
 
         if (!user?.phone) {
@@ -46,7 +56,7 @@ const handleMessage = async (sock, msg) => {
             user = getUser(dbKey);
             isFlowReset = true;
 
-            // 🔥 DEEP LINKING: Redirige a Monitor
+            // 🔥 DEEP LINKING
             if (global.sendPushNotification) {
                  global.sendPushNotification(
                      "🔔 Nuevo Cliente", 
