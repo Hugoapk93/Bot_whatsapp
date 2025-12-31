@@ -11,7 +11,7 @@ const publicFolder = path.resolve(__dirname, '../../public');
 
 const esSimulador = (jid) => jid && jid.includes(SIMULATOR_PHONE);
 
-// HELPER: Resolver JID Real (Vital para que no se vaya al limbo del LID)
+// ✅ HELPER VITAL: CORREGIR JID
 const resolveTargetJid = (incomingJid, userData) => {
     if (incomingJid && incomingJid.includes('@s.whatsapp.net')) return incomingJid;
     if (incomingJid && incomingJid.includes('@lid') && userData && userData.phone) {
@@ -45,7 +45,7 @@ const typing = async (sock, jid, length) => {
 };
 
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
-    // 1. Resolver JID
+    // 1. Resolver JID Real
     const targetJid = resolveTargetJid(jid, userData);
     if (!targetJid) return;
 
@@ -78,23 +78,23 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         });
     }
 
-    // --- PREPARAR BOTONES (ESTILO CLÁSICO/AEROLÍNEA) ---
+    // --- PREPARAR BOTONES (ESTILO AEROLÍNEA) ---
     let useButtons = (step.type === 'menu' && step.options && step.options.length > 0);
     
-    const FORCE_TEST = true; // 🔥 Mantenlo en true para la prueba, luego a false.
+    // 🔥 IMPORTANTE: Desactiva el modo prueba si ya tienes pasos reales
+    const FORCE_TEST = false; 
 
     let buttons = [];
     if (useButtons) {
         if (FORCE_TEST && !esSimulador(targetJid)) {
-            console.log("⚠️ MODO PRUEBA: Botones Clásicos (Hydrated)");
-            messageText += "\n(Prueba Clásica)";
-            // Estructura oficial de botones
+            console.log("⚠️ MODO PRUEBA: Botones Hydrated Dummy");
             buttons = [
                 { index: 1, quickReplyButton: { displayText: 'SI ✅', id: 'si' } },
                 { index: 2, quickReplyButton: { displayText: 'NO ❌', id: 'no' } }
             ];
+            messageText += "\n(Prueba Hydrated)";
         } else {
-            // Mapeo real
+            // Transformamos tus opciones al formato Hydrated
             buttons = step.options.map((opt, index) => ({
                 index: index + 1,
                 quickReplyButton: {
@@ -125,16 +125,16 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // --- ENVÍO FINAL (TEMPLATE MESSAGE - CLÁSICO) ---
+    // --- ENVÍO FINAL (HYDRATED TEMPLATE) ---
     if (!sentImage) { 
         if (esSimulador(targetJid)) {
             enviarAlFrontend(targetJid, messageText + (useButtons ? " [BOTONES]" : ""));
         } else {
             if (useButtons) {
-                console.log(`🔘 Enviando TEMPLATE a: ${targetJid}`);
+                console.log(`🔘 Intentando botones HYDRATED para: ${targetJid}`);
                 
-                // 🔥 ESTRUCTURA "AEROLÍNEA" (Hydrated Template)
-                // Esta es la estructura que WhatsApp Web suele tolerar mejor (o al menos el celular sí la muestra)
+                // 🔥 ESTRUCTURA QUE ESPIASTE (Hydrated Template)
+                // Esta estructura suele ser más compatible con Android viejos y nuevos
                 const msg = generateWAMessageFromContent(targetJid, {
                     viewOnceMessage: {
                         message: {
@@ -151,7 +151,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
                 try {
                     await sock.relayMessage(targetJid, msg.message, { messageId: msg.key.id });
-                    console.log(`✅ Relay Template OK. ID: ${msg.key.id}`);
+                    console.log(`✅ Relay Hydrated OK. ID: ${msg.key.id}`);
                 } catch (relayError) {
                     console.error("❌ Falló relay:", relayError);
                 }
