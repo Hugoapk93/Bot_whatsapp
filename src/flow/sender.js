@@ -3,6 +3,8 @@ const path = require('path');
 const { getFlowStep, saveFlowStep } = require('../database');
 const { addManualContact } = require('../contacts');
 const { isBusinessClosed } = require('./agenda');
+// 🔥 IMPORTANTE: Necesitamos esto para generar el mensaje crudo
+const { generateWAMessageFromContent } = require('@whiskeysockets/baileys');
 
 const SIMULATOR_PHONE = '5218991234567';
 const INITIAL_STEP = 'BIENVENIDA';
@@ -27,18 +29,16 @@ const typing = async (sock, jid, length) => {
     if (esSimulador(jid)) return;
     try {
         await sock.sendPresenceUpdate('composing', jid);
-        await new Promise(r => setTimeout(r, 500)); // Fijo 500ms para pruebas rápidas
+        await new Promise(r => setTimeout(r, 500)); 
         await sock.sendPresenceUpdate('paused', jid);
     } catch(e) { }
 };
 
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
-    // Evitar bucles infinitos
     if (userData._lastStep === stepId && userData._recursionCount > 2) return;
 
     let step = getFlowStep(stepId);
     
-    // Auto-crear paso inicial si no existe
     if (!step && stepId === INITIAL_STEP) {
         step = { type: 'menu', message: '¡Hola! Bienvenido.', options: [] };
         await saveFlowStep(INITIAL_STEP, step);
@@ -59,7 +59,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         messageText = settings.schedule?.offline_message || "⛔ Cerrado.";
     }
 
-    // Reemplazo de variables
     if (userData.history) {
         Object.keys(userData.history).forEach(key => {
             messageText = messageText.replace(new RegExp(`{{${key}}}`, 'gi'), userData.history[key] || '');
@@ -67,11 +66,8 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     // --- LÓGICA AGRESIVA DE BOTONES ---
-    // Si es MENU, usamos botones SIEMPRE, sin importar la cantidad ni el simulador.
-    // (El simulador no renderizará nada visual, pero el backend enviará el payload).
     let useButtons = (step.type === 'menu' && step.options && step.options.length > 0);
     
-    // Construimos los botones nativos
     let buttonsArray = [];
     if (useButtons) {
         buttonsArray = step.options.map(opt => ({
@@ -83,7 +79,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }));
     }
 
-    // Manejo de Imágenes
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
     if (step.type === 'filtro' && isClosed) mediaList = [];
 
@@ -93,7 +88,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             const url = mediaList[i];
             const finalPath = path.join(publicFolder, url.startsWith('/') ? url.slice(1) : url);
             if (fs.existsSync(finalPath)) {
-                // Si vamos a mandar botones, mandamos la imagen limpia antes
                 const caption = (!useButtons && i === mediaList.length - 1) ? messageText : ""; 
                 try {
                     if (esSimulador(jid)) enviarAlFrontend(jid, { url, caption }, 'image');
@@ -105,17 +99,17 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // --- ENVÍO FINAL ---
-    if (!sentImage) { // Si no se envió texto como caption de imagen...
+    // --- ENVÍO FINAL (CORREGIDO CON RELAY) ---
+    if (!sentImage) { 
         if (esSimulador(jid)) {
             enviarAlFrontend(jid, messageText + (useButtons ? " [BOTONES ENVIADOS]" : ""));
         } else {
             if (useButtons) {
-                // 🔥 FORZAMOS EL ENVÍO INTERACTIVO
-                // Sin try/catch de fallback. Si muere, muere.
-                console.log(`🔘 Enviando ${buttonsArray.length} botones nativos a ${jid}`);
+                console.log(`🔘 Generando ${buttonsArray.length} botones nativos para ${jid}`);
                 
-                const msgPayload = {
+                // 1. GENERAMOS EL MENSAJE CRUDO (PROTOBUF)
+                // Esto crea la estructura correcta sin intentar "enviarla" todavía
+                const msg = generateWAMessageFromContent(jid, {
                     viewOnceMessage: {
                         message: {
                             messageContextInfo: {
@@ -124,7 +118,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                             },
                             interactiveMessage: {
                                 body: { text: messageText },
-                                footer: { text: "Responde aquí 👇" },
+                                footer: { text: "Selecciona 👇" },
                                 header: { title: "", subtitle: "", hasMediaAttachment: false },
                                 nativeFlowMessage: {
                                     buttons: buttonsArray
@@ -132,16 +126,19 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                             }
                         }
                     }
-                };
-                await sock.sendMessage(jid, msgPayload);
+                }, { userJid: sock.user.id });
+
+                // 2. LO INYECTAMOS DIRECTO AL SOCKET (RELAY)
+                // Esto se salta las validaciones de "Media Type" de sendMessage
+                await sock.relayMessage(jid, msg.message, { messageId: msg.key.id });
+
             } else {
-                // Mensaje normal
+                // Mensaje normal de texto (aquí sendMessage sí funciona bien)
                 await sock.sendMessage(jid, { text: messageText });
             }
         }
     }
 
-    // Auto-Avance
     if (step.type === 'filtro' && isClosed) return;
     if (step.type === 'message' && step.next_step && step.next_step !== stepId) {
         setTimeout(async () => {
