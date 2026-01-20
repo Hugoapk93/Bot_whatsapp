@@ -538,6 +538,7 @@
     let selectedChats = []; 
     let longPressTimer;
     let ignoreClick = false;
+    let currentSearchQuery = '';
     
     // --- SOCKET.IO ---
     const socket = io({ reconnection: true });
@@ -812,6 +813,38 @@
         } catch(e){ console.error("Error cargando actividad:", e); }
     }
 
+    function updateSearch(val) {
+        currentSearchQuery = val.toLowerCase(); // Guardamos el texto
+        applyFiltersAndRender(); // Aplicamos filtros visuales
+    }
+
+    function applyFiltersAndRender() {
+        // 1. Empezamos con todos los usuarios
+        let filtered = users.slice(); 
+
+        // 2. Aplicamos Filtro de Estado (Si tienes los botones de Activo/Pausado)
+        if (typeof currentFilter !== 'undefined') {
+            if (currentFilter === 'active') filtered = filtered.filter(u => u.bot_enabled === true);
+            else if (currentFilter === 'paused') filtered = filtered.filter(u => u.bot_enabled === false);
+        }
+
+        // 3. Aplicamos Búsqueda de Texto (AQUÍ ESTÁ LA MAGIA)
+        if (currentSearchQuery) {
+            filtered = filtered.filter(u => {
+                const name = (u.savedName || u.history?.nombre || u.phone).toLowerCase();
+                const phone = u.phone.toLowerCase();
+                // Buscamos coincidencia en nombre O teléfono
+                return name.includes(currentSearchQuery) || phone.includes(currentSearchQuery);
+            });
+        }
+
+        // 4. Ordenamos por actividad reciente
+        filtered.sort((a,b) => new Date(b.last_active) - new Date(a.last_active));
+
+        // 5. Pintamos la lista final
+        renderChatList(filtered);
+    }
+
     function renderChatList(list) {
         const c = document.getElementById('waChatList');
         if(!c) return; // Seguridad
@@ -892,7 +925,6 @@
         });
     }
 
-    // --- SELECCIÓN Y BORRADO MÚLTIPLE ---
     function toggleSelection(phone) {
         if (!isSelectionMode) {
             isSelectionMode = true;
@@ -911,7 +943,9 @@
         if (selectedChats.length === 0) {
             exitSelectionMode();
         } else {
-            renderChatList(users);
+            // 🔥 CORRECCIÓN: Usamos filterChats en vez de renderChatList(users)
+            // Esto obliga a la lista a respetar lo que escribiste en el buscador
+            filterChats(currentSearchQuery); 
         }
     }
 
@@ -920,7 +954,9 @@
         selectedChats = [];
         document.getElementById('waHeaderSearch').style.display = 'block';
         document.getElementById('waHeaderSelection').style.display = 'none';
-        renderChatList(users);
+        
+        // 🔥 CORRECCIÓN: Al salir, volvemos a mostrar la lista filtrada (o completa si estaba vacía)
+        filterChats(currentSearchQuery);
     }
 
     async function deleteSelectedChats() {
@@ -1097,9 +1133,20 @@
     }
 
     function filterChats(q) {
-        if(!q) return renderChatList(users);
-        const f = users.filter(u => JSON.stringify(u).toLowerCase().includes(q.toLowerCase()));
-        renderChatList(f);
+        currentSearchQuery = q; // 1. Guardamos el texto para no olvidarlo
+        
+        if(!q) {
+            renderChatList(users);
+        } else {
+            const term = q.toLowerCase();
+            const f = users.filter(u => {
+                // Buscamos en todo el objeto o específicamente en el nombre/teléfono
+                const str = JSON.stringify(u).toLowerCase(); 
+                const savedName = (u.savedName || '').toLowerCase();
+                return str.includes(term) || savedName.includes(term);
+            });
+            renderChatList(f);
+        }
     }
 
     // --- ACCIONES Y MODALES ---
