@@ -230,7 +230,7 @@ async function connectToWhatsApp() {
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
-    // >>> LOGICA DE MENSAJES MEJORADA (Auto-Guardado + Auto-Nombre) <<<
+    // >>> LOGICA DE MENSAJES MEJORADA (Chat sube siempre + Auto-Nombre) <<<
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         const isFromMe = messages[0]?.key?.fromMe;
         if (type !== 'notify' && !isFromMe) return;
@@ -255,102 +255,109 @@ async function connectToWhatsApp() {
             const isMe = msg.key.fromMe;
 
             // ----------------------------------------------------------
-            // PASO 1: AUTO-REGISTRO (Si no existe, se crea y se avisa)
+            // PASO 1: AUTO-REGISTRO
             // ----------------------------------------------------------
             let contactConfig = allContacts.find(c => c.phone === incomingPhoneRaw);
-            
+
             if (!contactConfig && !isMe) {
                 console.log(`✨ Nuevo contacto detectado: ${incomingPhoneRaw}`);
-                // Creamos el contacto en la BD
-                addManualContact(incomingPhoneRaw, incomingPhoneRaw, true); // Nombre inicial = Teléfono
-                
-                // Actualizamos variable local
+                addManualContact(incomingPhoneRaw, incomingPhoneRaw, true);
                 contactConfig = { phone: incomingPhoneRaw, name: incomingPhoneRaw, bot_enabled: true };
-                
-                // 🔥 AVISO AL MONITOR: "¡Pinta este nuevo chat ya!"
-                if (global.io) global.io.emit('new_user', { 
-                    phone: incomingPhoneRaw, 
-                    name: incomingPhoneRaw, 
+
+                if (global.io) global.io.emit('new_user', {
+                    phone: incomingPhoneRaw,
+                    name: incomingPhoneRaw,
                     last_active: new Date().toISOString(),
                     bot_enabled: true
                 });
             }
 
-            // --- GUARDAR MENSAJE EN HISTORIAL ---
-            const msgText = msg.message?.conversation || 
-                          msg.message?.extendedTextMessage?.text || 
-                          msg.message?.imageMessage?.caption || 
+            // ----------------------------------------------------------
+            // PASO 2: GUARDAR MENSAJE Y ACTUALIZAR FECHA (CRÍTICO)
+            // ----------------------------------------------------------
+            const msgText = msg.message?.conversation ||
+                          msg.message?.extendedTextMessage?.text ||
+                          msg.message?.imageMessage?.caption ||
                           '📷 (Media)';
 
             let currentUser = getUser(incomingPhoneRaw);
-            if (!currentUser) { 
-                currentUser = { phone: incomingPhoneRaw, messages: [] }; 
-                // Aseguramos que el usuario también exista en users.json
+            if (!currentUser) {
+                currentUser = { phone: incomingPhoneRaw, messages: [] };
+                // Aseguramos creación inicial
                 await updateUser(incomingPhoneRaw, { created_at: Date.now() });
             }
             if (!currentUser.messages) currentUser.messages = [];
 
+            // Hora actual exacta
+            const now = new Date().toISOString();
+
             currentUser.messages.push({
-                text: msgText, 
-                fromMe: isMe, 
-                timestamp: Date.now(), 
+                text: msgText,
+                fromMe: isMe,
+                timestamp: Date.now(),
                 stepId: currentUser.current_step || 'INICIO'
             });
 
             if (currentUser.messages.length > 60) currentUser.messages.shift();
-            await updateUser(incomingPhoneRaw, { messages: currentUser.messages });
 
-            // Emitir mensaje al socket (Para que se vea la burbuja)
+            // 🔥 AQUÍ ESTÁ EL CAMBIO: Guardamos last_active SIEMPRE
+            // Esto asegura que el chat suba al inicio aunque el bot esté apagado
+            await updateUser(incomingPhoneRaw, { 
+                messages: currentUser.messages,
+                last_active: now 
+            });
+
+            // Emitir eventos al socket (Para ver burbuja y mover lista)
             if (global.io) {
+                // 1. Burbuja de chat
                 global.io.emit('message', {
-                    phone: incomingPhoneRaw, 
-                    text: msgText, 
-                    fromMe: isMe, 
+                    phone: incomingPhoneRaw,
+                    text: msgText,
+                    fromMe: isMe,
                     stepId: currentUser.current_step,
-                    to: isMe ? incomingPhoneRaw : undefined, 
+                    to: isMe ? incomingPhoneRaw : undefined,
                     from: !isMe ? incomingPhoneRaw : undefined
+                });
+                
+                // 2. Actualización de lista (Para reordenar visualmente)
+                global.io.emit('user_update', { 
+                    phone: incomingPhoneRaw, 
+                    last_active: now,
+                    last_message: msgText
                 });
             }
 
             if (isMe) continue; // Si soy yo, no ejecuto el bot
 
-            // Verificar si el bot está apagado para este usuario
-            if (contactConfig && contactConfig.bot_enabled === false) continue;
+            // ----------------------------------------------------------
+            // PASO 3: VERIFICAR SI EL BOT ESTÁ ENCENDIDO
+            // ----------------------------------------------------------
+            if (contactConfig && contactConfig.bot_enabled === false) {
+                // El bot está apagado: ya guardamos el mensaje y subimos el chat.
+                // Aquí terminamos para no contestar.
+                continue;
+            }
 
             // ----------------------------------------------------------
-            // PASO 2: EJECUTAR FLUJO DEL BOT
+            // PASO 4: EJECUTAR FLUJO DEL BOT (Solo si está encendido)
             // ----------------------------------------------------------
             try {
                 await handleMessage(sock, msg);
 
-                // ----------------------------------------------------------
-                // PASO 3: AUTO-ACTUALIZACIÓN DE NOMBRE (La Magia)
-                // ----------------------------------------------------------
-                // Re-leemos el usuario porque handleMessage pudo haber guardado variables
+                // --- AUTO-ACTUALIZACIÓN DE NOMBRE ---
                 const postFlowUser = getUser(incomingPhoneRaw);
-
                 if (postFlowUser && postFlowUser.history) {
-                    // Buscamos variables comunes de nombre
-                    const capturedName = postFlowUser.history.nombre || 
-                                         postFlowUser.history.name || 
-                                         postFlowUser.history.cliente || 
+                    const capturedName = postFlowUser.history.nombre ||
+                                         postFlowUser.history.name ||
+                                         postFlowUser.history.cliente ||
                                          postFlowUser.history.usuario;
 
-                    // Si el bot capturó un nombre Y es diferente al que tiene el contacto actualmente
                     if (capturedName && contactConfig.name !== capturedName) {
                         console.log(`📝 Auto-actualizando nombre: ${contactConfig.name} -> ${capturedName}`);
-
-                        // 1. Guardar en Base de Datos
                         addManualContact(incomingPhoneRaw, capturedName, contactConfig.bot_enabled);
                         await updateUser(incomingPhoneRaw, { name: capturedName });
 
-                        // 2. Avisar al Monitor para que cambie el nombre en vivo
-                        if (global.io) {
-                            // Emitimos un evento de actualización o forzamos recarga
-                            global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
-                        }
-                        
-                        // Actualizar variable local
+                        if (global.io) global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
                         contactConfig.name = capturedName;
                     }
                 }
@@ -360,7 +367,6 @@ async function connectToWhatsApp() {
             }
         }
     });
-
 }
 // ==========================================
 //              RUTAS API
