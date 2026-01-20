@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CRM - Flow Studio</title>
-    
+
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="logo.svg" type="image/svg+xml">
     <meta name="theme-color" content="#1e293b">
@@ -18,12 +18,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <style>
-        /* --- ESTILOS --- */
-        :root { 
+        :root {
             --bg-body: #0f172a; --bg-sidebar: #1e293b; --bg-card: #1e293b; --bg-input: #020617;
             --border: #334155; --text-main: #f8fafc; --text-muted: #94a3b8;
             --primary: #3b82f6; --success: #10b981; --danger: #ef4444;
             --radius: 12px;
+            /* Variables WA Dark Mode */
+            --wa-bg-list: #111b21;
+            --wa-bg-chat: #0b141a;
+            --wa-header: #202c33;
+            --wa-border: #2a3942;
+            --wa-incoming: #202c33;
+            --wa-outgoing: #005c4b;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
@@ -36,18 +42,18 @@
         .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 200; transition: transform 0.3s; flex-shrink: 0; }
         .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 150; display: none; backdrop-filter: blur(2px); }
         .sidebar-overlay.active { display: block; }
-        
+
         .brand { height: 64px; padding: 0 24px; display: flex; align-items: center; gap: 12px; font-weight: 700; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2); }
         .menu { padding: 20px 12px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
         .menu-item { padding: 12px 16px; border-radius: 8px; font-weight: 500; color: var(--text-muted); display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.2s; }
         .menu-item:hover { background: var(--border); color: var(--text-main); }
         .menu-item.active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-weight: 600; }
-        
+
         #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: #34d399; margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
 
         .content { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
         .mobile-header { display: none; background: var(--bg-sidebar); height: 60px; padding: 0 20px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-        
+
         .view { display: none; flex: 1; flex-direction: column; height: 100%; overflow: hidden; }
         .view.active { display: flex; animation: fadeIn 0.3s ease; }
         .view-padding { padding: 30px; overflow-y: auto; }
@@ -55,18 +61,11 @@
 
         /* UI Elements */
         .card { background: var(--bg-card); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 20px; }
-        .act-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        .act-table th, .act-table td { padding: 14px; border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted); }
-        .act-table tr:last-child td { border-bottom: none; }
         
-        .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
-        .status-badge.connected { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-        .status-badge.disconnected { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-
         .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; font-size: 1rem;}
         .admin-btn { padding: 6px 12px; border: 1px solid var(--border); background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-main); margin-right: 5px; font-size: 0.8rem; }
-        
-        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 16px; /* Evita zoom en iOS */ }
+
+        input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 16px; }
 
         /* Calendario */
         .calendar-header { display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 15px; flex-shrink: 0; }
@@ -78,79 +77,80 @@
         .day.today { color: var(--primary); font-weight: 700; background: rgba(59, 130, 246, 0.1); }
         .day-indicator { position: absolute; bottom: 5px; right: 5px; background: var(--primary); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
 
-        /* Flow & Chat */
+        /* Flow Cards */
         .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .chat-container-wrapper { background: #0b101a; border: 1px solid var(--border); border-radius: var(--radius); flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .chat-msgs { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { max-width: 80%; padding: 10px 15px; border-radius: 12px; font-size: 0.9rem; }
-        .msg.bot { background: var(--bg-sidebar); color: var(--text-main); align-self: flex-start; }
-        .msg.user { background: #005c4b; color: #e9edef; align-self: flex-end; }
         .fab { position: fixed; bottom: 25px; right: 25px; background: var(--primary); color: white; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 24px; }
 
-        @media(max-width: 768px) { 
-            #mainApp { flex-direction: column; } 
-            
-            /* Cabecera Móvil: Aseguramos que se vea y tenga su espacio */
-            .mobile-header { 
-                display: flex; 
-                position: relative;
-                z-index: 50; /* Por encima del contenido normal */
-            }
+        /* --- VISTA ACTIVIDAD (Monitor - Estilo WhatsApp Android) --- */
+        #view-activity.active {
+            padding: 0 !important;
+            flex-direction: row;
+            background: #111b21;
+            overflow: hidden;
+        }
 
-            /* Sidebar (Menú Lateral): Oculto a la izquierda y con Z-Index alto */
-            .sidebar { 
-                position: fixed; 
-                top: 0; 
-                left: 0; 
-                height: 100%; 
-                width: 260px; /* Ancho fijo */
-                transform: translateX(-100%); /* Oculto por defecto */
-                box-shadow: 4px 0 20px rgba(0,0,0,0.8); 
-                z-index: 1000; /* Encima de todo */
-                transition: transform 0.3s ease; /* Animación suave */
-            } 
-            .sidebar.active { transform: translateX(0); } /* Al activar, entra */
+        /* Columna Izquierda: Lista de Chats */
+        .wa-list-col { width: 350px; border-right: 1px solid #2f3b43; display: flex; flex-direction: column; background: #111b21; flex-shrink: 0; }
 
+        .wa-selection-header {
+            height: 60px; background: #202c33; color: #e9edef; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #2f3b43; animation: fadeIn 0.2s;
+        }
+
+        .wa-chat-item.selected { background: #2a3942 !important; }
+        .wa-chat-item { user-select: none; -webkit-user-select: none; }
+
+        .wa-search-bar { padding: 10px; border-bottom: 1px solid #2f3b43; }
+        .wa-search-input { width: 100%; background: #202c33; border: none; padding: 8px 15px; border-radius: 8px; color: #e9edef; font-size: 14px; }
+        .wa-chat-item { display: flex; padding: 12px 15px; border-bottom: 1px solid #2f3b43; cursor: pointer; align-items: center; transition: 0.2s; }
+        .wa-chat-item:hover { background: #202c33; }
+        .wa-chat-item.active { background: #2a3942; }
+        .wa-avatar { width: 45px; height: 45px; background: #6a7175; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 12px; flex-shrink: 0; color: #fff; overflow:hidden;}
+        .wa-chat-info { flex: 1; overflow: hidden; }
+        .wa-name { font-weight: 500; color: #e9edef; font-size: 1rem; margin-bottom: 3px; }
+        .wa-meta { font-size: 0.8rem; color: #8696a0; }
+
+        /* Columna Derecha: Chat Area */
+        .wa-chat-col { flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative; }
+        .wa-chat-header { height: 60px; background: #202c33; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+        .wa-msgs-area {
+            flex: 1; overflow-y: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px;
+            background-color: #0b141a;
+            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+            background-repeat: repeat; opacity: 1;
+        }
+
+        .wa-bubble {
+            max-width: 75%; width: fit-content; padding: 5px 9px; border-radius: 10px; font-size: 14.5px; line-height: 1.3; position: relative;
+            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); word-wrap: break-word; white-space: pre-wrap; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; flex-direction: column;
+        }
+        .wa-bubble.in { background-color: #202c33 !important; color: #e9edef; align-self: flex-start !important; border-top-left-radius: 0; }
+        .wa-bubble.out { background-color: #005c4b !important; color: #e9edef; align-self: flex-end !important; border-top-right-radius: 0; }
+        .wa-time { font-size: 11px; color: rgba(255, 255, 255, 0.6); align-self: flex-end; margin: 0 0 0 8px; display: flex; align-items: center; gap: 3px; line-height: 1; padding-top: 2px; }
+
+        .wa-input-area { min-height: 60px; background: #202c33; padding: 5px 10px; display: flex; align-items: center; gap: 8px; z-index: 10; }
+        #waInput { flex: 1; margin: 0; background: #2a3942; border: none; border-radius: 25px; padding: 10px 15px; color: #fff; font-size: 15px; }
+        .wa-mic-btn { width: 45px; height: 45px; background: #00a884; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; flex-shrink: 0; }
+
+        #waQuickReplies { background: transparent; padding: 8px 15px; display: flex; gap: 8px; overflow-x: auto; justify-content: center; display: none; }
+        .quick-btn { background-color: #202c33; border: 1px solid #37404a; color: #00a884; padding: 6px 16px; border-radius: 18px; font-size: 13px; font-weight: 500; cursor: pointer; flex-shrink: 0; }
+        .quick-btn:hover { background-color: #2a3942; }
+
+        .wa-back-btn { display: none; font-size: 1.2rem; margin-right: 15px; color: var(--text-main); cursor: pointer; }
+
+        @media(max-width: 768px) {
+            #mainApp { flex-direction: column; }
+            .mobile-header { display: flex; position: relative; z-index: 50; }
+            .sidebar { position: fixed; top: 0; left: 0; height: 100%; width: 260px; transform: translateX(-100%); box-shadow: 4px 0 20px rgba(0,0,0,0.8); z-index: 1000; transition: transform 0.3s ease; }
+            .sidebar.active { transform: translateX(0); }
             .view-padding { padding: 15px !important; }
             .card { padding: 15px !important; }
-            
-            /* Ajustes vista Agenda */
-            #view-agenda.active { display: flex; flex-direction: column; }
-            #view-agenda .card { flex: 1; display: flex; flex-direction: column; height: auto; min-height: 0; }
-            #calendarDays { flex: 1; overflow-y: auto; display: grid; align-content: stretch; }
-            .day { height: auto; min-height: 70px; display: flex; flex-direction: column; justify-content: flex-start; }
-            
-            /* Ajustes vista Simulador */
-            #view-sim.active.view-padding { padding: 0 !important; }
-
-            #view-sim { 
-                display: none; 
-            }
-
-            /* 2. SOLO cuando tenga la clase .active, le aplicamos el tamaño y lo mostramos */
-            #view-sim.active { 
-                display: flex; 
-                height: calc(100dvh - 60px); /* Altura exacta */
-                flex-direction: column; 
-                position: relative;
-                z-index: 1; 
-                padding: 0 !important; /* Quitar padding extra */
-            }
-
-            .chat-container-wrapper { 
-                border: none; 
-                border-radius: 0; 
-                flex: 1; 
-                height: 100%; 
-                display: flex;
-                flex-direction: column;
-            }
-            
-            /* Espacio extra al final para scroll cómodo */
-            .chat-container-wrapper > div:last-child {
-                padding-bottom: 20px; 
-            }
+            .wa-list-col { width: 100%; border-right: none; }
+            .wa-chat-col { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; transform: translateX(100%); transition: transform 0.3s ease; }
+            .wa-chat-col.mobile-open { transform: translateX(0); }
+            .wa-back-btn { display: block; }
         }
+
         /* Utils & Modals */
         .step-hidden { display: none !important; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
@@ -160,66 +160,27 @@
         input:checked + .slider { background-color: var(--success); border-color: var(--success); }
         input:checked + .slider:before { transform: translateX(20px); }
 
-        #setupWizard { background: var(--bg-body); position: fixed; top:0; left:0; width:100%; height:100%; z-index:9999; display:flex; justify-content:center; align-items:center; }
-        
         #inAppNotify { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #333; color: white; padding: 12px 20px; border-radius: 50px; display: flex; align-items: center; gap: 10px; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-width: 90%; width: max-content; }
         #inAppNotify.show { transform: translateX(-50%) translateY(0); }
-        
+
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .toast { background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border); padding: 10px 20px; border-radius: 20px; color: white; animation: fadeIn 0.3s; backdrop-filter: blur(4px); }
 
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 300; display: none; justify-content: center; align-items: flex-end; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000 !important; display: none; justify-content: center; align-items: flex-end; }
         .modal.active { display: flex; }
-
         @media(min-width: 769px) { .modal { align-items: center; } }
-        
         .sheet { background: var(--bg-card); width: 100%; max-width: 500px; padding: 25px; border-radius: 20px 20px 0 0; border-top: 1px solid var(--border); max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; animation: slideUp 0.3s; }
         @media(min-width: 769px) { .sheet { border-radius: 16px; border: 1px solid var(--border); animation: fadeIn 0.2s; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        /* --- ESTILOS DE NAVEGACIÓN MEJORADOS --- */
-        .flow-nav { 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            margin-bottom: 15px; 
-    
-            /* Habilita el scroll horizontal */
-            overflow-x: auto; 
-            white-space: nowrap; 
-    
-            /* Estética del scroll */
-            padding-bottom: 5px; 
-            -webkit-overflow-scrolling: touch; /* Suavidad en móviles */
-            scrollbar-width: thin; /* Para Firefox */
-        }
-
-        /* Estilizar la barra de desplazamiento para que sea sutil */
+        .flow-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; scrollbar-width: thin; }
         .flow-nav::-webkit-scrollbar { height: 4px; }
         .flow-nav::-webkit-scrollbar-track { background: transparent; }
         .flow-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-
-        /* Importante: Evita que los textos se aplasten */
-        .flow-nav span, .flow-nav i { 
-            flex-shrink: 0; 
-        }
-
+        .flow-nav span, .flow-nav i { flex-shrink: 0; }
         .flow-nav span { color: var(--text-muted); cursor: pointer; font-weight: 500; }
         .flow-nav span:hover { color: var(--primary); text-decoration: underline; }
         .flow-nav span:last-child { color: var(--text-main); cursor: default; font-weight: 700; text-decoration: none; }
-
-        /* Estilo para paso incompleto */
-        .card-incomplete { border-left: 4px solid var(--danger) !important; background: rgba(239, 68, 68, 0.05); }
-        .warning-icon { color: var(--danger); float: right; }
-
-        /* Ajuste para evitar selección de texto al hacer doble click */
-        .flow-step-card { user-select: none; }
-
-        #deleteApptModal, 
-        #deleteConfirmModal, 
-        #actionConfirmModal {
-            z-index: 400 !important;
-        }
     </style>
 </head>
 <body>
@@ -249,12 +210,9 @@
             <div class="menu">
                 <div class="menu-item active" onclick="nav('flow', this)"><i class="fas fa-project-diagram"></i> Flujo del Bot</div>
                 <div class="menu-item" onclick="nav('activity', this)">
-                    <i class="fas fa-desktop"></i> Monitor
-                </div>
+                    <i class="fas fa-desktop"></i> Chats</div>
                 <div class="menu-item" onclick="nav('agenda', this)"><i class="far fa-calendar-alt"></i> Agenda</div>
-                <div class="menu-item" onclick="nav('contacts', this)"><i class="fas fa-users"></i> Contactos</div>
                 <div class="menu-item" onclick="nav('settings', this)"><i class="fas fa-cog"></i> Horario</div>
-                <div class="menu-item" onclick="nav('sim', this)"><i class="fas fa-gamepad"></i> Simulador</div>
                 <div class="menu-item" id="installAppBtn" onclick="installPWA()"><i class="fas fa-download"></i> Instalar App</div>
                 <div class="menu-item logout" onclick="requestLogout()"><i class="fas fa-power-off"></i> Salir</div>
             </div>
@@ -266,14 +224,89 @@
                 <span id="pageTitle" style="font-weight:700;">FLOW CRM</span>
             </div>
 
-            <div id="view-activity" class="view view-padding">
-                <div class="card">
-                    <h3 style="margin-top:0;">Monitor en Vivo</h3>
-                    <div style="overflow-x:auto;">
-                        <table class="act-table">
-                            <thead><tr><th>Cliente</th><th>Estado</th><th>Datos</th><th>Acción</th></tr></thead>
-                            <tbody id="activityBody"></tbody>
-                        </table>
+            <div id="view-activity" class="view">
+                <div class="wa-list-col">
+                    <div id="waHeaderSearch" class="wa-search-bar" style="display:block;">
+                        <input type="text" class="wa-search-input" placeholder="🔍 Buscar chat..." onkeyup="filterChats(this.value)">
+                    </div>
+
+                    <div id="waHeaderSelection" class="wa-selection-header" style="display:none;">
+                        <div style="display:flex; align-items:center; gap:20px;">
+                            <i class="fas fa-arrow-left" onclick="exitSelectionMode()" style="cursor:pointer; font-size:1.2rem;"></i>
+                            <span id="waSelectionCount" style="font-size:1.2rem; font-weight:600;">0</span>
+                        </div>
+                        <i class="fas fa-trash" onclick="deleteSelectedChats()" style="cursor:pointer; font-size:1.1rem;"></i>
+                    </div>
+
+                    <div id="waChatList" style="flex:1; overflow-y:auto; overflow-x:hidden;"></div>
+                </div>
+
+                <div id="waMainChat" class="wa-chat-col">
+                    <div class="wa-chat-header">
+                        <div style="display:flex; align-items:center;">
+                            <i class="fas fa-arrow-left wa-back-btn" onclick="closeWaChat()" style="margin-right:10px; color:#e9edef;"></i>
+
+                            <div class="wa-avatar" id="waHeaderAvatar" style="width:40px; height:40px; margin-right:10px; font-size:1rem;">?</div>
+
+                            <div style="display:flex; flex-direction:column; justify-content:center;">
+            
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <div id="waHeaderName" class="wa-name" style="font-size:1rem; font-weight:600; line-height:1.2;">
+                                        Selecciona un chat
+                                    </div>
+                
+                                    <button onclick="editCurrentContactManual()" 
+                                            style="background:none; border:none; color:#8696a0; cursor:pointer; padding:0; display:flex; align-items:center;" 
+                                            title="Editar nombre manualmente">
+                                        <i class="fas fa-pen" style="font-size:0.8rem;"></i>
+                                    </button>
+                                </div>
+
+                                <div id="waHeaderPhone" class="wa-meta" style="font-size:0.8rem;">toca para ver info</div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:20px; color:#e9edef; padding-right:5px;">
+                            <label class="switch" style="transform:scale(0.7); margin-left:10px;">
+                                <input type="checkbox" id="waBotSwitch" onchange="toggleCurrentBot(this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="waMsgContainer" class="wa-msgs-area">
+                        <div style="text-align:center; color:var(--text-muted); margin-top:50px;">
+                            <i class="fab fa-whatsapp" style="font-size:3rem; margin-bottom:10px;"></i><br>
+                            Selecciona un contacto para ver el historial y controlar el flujo.
+                        </div>
+                    </div>
+
+                    <div id="waQuickReplies"></div>
+
+                    <div class="wa-input-area" id="waInputArea" style="display:none;">
+                        <i class="far fa-smile" style="color:#8696a0; font-size:1.3rem; cursor:pointer; margin-right:8px;"></i>
+                        <i class="fas fa-plus" style="color:#8696a0; font-size:1.3rem; cursor:pointer; margin-right:8px;"></i>
+                        <input type="text" id="waInput" placeholder="Mensaje" onkeyup="if(event.key==='Enter') sendWaMsg()">
+                        <div style="margin-left:8px;">
+                            <button onclick="sendWaMsg()" class="wa-mic-btn">
+                                <i class="fas fa-paper-plane" style="font-size:1rem; margin-right:2px;"></i>
+                            </button>
+                        </div>
+                     </div>
+                </div>
+            </div>
+
+            <div class="modal" id="jumpModal">
+                <div class="sheet" style="text-align:center;">
+                    <i class="fas fa-history" style="font-size:2rem; color:var(--primary); margin-bottom:15px;"></i>
+                    <h3>¿Regresar Usuario?</h3>
+                    <p style="color:var(--text-muted); margin-bottom:20px;">
+                        ¿Quieres mover a este cliente al paso: <br>
+                        <b id="jumpTargetStep" style="color:var(--text-main);"></b>?
+                    </p>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="executeJump()" class="btn-primary">Confirmar</button>
+                        <button onclick="document.getElementById('jumpModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
                     </div>
                 </div>
             </div>
@@ -295,24 +328,6 @@
                 </div>
             </div>
 
-            <div id="view-contacts" class="view view-padding">
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                        <h3>Usuarios</h3>
-                        <button class="admin-btn" onclick="openContactModal()">+ Nuevo</button>
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <input type="text" 
-                               placeholder="🔍 Buscar por nombre o teléfono..." 
-                               onkeyup="filterContacts(this.value)"
-                               style="margin:0;">
-                    </div>
-
-                    <div id="contactsList"></div>
-                </div>
-            </div>
-
             <div id="view-settings" class="view view-padding">
                 <div class="card">
                     <h3>Horario de Atención</h3>
@@ -327,20 +342,6 @@
                     <label style="margin-top:10px; display:block;">Mensaje de Ausencia</label>
                     <textarea id="schedMsg" rows="3" placeholder="No estamos disponibles..."></textarea>
                     <button class="btn-primary" onclick="saveSettings()" style="margin-top:15px;">Guardar Cambios</button>
-                </div>
-            </div>
-
-            <div id="view-sim" class="view view-padding">
-                <div class="chat-container-wrapper">
-                    <div class="chat-msgs" id="simMsgs"></div>
-                    <div style="padding:15px; border-top:1px solid var(--border); display:flex; gap:10px;">
-                        <input type="text" id="simInput" placeholder="Escribe..." style="margin:0;" 
-                               onkeyup="if(event.key === 'Enter') sendSim()">
-                        
-                        <button onmousedown="event.preventDefault()" onclick="sendSim()" class="btn-primary" style="width:auto;">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -398,8 +399,8 @@
             </div>
             <h3>Confirmar Acción</h3>
             <p style="color:var(--text-muted); margin-bottom:20px;">
-                ¿Seguro que quieres ejecutar 
-                <b id="actLabel" style="color:var(--text-main); background:var(--bg-input); padding:2px 6px; border-radius:4px;"></b> 
+                ¿Seguro que quieres ejecutar
+                <b id="actLabel" style="color:var(--text-main); background:var(--bg-input); padding:2px 6px; border-radius:4px;"></b>
                 para el usuario <br>
                 <b id="actClient" style="color:var(--text-main); font-size:1.1rem;"></b>?
             </p>
@@ -416,7 +417,7 @@
                 <h3 style="margin:0;">Mover Cliente</h3>
                 <button onclick="document.getElementById('moveUserModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
             </div>
-            
+
             <p style="color:var(--text-muted); margin-bottom:15px;">
                 Selecciona el paso al que quieres enviar a <br>
                 <b id="moveUserPhoneLbl" style="color:var(--text-main); font-size:1.1rem;"></b>
@@ -506,16 +507,16 @@
 
     <div class="modal" id="contactModal">
         <div class="sheet">
-            <h3 id="modalTitleContact">Nuevo Contacto</h3> 
-        
+            <h3 id="modalTitleContact">Nuevo Contacto</h3>
+
             <label>Nombre</label><input type="text" id="newContName">
             <label>Teléfono (con país)</label><input type="tel" id="newContPhone" placeholder="Ej: 521...">
-        
+
             <div style="display:flex; justify-content:space-between; margin:15px 0;">
                 <span>Activar Bot</span>
                 <label class="switch"><input type="checkbox" id="newContEnable" checked><span class="slider"></span></label>
             </div>
-        
+
             <div style="display:flex; gap:10px;">
                 <button onclick="saveNewContact()" class="btn-primary" style="flex:1;">Guardar</button>
                 <button onclick="document.getElementById('contactModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
@@ -524,109 +525,205 @@
     </div>
 
 <script>
-    const API_BASE = ''; 
+    const API_BASE = '';
     let flow = {}, users = [];
     let pollingInterval = null, deferredPrompt;
     let currentRefDate = new Date();
-
+    let currentChatPhone = null;
+    let pendingJumpStep = null;
+    let pendingCrmAction = null;
+    
+    // --- VARIABLES DE SELECCIÓN NUEVAS ---
+    let isSelectionMode = false;
+    let selectedChats = []; 
+    let longPressTimer;
+    let ignoreClick = false;
+    
+    // --- SOCKET.IO ---
     const socket = io({ reconnection: true });
     socket.on('connect', () => { updateConnStatus(true); loadActivity(); });
     socket.on('disconnect', () => { updateConnStatus(false); });
 
     socket.on('message', (data) => {
+        // 1. Notificaciones (Igual que antes)
         if (!data.fromMe && document.visibilityState === 'visible') {
-            showInAppNotify(data.text || "📷 Imagen recibida");
+            showInAppNotify(data.text || "📷 Archivo recibido");
             const audio = document.getElementById('alertSound');
             if(audio) { audio.volume = 0.5; audio.play().catch(()=>{}); }
-        } else if (!data.fromMe) {
+        } else if (!data.fromMe && Notification.permission === 'granted') {
             new Notification("Nuevo Mensaje", { body: data.text || "Archivo", icon: "logo.svg" });
         }
-        loadActivity(); 
-        const simPhone = '5218991234567';
-        const dest = (data.to||'').replace(/\D/g, ''), orig = (data.from||'').replace(/\D/g, '');
-        // FIX: Invertir fromMe para el simulador para que los mensajes del bot aparezcan a la izquierda y los míos a la derecha
-        if (dest.includes(simPhone) || orig.includes(simPhone)) addMsg(data.text, !data.fromMe);
+
+        // 2. 🔥 ACTUALIZACIÓN INTELIGENTE (SOPORTE LID/TELÉFONO) 🔥
+        if (currentChatPhone) {
+            // Limpiamos los IDs para evitar problemas de formato
+            const currentKey = String(currentChatPhone).replace(/\D/g, ''); // Chat abierto
+            const msgFromKey = String(data.from || '').replace(/\D/g, '');  // Quien envía
+            const msgToKey   = String(data.to || '').replace(/\D/g, '');    // A quien va
+
+            // A) INTENTO 1: Coincidencia Directa (Para bots o chats normales)
+            let isMatch = (currentKey === msgFromKey || currentKey === msgToKey);
+
+            // B) INTENTO 2: Búsqueda Cruzada (Para LIDs)
+            // Si no hubo coincidencia directa, buscamos si el msgFromKey pertenece al usuario abierto
+            if (!isMatch && users.length > 0) {
+                // Buscamos el usuario dueño del mensaje entrante
+                const senderUser = users.find(u => {
+                    const uPhone = String(u.phone).replace(/\D/g, '');
+                    const uDbPhone = u.realDbPhone ? String(u.realDbPhone).replace(/\D/g, '') : '';
+                    // ¿El mensaje viene de este usuario? (Comparando con su Phone o ID real)
+                    return uPhone === msgFromKey || uDbPhone === msgFromKey;
+                });
+
+                // Si encontramos al remitente, ¿es el mismo que tenemos abierto?
+                if (senderUser) {
+                    const senderKey = String(senderUser.phone).replace(/\D/g, '');
+                    if (senderKey === currentKey) {
+                        isMatch = true; // ¡Es el mismo! Autorizamos pintar.
+                    }
+                }
+            }
+
+            // C) SI ES EL CHAT CORRECTO -> PINTAMOS
+            if (isMatch) {
+                 let realText = data.text || data.body || data.caption || data.message || '';
+                 
+                 // Soporte extra para mensajes complejos
+                 if(!realText && data.extendedTextMessage) realText = data.extendedTextMessage.text;
+                 if(!realText && data.conversation) realText = data.conversation;
+                 if(!realText && data.imageMessage) realText = data.imageMessage.caption || '📷 Foto';
+                 if(!realText && data.videoMessage) realText = data.videoMessage.caption || '🎥 Video';
+                 
+                 if(realText) {
+                     addBubble(realText, data.fromMe, null, new Date().toISOString());
+                     // Scroll al fondo
+                     const box = document.getElementById('waMsgContainer');
+                     if(box) setTimeout(() => box.scrollTop = box.scrollHeight, 50);
+                 }
+            }
+        }
+
+        // 3. 🔄 SINCRONIZACIÓN ASEGURADA 🔄
+        // Esperamos 500ms para asegurar que la DB ya guardó el mensaje antes de recargar
+        setTimeout(() => {
+            loadActivity().then(() => {
+                // Solo refrescamos visualmente si NO pintamos el mensaje ya (para evitar duplicados visuales raros)
+                // O forzamos el refresco para traer botones/opciones nuevas
+                if (currentChatPhone) {
+                    openWaChat(currentChatPhone, true); 
+                }
+            });
+        }, 500); 
+    });
+
+    socket.on('user_update', (data) => {
+        // 1. Actualizar la lista en memoria
+        const targetPhone = getCleanPhone(data.phone);
+        const userIndex = users.findIndex(u => getCleanPhone(u.phone) === targetPhone);
+
+        if (userIndex !== -1) {
+            // Actualizamos los datos locales
+            users[userIndex] = { ...users[userIndex], ...data };
+            
+            // Si el backend mandó un nombre nuevo, actualizamos el nombre visual
+            if (data.name) {
+                users[userIndex].savedName = data.name;
+                if (!users[userIndex].history) users[userIndex].history = {};
+                users[userIndex].history.nombre = data.name;
+            }
+        }
+
+        // 2. Refrescar la lista izquierda
+        renderChatList(users);
+
+        // 3. Si tenemos este chat abierto, actualizamos el encabezado al instante
+        if (currentChatPhone && getCleanPhone(currentChatPhone) === targetPhone) {
+            if (data.name) {
+                document.getElementById('waHeaderName').innerText = data.name;
+                document.getElementById('waHeaderAvatar').innerText = data.name[0].toUpperCase();
+            }
+            if (data.bot_enabled !== undefined) {
+                const sw = document.getElementById('waBotSwitch');
+                if (sw) sw.checked = data.bot_enabled;
+            }
+        }
+    });
+
+    socket.on('new_user', (newUser) => {
+        const exists = users.find(u => getCleanPhone(u.phone) === getCleanPhone(newUser.phone));
+        if (!exists) {
+            newUser.savedName = newUser.name || newUser.phone;
+            users.unshift(newUser); // Agregamos al principio
+            renderChatList(users);
+            showInAppNotify(`Nuevo cliente: ${newUser.savedName}`);
+        }
     });
 
     function showInAppNotify(text) {
         const el = document.getElementById('inAppNotify');
-        document.getElementById('notifyText').innerText = text.substring(0, 30) + (text.length>30?'...':'');
+        if(!el) return;
+        const txtEl = document.getElementById('notifyText');
+        if(txtEl) txtEl.innerText = text.substring(0, 30) + (text.length>30?'...':'');
         el.classList.add('show');
         setTimeout(() => el.classList.remove('show'), 4000);
     }
 
-    // 🔥 FIX: Función vacía para evitar errores de JS porque borramos los indicadores
     function updateConnStatus(online) {
        console.log('Socket status:', online ? 'Connected' : 'Disconnected');
     }
 
+    // --- ONLOAD E INICIALIZACIÓN ---
     window.onload = () => {
-        document.getElementById('setupWizard').classList.remove('step-hidden');
-        
-        // 1. LÓGICA DE CONEXIÓN Y WIZARD
+        const wizard = document.getElementById('setupWizard');
+        if(wizard) wizard.classList.remove('step-hidden');
+
         const checkStatus = async () => {
             try {
                 const res = await (await fetch(`${API_BASE}/api/status`)).json();
                 if(res.status === 'connected') {
-                    document.getElementById('setupWizard').classList.add('step-hidden');
+                    if(wizard) wizard.classList.add('step-hidden');
                     document.getElementById('mainApp').classList.add('visible');
-    
-                    loadAll(); 
+
+                    loadAll();
                     loadActivity();
 
-                    // --- LÓGICA DE REDIRECCIÓN ---
                     if (window.location.hash === '#agenda') {
-                        nav('agenda'); // Va a Agenda
-                        history.replaceState(null, null, ' '); 
-                    } 
-                    else if (window.location.hash === '#activity') { 
-                        nav('activity'); // 🔥 Va a Monitor (Activity)
-                        history.replaceState(null, null, ' '); 
+                        nav('agenda'); 
+                        history.replaceState(null, null, ' ');
+                    }
+                    else if (window.location.hash === '#activity') {
+                        nav('activity');
+                        history.replaceState(null, null, ' ');
                     }
 
                 } else if(res.qr) {
-                    document.getElementById('stepLoading').classList.add('step-hidden');
-                    document.getElementById('stepQR').classList.remove('step-hidden');
+                    const loading = document.getElementById('stepLoading');
+                    const qrStep = document.getElementById('stepQR');
+                    if(loading) loading.classList.add('step-hidden');
+                    if(qrStep) qrStep.classList.remove('step-hidden');
                     new QRious({element: document.getElementById('qrCanvas'), value: res.qr, size:200});
                 }
             } catch(e){}
-            if(document.getElementById('setupWizard').classList.contains('step-hidden')) return;
-            setTimeout(checkStatus, 3000);
+            
+            if(wizard && !wizard.classList.contains('step-hidden')) {
+                setTimeout(checkStatus, 3000);
+            }
         };
         checkStatus();
 
-        // 2. SERVICE WORKER
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Fail', err));
         }
-
-        // 3. --- SOLUCIÓN PARA EL TECLADO EN MÓVIL (CORREGIDA) ---
-        // Usamos el evento 'focus' directo en el input, que es más agresivo y fiable
-        const simInput = document.getElementById('simInput');
         
+        // Fix teclado móvil
+        const simInput = document.getElementById('simInput'); // Si existe (usado en simulador antiguo, opcional)
         if (simInput) {
-            // A) Cuando tocas para escribir (Sube el teclado)
             simInput.addEventListener('focus', () => {
-                // Esperamos 300ms a que el teclado termine de subir
-                setTimeout(() => {
-                    const c = document.getElementById('simMsgs'); // El contenedor de mensajes
-                    if (c) {
-                        c.scrollTop = c.scrollHeight; // Scroll hasta abajo
-                    }
-                    // Forzamos al cuerpo de la página a no moverse (evita saltos raros)
-                    window.scrollTo(0, 0);
-                }, 300);
-            });
-            
-            // B) Mientras escribes (para que el texto no se oculte si escribes mucho)
-            simInput.addEventListener('input', () => {
-                 const c = document.getElementById('simMsgs');
-                 if (c) c.scrollTop = c.scrollHeight;
+                setTimeout(() => window.scrollTo(0, 0), 300);
             });
         }
     };
 
-    // FIX: Pedir permisos de notificación en el primer clic/toque en la pantalla
     document.body.addEventListener('click', function() {
         if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
             Notification.requestPermission();
@@ -635,123 +732,431 @@
 
     async function loadAll() {
         try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e){}
-        try { const s = await (await fetch(`${API_BASE}/api/settings`)).json(); if(s.schedule) { document.getElementById('schedActive').checked = s.schedule.active; document.getElementById('schedStart').value = s.schedule.start; document.getElementById('schedEnd').value = s.schedule.end; document.getElementById('schedMsg').value = s.schedule.offline_message; } } catch(e){}
+        try { 
+            const s = await (await fetch(`${API_BASE}/api/settings`)).json(); 
+            if(s.schedule) { 
+                const act = document.getElementById('schedActive'); if(act) act.checked = s.schedule.active;
+                const start = document.getElementById('schedStart'); if(start) start.value = s.schedule.start;
+                const end = document.getElementById('schedEnd'); if(end) end.value = s.schedule.end;
+                const msg = document.getElementById('schedMsg'); if(msg) msg.value = s.schedule.offline_message; 
+            } 
+        } catch(e){}
     }
-    
-    // --- VARIABLES GLOBALES NUEVAS ---
-    let pendingCrmAction = null; // Guardará la acción pendiente
 
-    // 1. CARGAR ACTIVIDAD (MONITOR) - MODIFICADA
+    const getCleanPhone = (ph) => {
+        if (!ph) return '';
+        const str = String(ph).replace(/\D/g, '');
+        if (str.length > 14) return str;
+        if (str.length >= 10) return str.slice(-10);
+        return str;
+    };
+
     async function loadActivity() {
         try {
-            if (Object.keys(flow).length === 0) flow = await (await fetch(`${API_BASE}/api/flow`)).json();
-            
-            users = await (await fetch(`${API_BASE}/api/users`)).json();
-            const tb = document.getElementById('activityBody'); 
-            tb.innerHTML = '';
+            // 🔥 CORRECCIÓN: Agregamos ?t=Date.now() para evitar que el navegador use caché vieja
+            const [usersData, contactsData] = await Promise.all([
+                (await fetch(`${API_BASE}/api/users?t=${Date.now()}`)).json(),
+                (await fetch(`${API_BASE}/api/contacts?t=${Date.now()}`)).json()
+            ]);
 
-            users.filter(u => u.phone !== 'TEST_SIMULADOR')
-                 .sort((a,b) => new Date(b.last_active) - new Date(a.last_active))
-                 .forEach(u => {
-                    const s = flow[u.current_step] || {};
-                    
-                    // --- LOGICA BOTONES (ACCIONES) ---
-                    let btns = '';
-                    if(s.type === 'filtro' && s.options) {
-                        s.options.forEach(o => {
-                            // AQUÍ ESTÁ EL CAMBIO: Ahora llamamos a askCrmAction pasando el nombre y etiqueta
-                            // Usamos replace para evitar problemas si el nombre tiene comillas
-                            const clientName = (u.history && u.history.nombre) ? u.history.nombre : u.phone;
-                            const safeLabel = o.label.replace(/'/g, "\\'"); 
-                            
-                            btns += `<button class="admin-btn" 
-                                      onclick="askCrmAction('${u.phone}', '${o.next_step}', '${safeLabel}', '${clientName}')" 
-                                      style="border-color:var(--primary); color:var(--primary); margin-top:5px;">
-                                      ${o.label}
-                                     </button>`;
-                        });
+            allContactsCache = contactsData;
+
+            users = usersData.map(u => {
+                const uChatKey = getCleanPhone(u.phone);
+                // Buscamos coincidencia en contactos guardados
+                let contactInfo = contactsData.find(c => getCleanPhone(c.phone) === uChatKey);
+                
+                let finalState = true;
+                
+                // Prioridad 1: Nombre en historial del usuario (Variables del bot)
+                let savedName = u.history?.nombre || u.history?.cliente || u.history?.usuario || u.history?.name || u.phone;
+
+                if (contactInfo) {
+                    finalState = contactInfo.bot_enabled;
+                    // Prioridad 2 (Maxima): Si hay un nombre editado manualmente en contactos, ese gana.
+                    if(contactInfo.name && contactInfo.name !== 'Usuario Chat' && contactInfo.name !== u.phone) {
+                        savedName = contactInfo.name;
                     }
+                } else if (u.bot_enabled !== undefined) {
+                    finalState = u.bot_enabled;
+                }
 
-                    // --- FORMATEAR VARIABLES ---
-                    let varsHtml = '<span style="color:var(--text-muted); font-size:0.8rem;">-</span>';
-                    if (u.history && Object.keys(u.history).length > 0) {
-                        varsHtml = '';
-                        Object.keys(u.history).forEach(key => {
-                            varsHtml += `<div style="font-size:0.85rem; white-space:nowrap;">
-                                <span style="color:#64748b; font-weight:bold;">${key}:</span> 
-                                <span style="color:var(--text-main);">${u.history[key]}</span>
-                            </div>`;
-                        });
-                    }
+                // Forzamos que si el nombre es igual al teléfono, tratemos de buscar algo mejor
+                if (savedName === u.phone && u.pushName) {
+                    // Opcional: Usar el nombre de WhatsApp si no tenemos nada más
+                    // savedName = u.pushName; 
+                }
 
-                    // --- RENDERIZAR FILA ---
-                    tb.innerHTML += `
-                    <tr>
-                        <td>
-                            <b>${u.phone}</b><br>
-                            <small>${timeAgo(u.last_active)}</small>
-                        </td>
-                        <td>
-                            <span class="status-badge connected" 
-                                  onclick="openMoveModal('${u.phone}', '${u.current_step}')"
-                                  style="background:var(--bg-input); color:var(--primary); cursor:pointer; border:1px solid rgba(59, 130, 246, 0.3);">
-                                ${u.current_step} <i class="fas fa-exchange-alt" style="margin-left:5px; font-size:0.7em;"></i>
-                            </span>
-                        </td>
-                        <td>${varsHtml}</td> <td>${btns}</td>
-                    </tr>`;
+                return {
+                    ...u,
+                    bot_enabled: finalState,
+                    savedName: savedName,
+                    realDbPhone: contactInfo ? contactInfo.phone : u.phone
+                };
             });
-        } catch(e){ console.error(e); }
+
+            renderChatList(users);
+
+            // Si hay un chat abierto, actualizamos su estado (switch del bot)
+            if (currentChatPhone) {
+                const updatedUser = users.find(u => getCleanPhone(u.phone) === getCleanPhone(currentChatPhone));
+                if(updatedUser) {
+                    const switchEl = document.getElementById('waBotSwitch');
+                    if(switchEl) switchEl.checked = updatedUser.bot_enabled;
+                    
+                    // Actualizar también el nombre en el encabezado si cambió
+                    document.getElementById('waHeaderName').innerText = updatedUser.savedName;
+                }
+            }
+
+        } catch(e){ console.error("Error cargando actividad:", e); }
     }
 
-    // 2. NUEVAS FUNCIONES DE CONFIRMACIÓN
-    function askCrmAction(phone, step, label, clientName) {
-        // Guardamos los datos en la variable global
-        pendingCrmAction = { phone, step };
+    function renderChatList(list) {
+        const c = document.getElementById('waChatList');
+        if(!c) return; // Seguridad
+        c.innerHTML = '';
         
-        // Llenamos el modal con la info
+        list.sort((a,b) => new Date(b.last_active) - new Date(a.last_active));
+
+        list.forEach(u => {
+            if(u.phone === 'TEST_SIMULADOR') return;
+            
+            const name = u.savedName || u.history?.nombre || u.history?.cliente || u.history?.usuario || u.phone;
+            const time = new Date(u.last_active).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            
+            const isSelected = selectedChats.includes(u.phone);
+            const activeClass = (currentChatPhone === u.phone) ? 'active' : '';
+            const selectedClass = isSelected ? 'selected' : '';
+            
+            const checkIcon = isSelected 
+                ? '<div style="position:absolute; bottom:0; right:0; background:#00a884; width:18px; height:18px; border-radius:50%; border:2px solid #202c33; display:flex; align-items:center; justify-content:center; color:white; font-size:9px; z-index:10;"><i class="fas fa-check"></i></div>' 
+                : '';
+            
+            const statusIcon = u.bot_enabled ? '<i class="fas fa-robot" style="color:var(--success)"></i>' : '<i class="fas fa-ban" style="color:var(--danger)"></i>';
+            const lastMsg = u.last_message || '...';
+
+            const div = document.createElement('div');
+            div.className = `wa-chat-item ${activeClass} ${selectedClass}`;
+            div.oncontextmenu = function(e) { e.preventDefault(); return false; }; 
+            
+            div.innerHTML = `
+                <div class="wa-avatar" style="position:relative; overflow:visible;">
+                    ${name[0].toUpperCase()} 
+                    ${checkIcon}
+                </div>
+                <div class="wa-chat-info">
+                    <div class="wa-row">
+                        <span class="wa-name">${name}</span>
+                        <span class="wa-meta">${time}</span>
+                    </div>
+                    <div class="wa-msg-preview" style="color:#8696a0;">
+                        ${statusIcon} <span style="color:var(--primary); font-size:0.75rem; margin-right:5px;">[${u.current_step}]</span> ${lastMsg}
+                    </div>
+                </div>
+            `;
+
+            const startPress = (e) => {
+                if (e.type === 'mousedown' && e.button !== 0) return;
+                ignoreClick = false;
+                longPressTimer = setTimeout(() => {
+                    ignoreClick = true;
+                    toggleSelection(u.phone);
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }, 600);
+            };
+
+            const cancelPress = () => clearTimeout(longPressTimer);
+
+            const handleClick = (e) => {
+                if (ignoreClick) {
+                    ignoreClick = false;
+                    return;
+                }
+                if (isSelectionMode) {
+                    toggleSelection(u.phone);
+                } else {
+                    openWaChat(u.phone);
+                }
+            };
+
+            div.addEventListener('mousedown', startPress);
+            div.addEventListener('touchstart', startPress, {passive: true});
+            div.addEventListener('mouseup', cancelPress);
+            div.addEventListener('mouseleave', cancelPress);
+            div.addEventListener('touchend', cancelPress);
+            div.addEventListener('touchmove', cancelPress);
+            div.addEventListener('click', handleClick);
+
+            c.appendChild(div);
+        });
+    }
+
+    // --- SELECCIÓN Y BORRADO MÚLTIPLE ---
+    function toggleSelection(phone) {
+        if (!isSelectionMode) {
+            isSelectionMode = true;
+            document.getElementById('waHeaderSearch').style.display = 'none';
+            document.getElementById('waHeaderSelection').style.display = 'flex';
+        }
+
+        if (selectedChats.includes(phone)) {
+            selectedChats = selectedChats.filter(p => p !== phone);
+        } else {
+            selectedChats.push(phone);
+        }
+
+        document.getElementById('waSelectionCount').innerText = selectedChats.length;
+
+        if (selectedChats.length === 0) {
+            exitSelectionMode();
+        } else {
+            renderChatList(users);
+        }
+    }
+
+    function exitSelectionMode() {
+        isSelectionMode = false;
+        selectedChats = [];
+        document.getElementById('waHeaderSearch').style.display = 'block';
+        document.getElementById('waHeaderSelection').style.display = 'none';
+        renderChatList(users);
+    }
+
+    async function deleteSelectedChats() {
+        if(selectedChats.length === 0) return;
+        if(!confirm(`¿Eliminar ${selectedChats.length} chats?`)) return;
+
+        try {
+            for (const phone of selectedChats) {
+                 await fetch(`${API_BASE}/api/contacts/delete`, {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({phone: phone})
+                });
+            }
+
+            users = users.filter(u => !selectedChats.includes(u.phone));
+            if(allContactsCache) allContactsCache = allContactsCache.filter(u => !selectedChats.includes(u.phone));
+
+            if (selectedChats.includes(currentChatPhone)) closeWaChat();
+
+            showToast(`${selectedChats.length} chats eliminados`);
+            exitSelectionMode();
+        } catch (e) {
+            console.error(e);
+            showToast("Error al eliminar");
+            exitSelectionMode();
+        }
+    }
+
+    // --- CHAT Y MENSAJES ---
+    async function toggleCurrentBot(val) {
+        const switchEl = document.getElementById('waBotSwitch');
+        if (!currentChatPhone) return;
+
+        const targetKey = getCleanPhone(currentChatPhone);
+        const u = users.find(x => getCleanPhone(x.phone) === targetKey);
+        if (!u) {
+            if (switchEl) switchEl.checked = !val;
+            return;
+        }
+        const phoneToSend = u.realDbPhone || u.phone || currentChatPhone;
+
+        try {
+            const response = await fetch(`${API_BASE}/api/contacts/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phoneToSend, enable: val })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                showToast(val ? 'Bot Activado' : 'Bot Pausado');
+                u.bot_enabled = val;
+                const cachedContact = allContactsCache.find(c => getCleanPhone(c.phone) === targetKey);
+                if (cachedContact) cachedContact.bot_enabled = val;
+                renderChatList(users);
+            } else { throw new Error("Error server"); }
+        } catch (e) {
+            showToast("Error actualizando bot");
+            if (switchEl) switchEl.checked = !val;
+            u.bot_enabled = !val;
+        }
+    }
+
+    function openWaChat(phone, isRefresh = false) {
+        currentChatPhone = phone;
+
+        const targetKey = getCleanPhone(phone);
+        const u = users.find(x => getCleanPhone(x.phone) === targetKey);
+        if(!u) return;
+
+        // Header
+        const displayName = u.savedName || u.history?.cliente || u.history?.usuario || u.phone;
+        document.getElementById('waHeaderName').innerText = displayName;
+        document.getElementById('waHeaderPhone').innerText = u.phone; 
+        document.getElementById('waHeaderAvatar').innerText = displayName[0].toUpperCase();
+
+        const switchEl = document.getElementById('waBotSwitch');
+        if(switchEl) switchEl.checked = u.bot_enabled; 
+
+        // Mensajes
+        const box = document.getElementById('waMsgContainer');
+        const msgs = u.messages || [];
+
+        if (!isRefresh) {
+            box.innerHTML = '';
+            document.getElementById('waInputArea').style.display = 'flex';
+            if(msgs.length === 0) {
+                box.innerHTML = `<div style="text-align:center; padding:40px; color:rgba(255,255,255,0.4);">
+                    <i class="fas fa-comment-slash" style="font-size:2rem; margin-bottom:10px;"></i><br>
+                    Sin historial reciente.
+                </div>`;
+            } else {
+                msgs.forEach(m => addBubble(m.text, m.fromMe, m.stepId, m.timestamp));
+                setTimeout(() => box.scrollTop = box.scrollHeight, 50);
+            }
+            if(window.innerWidth <= 768) {
+                const mainChat = document.getElementById('waMainChat');
+                if(mainChat) mainChat.classList.add('mobile-open');
+            }
+        } else {
+            const domCount = box.querySelectorAll('.wa-bubble').length;
+            const dbCount = msgs.length;
+            if (dbCount > domCount) {
+                const newMsgs = msgs.slice(domCount);
+                newMsgs.forEach(m => addBubble(m.text, m.fromMe, m.stepId, m.timestamp));
+                if(box.scrollTop + box.clientHeight >= box.scrollHeight - 100) {
+                    box.scrollTop = box.scrollHeight;
+                }
+            }
+        }
+
+        // Quick Replies
+        const qrContainer = document.getElementById('waQuickReplies');
+        qrContainer.innerHTML = ''; 
+        qrContainer.style.display = 'none';
+
+        const currentStepId = u.current_step;
+        if (currentStepId && flow[currentStepId]) {
+            const stepData = flow[currentStepId];
+            if (stepData.type === 'filtro' && stepData.options && stepData.options.length > 0) {
+                qrContainer.style.display = 'flex'; 
+                stepData.options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quick-btn';
+                    btn.innerText = opt.label; 
+                    btn.onclick = () => {
+                        const clientName = document.getElementById('waHeaderName').innerText;
+                        askCrmAction(currentChatPhone, opt.next_step, opt.label, clientName);
+                    };
+                    qrContainer.appendChild(btn);
+                });
+            }
+        }
+        renderChatList(users);
+    }
+
+    function addBubble(text, isMe, stepId, timestamp) {
+        const box = document.getElementById('waMsgContainer');
+        const canClick = (isMe && stepId);
+
+        let timeStr = '';
+        if (timestamp) {
+            const dateObj = new Date(timestamp);
+            const h = dateObj.getHours().toString().padStart(2, '0');
+            const m = dateObj.getMinutes().toString().padStart(2, '0');
+            timeStr = `${h}:${m}`;
+        }
+
+        box.innerHTML += `<div class="wa-bubble ${isMe ? 'out' : 'in'} ${canClick ? 'clickable' : ''}" ${canClick ? `onclick="askJump('${stepId}')"` : ''} title="${canClick ? 'Click para restaurar este paso' : ''}">${text}<span class="wa-time">${timeStr}</span></div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function closeWaChat() {
+        const mainChat = document.getElementById('waMainChat');
+        if(mainChat) mainChat.classList.remove('mobile-open');
+        currentChatPhone = null;
+        renderChatList(users);
+    }
+
+    async function sendWaMsg() {
+        const inp = document.getElementById('waInput');
+        const txt = inp.value.trim();
+        if(!txt || !currentChatPhone) return;
+
+        addBubble(txt, true);
+        inp.value = '';
+
+        await fetch(`${API_BASE}/api/send-message`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ phone: currentChatPhone, text: txt })
+        });
+    }
+
+    function filterChats(q) {
+        if(!q) return renderChatList(users);
+        const f = users.filter(u => JSON.stringify(u).toLowerCase().includes(q.toLowerCase()));
+        renderChatList(f);
+    }
+
+    // --- ACCIONES Y MODALES ---
+    function askJump(step) {
+        if(!currentChatPhone) return;
+        pendingJumpStep = step;
+        document.getElementById('jumpTargetStep').innerText = step;
+        document.getElementById('jumpModal').classList.add('active');
+    }
+
+    async function executeJump() {
+        if(!pendingJumpStep || !currentChatPhone) return;
+        await fetch(`${API_BASE}/api/crm/execute`, {
+            method:'POST', 
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ phone: currentChatPhone, stepId: pendingJumpStep })
+        });
+        document.getElementById('jumpModal').classList.remove('active');
+        addBubble(`🔄 Sistema: Usuario movido a ${pendingJumpStep}`, true);
+        loadActivity();
+    }
+
+    function askCrmAction(phone, step, label, clientName) {
+        pendingCrmAction = { phone, step };
         document.getElementById('actLabel').innerText = label;
         document.getElementById('actClient').innerText = clientName;
-        
-        // Abrimos el modal
         document.getElementById('actionConfirmModal').classList.add('active');
     }
 
     async function executeCrmAction() {
         if(!pendingCrmAction) return;
-
-        // Ejecutamos la petición real
-        await fetch(`${API_BASE}/api/crm/execute`, { 
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body: JSON.stringify({ 
-                phone: pendingCrmAction.phone, 
-                stepId: pendingCrmAction.step 
-            }) 
+        await fetch(`${API_BASE}/api/crm/execute`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+                phone: pendingCrmAction.phone,
+                stepId: pendingCrmAction.step
+            })
         });
-
-        // Limpiamos y recargamos
         document.getElementById('actionConfirmModal').classList.remove('active');
         pendingCrmAction = null;
         loadActivity();
         showToast('Acción ejecutada');
     }
-    async function crmAction(phone, step) { await fetch(`${API_BASE}/api/crm/execute`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, stepId: step }) }); loadActivity(); }
-    // --- VARIABLES DE NAVEGACIÓN ---
-    let flowPath = []; 
+
+    // --- FLUJO Y EDITOR ---
+    let flowPath = [];
 
     function renderFlowList() {
-        const c = document.getElementById('flowListContainer'); 
+        const c = document.getElementById('flowListContainer');
+        if(!c) return;
         c.innerHTML = '';
 
-        // 1. Barra de Navegación (Breadcrumbs)
         if (flowPath.length > 0) {
             let navHtml = `<div class="flow-nav" id="breadcrumbNav">`;
-            // Botón atrás
             navHtml += `<button onclick="jumpToStep(${flowPath.length - 2})" class="admin-btn" style="margin-right:10px; border-radius:50%; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center;"><i class="fas fa-arrow-left"></i></button>`;
-            
             navHtml += `<span onclick="resetFlowNav()">Inicio</span>`;
-            
             flowPath.forEach((step, index) => {
                 if(index === flowPath.length - 1) {
                     navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.5;"></i> <span>${step}</span>`;
@@ -761,19 +1166,13 @@
             });
             navHtml += `</div>`;
             c.innerHTML += navHtml;
-
-            setTimeout(() => {
-                const nav = document.getElementById('breadcrumbNav');
-                if(nav) nav.scrollLeft = nav.scrollWidth;
-            }, 50);
         }
 
-        // 2. Lógica de Jerarquía
         let stepsToShow = [];
         if (flowPath.length === 0) {
             stepsToShow = findFlowRoots();
             if(stepsToShow.length === 0 && Object.keys(flow).length > 0) {
-                stepsToShow = [Object.keys(flow).sort()[0]]; 
+                stepsToShow = [Object.keys(flow).sort()[0]];
             }
         } else {
             const parentId = flowPath[flowPath.length - 1];
@@ -789,38 +1188,32 @@
             </div>`;
         }
 
-        // 3. Renderizar Tarjetas VISUALMENTE MEJORADAS
         stepsToShow.forEach(k => {
             const step = flow[k];
-            if(!step) return; 
+            if(!step) return;
 
-            // Detectar si está incompleto
             let isInc = false;
             if (step.type !== 'fin_bot' && !step.next_step && (!step.options || step.options.length === 0)) {
                 isInc = true;
             }
 
-            // Iconos según el tipo
             let typeIcon = '<i class="fas fa-cube"></i>';
-            let typeColor = '#94a3b8'; // Gris por defecto
-            
-            if(step.type === 'menu') { typeIcon = '<i class="fas fa-list-ul"></i>'; typeColor = '#a855f7'; } // Morado
-            else if(step.type === 'message') { typeIcon = '<i class="fas fa-comment-alt"></i>'; typeColor = '#3b82f6'; } // Azul
-            else if(step.type === 'input') { typeIcon = '<i class="fas fa-pen-alt"></i>'; typeColor = '#f59e0b'; } // Naranja
-            else if(step.type === 'cita') { typeIcon = '<i class="far fa-calendar-check"></i>'; typeColor = '#10b981'; } // Verde
-            else if(step.type === 'filtro') { typeIcon = '<i class="fas fa-user-shield"></i>'; typeColor = '#ef4444'; } // Rojo
+            let typeColor = '#94a3b8';
 
-            // Indicador de Multimedia
-            const hasMedia = (step.media && step.media.length > 0) 
-                ? `<span style="font-size:0.75rem; background:#334155; padding:2px 6px; border-radius:4px; margin-left:8px;"><i class="fas fa-paperclip"></i> ${step.media.length}</span>` 
+            if(step.type === 'menu') { typeIcon = '<i class="fas fa-list-ul"></i>'; typeColor = '#a855f7'; }
+            else if(step.type === 'message') { typeIcon = '<i class="fas fa-comment-alt"></i>'; typeColor = '#3b82f6'; }
+            else if(step.type === 'input') { typeIcon = '<i class="fas fa-pen-alt"></i>'; typeColor = '#f59e0b'; }
+            else if(step.type === 'cita') { typeIcon = '<i class="far fa-calendar-check"></i>'; typeColor = '#10b981'; }
+            else if(step.type === 'filtro') { typeIcon = '<i class="fas fa-user-shield"></i>'; typeColor = '#ef4444'; }
+
+            const hasMedia = (step.media && step.media.length > 0)
+                ? `<span style="font-size:0.75rem; background:#334155; padding:2px 6px; border-radius:4px; margin-left:8px;"><i class="fas fa-paperclip"></i> ${step.media.length}</span>`
                 : '';
 
-            // Renderizado
             c.innerHTML += `
-            <div class="flow-step-card ${isInc ? 'card-incomplete' : ''}" 
-                 onclick="enterStep('${k}')" 
+            <div class="flow-step-card ${isInc ? 'card-incomplete' : ''}"
+                 onclick="enterStep('${k}')"
                  style="position:relative; display:block; padding-right:10px;">
-                
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span style="color:${typeColor}; font-size:1.1rem;">${typeIcon}</span>
@@ -828,18 +1221,15 @@
                         ${hasMedia}
                         ${isInc ? '<i class="fas fa-exclamation-circle warning-icon" title="Paso incompleto"></i>' : ''}
                     </div>
-                    
-                    <button onclick="event.stopPropagation(); edit('${k}')" 
+                    <button onclick="event.stopPropagation(); edit('${k}')"
                             style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-muted); width:32px; height:32px; border-radius:6px; cursor:pointer;">
                         <i class="fas fa-pen" style="font-size:12px;"></i>
                     </button>
                 </div>
-
-                ${step.message 
-                    ? `<div style="background:rgba(0,0,0,0.2); border-left:3px solid ${typeColor}; padding:8px 10px; border-radius:4px; font-size:0.9rem; color:#e2e8f0; white-space:pre-wrap; line-height:1.4;">${step.message}</div>` 
+                ${step.message
+                    ? `<div style="background:rgba(0,0,0,0.2); border-left:3px solid ${typeColor}; padding:8px 10px; border-radius:4px; font-size:0.9rem; color:#e2e8f0; white-space:pre-wrap; line-height:1.4;">${step.message}</div>`
                     : '<div style="font-size:0.8rem; color:#64748b; font-style:italic;">(Sin mensaje de texto)</div>'
                 }
-
                 <div style="text-align:right; margin-top:8px; opacity:0.5; font-size:0.8rem;">
                     <i class="fas fa-chevron-right"></i> Ver opciones
                 </div>
@@ -847,23 +1237,9 @@
         });
     }
 
-    // --- FUNCIONES AUXILIARES ---
-
-    function enterStep(stepId) {
-        // Solo navega, no edita
-        flowPath.push(stepId);
-        renderFlowList();
-    }
-
-    function resetFlowNav() {
-        flowPath = [];
-        renderFlowList();
-    }
-
-    function jumpToStep(index) {
-        flowPath = flowPath.slice(0, index + 1);
-        renderFlowList();
-    }
+    function enterStep(stepId) { flowPath.push(stepId); renderFlowList(); }
+    function resetFlowNav() { flowPath = []; renderFlowList(); }
+    function jumpToStep(index) { flowPath = flowPath.slice(0, index + 1); renderFlowList(); }
 
     function getChildrenSteps(parentId) {
         const parent = flow[parentId];
@@ -882,36 +1258,38 @@
 
     function findFlowRoots() {
         const allSteps = Object.keys(flow);
-        // Si no hay pasos, retornar vacío
         if(allSteps.length === 0) return [];
-
         const targetedSteps = new Set();
         allSteps.forEach(k => {
             const s = flow[k];
             if (s.next_step) targetedSteps.add(s.next_step);
             if (s.options) s.options.forEach(o => { if(o.next_step) targetedSteps.add(o.next_step); });
         });
-        
-        // Pasos que nadie apunta a ellos
-        const roots = allSteps.filter(s => !targetedSteps.has(s));
-        
-        // IMPORTANTE: Si roots tiene muchos elementos, es porque esos pasos NO están conectados aún.
-        // Si todos están desconectados, todos son roots.
-        return roots;
+        return allSteps.filter(s => !targetedSteps.has(s));
     }
+
+    // --- EDITOR DE PASOS ---
     let currentMediaList = [];
     function edit(id) {
-        const d = flow[id]; document.getElementById('stId').value = id; document.getElementById('stType').value = d.type;
+        const d = flow[id]; 
+        document.getElementById('stId').value = id; 
+        document.getElementById('stType').value = d.type;
         document.getElementById('stMsg').value = d.message || '';
         currentMediaList = d.media || [];
-        renderGallery(); renderFields(); document.getElementById('editorModal').classList.add('active');
+        renderGallery(); 
+        renderFields(); 
+        document.getElementById('editorModal').classList.add('active');
     }
-    function renderGallery() { 
-        const c = document.getElementById('galleryContainer'); c.innerHTML=''; 
-        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="min-width:60px; height:60px; background:url(${u}) center/cover; border-radius:5px; position:relative;"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:red; border-radius:50%; width:18px; height:18px; border:none; color:white; font-size:10px;">x</button></div>`); 
+    
+    function renderGallery() {
+        const c = document.getElementById('galleryContainer'); c.innerHTML='';
+        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="min-width:60px; height:60px; background:url(${u}) center/cover; border-radius:5px; position:relative;"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:red; border-radius:50%; width:18px; height:18px; border:none; color:white; font-size:10px;">x</button></div>`);
     }
-    async function uploadImages(inp) { 
-        if(!inp.files.length) return; const fd = new FormData(); for(let f of inp.files) fd.append('images', f);
+
+    async function uploadImages(inp) {
+        if(!inp.files.length) return; 
+        const fd = new FormData(); 
+        for(let f of inp.files) fd.append('images', f);
         const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json();
         if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
     }
@@ -930,7 +1308,8 @@
         const d = flow[id] || {};
         const c = document.getElementById('dynFields');
         const wrapMsg = document.getElementById('wrapper-msg'), wrapMedia = document.getElementById('wrapper-media');
-        wrapMsg.style.display = type==='cita'?'none':'block'; wrapMedia.style.display = type==='cita'?'none':'block';
+        wrapMsg.style.display = type==='cita'?'none':'block'; 
+        wrapMedia.style.display = type==='cita'?'none':'block';
 
         let html = '';
         if(type === 'menu' || type === 'filtro') {
@@ -946,8 +1325,9 @@
         }
         c.innerHTML = html;
     }
+
     function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><select class="o-nxt">${getSelectOptions('')}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`); }
-    
+
     async function saveStep() {
         const id = document.getElementById('stId').value, type = document.getElementById('stType').value;
         const data = { type, message: document.getElementById('stMsg').value, media: currentMediaList };
@@ -965,8 +1345,8 @@
         await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
         flow[id] = data; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
     }
-    
-    function createNewStepPrompt() { 
+
+    function createNewStepPrompt() {
         document.getElementById('newStepNameInput').value = '';
         document.getElementById('stepNameModal').classList.add('active');
         setTimeout(() => document.getElementById('newStepNameInput').focus(), 100);
@@ -975,44 +1355,30 @@
         const n = document.getElementById('newStepNameInput').value.toUpperCase().trim();
         if(!n) return alert("El nombre es requerido");
         if(flow[n]) return alert("Ya existe un paso con ese nombre");
-        flow[n] = {type:'message'}; 
-        renderFlowList(); 
+        flow[n] = {type:'message'};
+        renderFlowList();
         document.getElementById('stepNameModal').classList.remove('active');
         edit(n);
     }
-    
-    function requestLogout() {
-        document.getElementById('sidebar').classList.remove('active');
-        document.getElementById('sidebarOverlay').classList.remove('active');
-        document.getElementById('logoutModal').classList.add('active');
-    }
-    async function confirmLogout() {
-        await fetch(`${API_BASE}/api/logout`, { method: 'POST' }); 
-        location.reload();
-    }
-    function resetSession() { requestLogout(); }
-    
     async function delStep() { await fetch('/api/flow/step/'+document.getElementById('stId').value, {method:'DELETE'}); delete flow[document.getElementById('stId').value]; renderFlowList(); document.getElementById('editorModal').classList.remove('active'); }
 
-    // --- LÓGICA DE AGENDA CON CONFIRMACIÓN ---
-    let apptToDelete = null; // Variable temporal para saber qué cita borrar
-
+    // --- AGENDA Y EVENTOS ---
     async function renderCalendar() {
         const now = currentRefDate, m = now.getMonth(), y = now.getFullYear();
         document.getElementById('monthDisplay').innerText = `${["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]} ${y}`;
         const g = document.getElementById('calendarDays'); g.innerHTML = '';
-        
-        let appts = {}; 
+
+        let appts = {};
         try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
-        
+
         const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m+1, 0).getDate();
         for(let i=0; i<firstDay; i++) g.innerHTML += `<div></div>`;
-        
-        for(let i=1; i<=daysInMonth; i++) { 
+
+        for(let i=1; i<=daysInMonth; i++) {
             const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
             const count = (appts[k]||[]).length;
             const isToday = new Date().toDateString() === new Date(y,m,i).toDateString();
-            g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}')">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`; 
+            g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}')">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`;
         }
     }
 
@@ -1020,297 +1386,211 @@
 
     async function openDayModal(date) {
         document.getElementById('modalDateTitle').innerText = date;
-        const list = document.getElementById('modalApptList'); 
+        const list = document.getElementById('modalApptList');
         list.innerHTML = 'Cargando...';
-        
+
         const all = await (await fetch(`${API_BASE}/api/agenda`)).json();
         const appts = all[date] || [];
-        
+
         list.innerHTML = appts.length ? '' : '<div style="text-align:center; padding:20px; color:#666;">Sin citas</div>';
-        
-        // Ordenar y mostrar lista
+
         appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
-            // Escapar comillas por seguridad
-            const safeName = (c.name || '').replace(/'/g, "\\'"); 
-            
+            const safeName = (c.name || '').replace(/'/g, "\\'");
             list.innerHTML += `
             <div style="background:var(--bg-input); padding:10px; margin-bottom:5px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <b>${c.time}</b> ${c.name} <br>
                     <small style="color:var(--text-muted);">${c.phone}</small>
                 </div>
-                <button style="color:var(--danger); background:none; border:none; cursor:pointer; padding:5px;" 
+                <button style="color:var(--danger); background:none; border:none; cursor:pointer; padding:5px;"
                         onclick="askDeleteAppt('${date}', '${c.time}')">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>`;
         });
-        
+
         document.getElementById('evtOldTime').dataset.date = date;
         document.getElementById('dayModal').classList.add('active');
     }
 
-    // 1. Preguntar antes de borrar (Abre el modal)
     function askDeleteAppt(date, time) {
         apptToDelete = { date, time };
         document.getElementById('delApptTimeLbl').innerText = time;
         document.getElementById('deleteApptModal').classList.add('active');
     }
 
-    // 2. Ejecutar borrado (Al confirmar)
     async function executeDeleteAppt() {
         if(!apptToDelete) return;
-        
-        await fetch(`${API_BASE}/api/agenda/delete`, { 
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify(apptToDelete) 
-        });
-
-        // Cerrar modal de confirmación y recargar lista del día
+        await fetch(`${API_BASE}/api/agenda/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(apptToDelete) });
         document.getElementById('deleteApptModal').classList.remove('active');
-        openDayModal(apptToDelete.date); 
+        openDayModal(apptToDelete.date);
         renderCalendar();
         showToast('Cita eliminada');
     }
 
     async function saveEvent() {
-        const d = { 
-            date: document.getElementById('evtOldTime').dataset.date, 
-            time: document.getElementById('evtTime').value, 
-            name: document.getElementById('evtName').value, 
-            phone: document.getElementById('evtPhone').value, 
-            note: document.getElementById('evtNote').value 
+        const d = {
+            date: document.getElementById('evtOldTime').dataset.date,
+            time: document.getElementById('evtTime').value,
+            name: document.getElementById('evtName').value,
+            phone: document.getElementById('evtPhone').value,
+            note: document.getElementById('evtNote').value
         };
         if(!d.time || !d.name) return alert("Faltan datos");
-        
         await fetch(`${API_BASE}/api/agenda/book`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d) });
-        
-        document.getElementById('eventForm').style.display='none'; 
+        document.getElementById('eventForm').style.display='none';
         document.getElementById('btnAddEvent').style.display='block';
-        openDayModal(d.date); 
+        openDayModal(d.date);
         renderCalendar();
     }
-    function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.getElementById('sidebarOverlay').classList.toggle('active'); }
-    function nav(v, btn) { 
-        document.querySelectorAll('.view').forEach(e=>e.classList.remove('active')); 
-        document.querySelectorAll('.menu-item').forEach(e=>e.classList.remove('active')); 
-        document.getElementById('view-'+v).classList.add('active'); 
-        if(btn) btn.classList.add('active'); 
-        document.getElementById('sidebar').classList.remove('active'); 
-        document.getElementById('sidebarOverlay').classList.remove('active'); 
-        
-        if(v==='agenda') renderCalendar();
-        if(v==='contacts') renderContacts(); 
-    }
-    function timeAgo(date) { if(!date) return '-'; const s = Math.floor((new Date()-new Date(date))/1000); if(s<60) return 'Ahora'; if(s<3600) return Math.floor(s/60)+'m'; return Math.floor(s/3600)+'h'; }
-    async function saveSettings() {
-        const s = { active: document.getElementById('schedActive').checked, start: document.getElementById('schedStart').value, end: document.getElementById('schedEnd').value, offline_message: document.getElementById('schedMsg').value };
-        await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
-        showToast('Guardado');
-    }
-    function showToast(m) { const c=document.getElementById('toast-container'); c.innerHTML+=`<div class="toast">${m}</div>`; setTimeout(()=>c.innerHTML='', 3000); }
 
-    let allContactsCache = []; 
+    // --- CONTACTOS Y UTILIDADES ---
     let phoneToDelete = null;
     let isEditingMode = false;
 
-    // 1. Cargar y Renderizar
-    async function renderContacts() {
-        try { 
-            allContactsCache = await (await fetch(`${API_BASE}/api/contacts`)).json(); 
-            renderRows(allContactsCache);
+    async function editCurrentContactManual() {
+        if (!currentChatPhone) return;
+
+        // 1. Obtener datos actuales
+        const currentName = document.getElementById('waHeaderName').innerText;
+
+        // 2. Pedir nuevo nombre
+        const newName = prompt("📝 Editar nombre del cliente:", currentName);
+    
+        // Si cancela o lo deja vacío, no hacemos nada
+        if (!newName || newName.trim() === "") return;
+
+        // 3. Enviar al servidor (Backend)
+        // Nota: Usamos el endpoint '/api/contacts/update' que debes tener en tu backend
+        try {
+                const response = await fetch(`${API_BASE}/api/contacts/update`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: currentChatPhone, // El ID no cambia
+                    name: newName,           // El nombre sí cambia
+                    enable: document.getElementById('waBotSwitch').checked // Mantenemos el estado del bot
+                })
+            });
+
+            const res = await response.json();
+
+            if (res.success || response.ok) {
+                // 4. Actualizar visualmente al instante
+                document.getElementById('waHeaderName').innerText = newName;
+
+                // Actualizamos la lista lateral también
+                const u = users.find(x => getCleanPhone(x.phone) === getCleanPhone(currentChatPhone));
+                if(u) {
+                    u.savedName = newName; // Actualizar memoria local
+                    if(u.history) u.history.nombre = newName;
+                }
+                renderChatList(users);
+
+                showToast("✅ Nombre actualizado");
+            } else {
+                alert("Error al guardar en el servidor");
+            }
         } catch (e) {
             console.error(e);
-            document.getElementById('contactsList').innerHTML = '<div style="text-align:center; padding:20px; color:var(--danger);">Error cargando usuarios</div>';
+            showToast("❌ Error de conexión");
         }
     }
 
-    // 2. Buscador en tiempo real
-    function filterContacts(query) {
-        const term = query.toLowerCase();
-        const filtered = allContactsCache.filter(u => 
-            (u.name && u.name.toLowerCase().includes(term)) || 
-            (u.phone && u.phone.includes(term))
-        );
-        renderRows(filtered);
-    }
-
-    // 3. Dibujar Filas
-    function renderRows(list) {
-        const c = document.getElementById('contactsList');
-        if(!list || list.length === 0) {
-            c.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);">No se encontraron contactos</div>';
-            return;
-        }
-
-        let htmlBuffer = ''; 
-        list.forEach(u => {
-            // Escapamos comillas para evitar errores en el HTML
-            const safeName = (u.name || '').replace(/'/g, "\\'"); 
-            
-            htmlBuffer += `
-            <div style="display:flex; justify-content:space-between; padding:16px; border-bottom:1px solid var(--border); align-items:center;" class="toggle-row">
-                <div style="display:flex; align-items:center; gap:12px; flex:1; overflow:hidden;">
-                    <div style="width:36px; height:36px; background:var(--bg-input); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:var(--text-muted); flex-shrink:0;">
-                        ${u.name ? u.name[0].toUpperCase() : '#'}
-                    </div>
-                    <div style="overflow:hidden;">
-                        <b style="color:var(--text-main); font-size:0.95rem; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            ${u.name || 'Sin Nombre'}
-                        </b>
-                        <div style="color:var(--text-muted); font-size:0.8rem;">${u.phone}</div>
-                    </div>
-                </div>
-                
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <button onclick="openEditModal('${u.phone}', '${safeName}', ${u.bot_enabled})" 
-                            style="background:none; border:none; color:var(--primary); cursor:pointer; padding:5px;">
-                        <i class="fas fa-pen"></i>
-                    </button>
-
-                    <button onclick="askDelete('${u.phone}', '${safeName}')" 
-                            style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:5px;">
-                        <i class="fas fa-trash"></i>
-                    </button>
-
-                    <label class="switch">
-                        <input type="checkbox" ${u.bot_enabled?'checked':''} onchange="toggleUser('${u.phone}', this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>`; 
-        });
-        c.innerHTML = htmlBuffer; 
-    }
-
-    // 4. Modales de Edición / Creación
-    function openContactModal() { 
-        // Modo CREAR
+    function openContactModal() {
         isEditingMode = false;
         document.getElementById('modalTitleContact').innerText = "Nuevo Contacto";
         document.getElementById('newContName').value = '';
         document.getElementById('newContPhone').value = '';
-        document.getElementById('newContPhone').disabled = false; // Habilitado
+        document.getElementById('newContPhone').disabled = false;
         document.getElementById('newContPhone').style.opacity = "1";
         document.getElementById('newContEnable').checked = true;
-        document.getElementById('contactModal').classList.add('active'); 
-    }
-
-    function openEditModal(phone, name, enabled) {
-        // Modo EDITAR
-        isEditingMode = true;
-        document.getElementById('modalTitleContact').innerText = "Editar Contacto";
-        document.getElementById('newContName').value = name;
-        document.getElementById('newContPhone').value = phone;
-        document.getElementById('newContPhone').disabled = true; // Deshabilitado (ID no cambia)
-        document.getElementById('newContPhone').style.opacity = "0.6";
-        document.getElementById('newContEnable').checked = enabled;
         document.getElementById('contactModal').classList.add('active');
     }
 
-    async function saveNewContact() { 
+    async function saveNewContact() {
         const name = document.getElementById('newContName').value;
         const phone = document.getElementById('newContPhone').value;
-        const enable = document.getElementById('newContEnable').checked; 
-        
-        if(!phone) return alert("El teléfono es obligatorio"); 
-
-        // Endpoint dinámico (si editas usa update, si creas usa add)
+        const enable = document.getElementById('newContEnable').checked;
+        if(!phone) return alert("Teléfono obligatorio");
         const endpoint = isEditingMode ? '/api/contacts/update' : '/api/contacts/add';
-
-        await fetch(`${API_BASE}${endpoint}`, {
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify({name, phone, enable})
-        }); 
-        
-        document.getElementById('contactModal').classList.remove('active'); 
+        await fetch(`${API_BASE}${endpoint}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable}) });
+        document.getElementById('contactModal').classList.remove('active');
         showToast(isEditingMode ? 'Contacto actualizado' : 'Contacto creado');
-        renderContacts(); 
+        loadActivity(); // Actualizar monitor
     }
 
-    // 5. Lógica de Eliminación (Con Confirmación)
     function askDelete(phone, name) {
-        phoneToDelete = phone; // Guardamos el teléfono en memoria
+        phoneToDelete = phone;
         document.getElementById('delContactName').innerText = name || phone;
         document.getElementById('deleteConfirmModal').classList.add('active');
     }
 
     async function executeDelete() {
         if(!phoneToDelete) return;
-        
-        await fetch(`${API_BASE}/api/contacts/delete`, {
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify({phone: phoneToDelete})
-        });
-
-        // Borrar del cache local y cerrar modal
+        await fetch(`${API_BASE}/api/contacts/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone: phoneToDelete}) });
         allContactsCache = allContactsCache.filter(u => u.phone !== phoneToDelete);
         document.getElementById('deleteConfirmModal').classList.remove('active');
-        renderRows(allContactsCache); // Redibujar
+        loadActivity(); // Refrescar
         showToast('Contacto eliminado');
     }
+
+    // --- NAVEGACIÓN Y MENÚ ---
+    function toggleMenu() { 
+        document.getElementById('sidebar').classList.toggle('active'); 
+        document.getElementById('sidebarOverlay').classList.toggle('active'); 
+    }
+
+    function nav(v, btn) {
+        if(v !== 'activity' && typeof closeWaChat === 'function') closeWaChat();
+        document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+        document.querySelectorAll('.menu-item').forEach(e => e.classList.remove('active'));
+        
+        const targetView = document.getElementById('view-'+v);
+        if(targetView) targetView.classList.add('active');
+        if(btn) btn.classList.add('active');
+        
+        document.getElementById('sidebar').classList.remove('active');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+
+        if(v === 'agenda') renderCalendar();
+        if(v === 'activity') loadActivity();
+        
+        const titles = { activity:'MONITOR', flow:'FLUJO', agenda:'AGENDA', settings:'AJUSTES' };
+        const titleEl = document.getElementById('pageTitle');
+        if(titleEl) titleEl.innerText = titles[v] || 'CRM';
+    }
+
+    function requestLogout() {
+        document.getElementById('sidebar').classList.remove('active');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        document.getElementById('logoutModal').classList.add('active');
+    }
+    async function confirmLogout() {
+        await fetch(`${API_BASE}/api/logout`, { method: 'POST' });
+        location.reload();
+    }
+
+    async function saveSettings() {
+        const s = { 
+            active: document.getElementById('schedActive').checked, 
+            start: document.getElementById('schedStart').value, 
+            end: document.getElementById('schedEnd').value, 
+            offline_message: document.getElementById('schedMsg').value 
+        };
+        await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
+        showToast('Guardado');
+    }
+
+    function showToast(m) { 
+        const c = document.getElementById('toast-container'); 
+        if(c) {
+            c.innerHTML += `<div class="toast">${m}</div>`; 
+            setTimeout(() => { if(c.lastChild) c.lastChild.remove(); }, 3000); 
+        }
+    }
     
-    // Toggle rápido
-    async function toggleUser(phone, en) { 
-        await fetch(`${API_BASE}/api/contacts/toggle`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone, enable:en})}); 
-        const u = allContactsCache.find(x => x.phone === phone);
-        if(u) u.bot_enabled = en;
-        showToast('Estado actualizado'); 
-    }
-    function openContactModal() { document.getElementById('contactModal').classList.add('active'); }
-
-    // --- LÓGICA DE ENVÍO MEJORADA ---
-    function sendSim() { 
-        const t = document.getElementById('simInput'); 
-        if(!t.value.trim()) return; 
-        
-        // 1. Agregamos visualmente
-        addMsg(t.value, true); 
-        
-        // 2. Enviamos al servidor
-        fetch(`${API_BASE}/api/simulate/text`, { 
-            method:'POST', 
-            headers:{'Content-Type':'application/json'}, 
-            body:JSON.stringify({phone:'5218991234567', text:t.value}) 
-        }); 
-        
-        t.value = ''; 
-        
-        // 3. TRUCO CLAVE: Mantiene el teclado abierto en celular
-        t.focus(); 
-    }
-
-    function addMsg(t, me) { 
-        const box = document.getElementById('simMsgs');
-        box.innerHTML += `<div class="msg ${me?'user':'bot'}">${t}</div>`; 
-        
-        // 4. SCROLL CON RETRASO: Asegura que baje hasta el final
-        const c = document.querySelector('.chat-msgs'); 
-        setTimeout(() => {
-            c.scrollTop = c.scrollHeight;
-        }, 50);
-    }
-    // --- PWA INSTALLATION (Re-added & Improved) ---
-    window.addEventListener('beforeinstallprompt', (e) => { 
-        e.preventDefault(); 
-        deferredPrompt=e; 
-        document.getElementById('installAppBtn').style.display='flex'; 
-    });
-
-    async function installPWA() { 
-        if(deferredPrompt) { 
-            deferredPrompt.prompt(); 
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                document.getElementById('installAppBtn').style.display='none';
-            }
-            deferredPrompt=null; 
-        } 
-    }
-    // Función auxiliar para convertir la llave VAPID
+    // --- PUSH Y MOVE USER ---
     function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -1325,81 +1605,52 @@
     async function registerPush() {
         if ('serviceWorker' in navigator && 'PushManager' in window) {
             try {
-                // 1. Obtener llave pública del servidor
                 const response = await fetch('/api/vapid-key');
                 const { key } = await response.json();
-
-                // 2. Esperar al Service Worker
                 const registration = await navigator.serviceWorker.ready;
-
-                // 3. Suscribirse (esto pide permiso al usuario si no lo tiene)
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(key)
                 });
-
-                // 4. Enviar suscripción al backend
                 await fetch('/api/subscribe', {
                     method: 'POST',
                     body: JSON.stringify(subscription),
                     headers: { 'Content-Type': 'application/json' }
                 });
-
-                console.log('✅ Push Notificaciones activadas y registradas.');
-
-            } catch (error) {
-                console.error('Error en Push Register:', error);
-            }
+            } catch (error) { console.error('Error Push', error); }
         }
     }
-    let userToMove = null;
 
+    let userToMove = null;
     function openMoveModal(phone, currentStep) {
         userToMove = phone;
         document.getElementById('moveUserPhoneLbl').innerText = phone;
-        
-        // Usamos tu función existente getSelectOptions para llenar la lista
-        // y pre-seleccionamos el paso actual
         const select = document.getElementById('moveStepSelect');
         select.innerHTML = getSelectOptions(currentStep);
-        
         document.getElementById('moveUserModal').classList.add('active');
     }
 
     async function executeMoveUser() {
         const targetStep = document.getElementById('moveStepSelect').value;
         if (!userToMove || !targetStep) return;
-
-        // Reutilizamos el endpoint de CRM Execute. 
-        // Esto actualizará el paso en la BD y el bot enviará el mensaje de ese paso al cliente.
         try {
-            await fetch(`${API_BASE}/api/crm/execute`, { 
-                method: 'POST', 
-                headers: {'Content-Type':'application/json'}, 
-                body: JSON.stringify({ 
-                    phone: userToMove, 
-                    stepId: targetStep 
-                }) 
+            await fetch(`${API_BASE}/api/crm/execute`, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ phone: userToMove, stepId: targetStep })
             });
-
             showToast(`Cliente movido a ${targetStep}`);
             document.getElementById('moveUserModal').classList.remove('active');
-            loadActivity(); // Recargamos el monitor para ver el cambio
-        } catch (e) {
-            console.error(e);
-            alert("Error al mover el cliente");
-        }
+            loadActivity();
+        } catch (e) { alert("Error al mover"); }
     }
-    // 🔥 PEGA ESTO AQUÍ (DETECTAR CAMBIOS DE URL EN VIVO) 🔥
+
     window.addEventListener('hashchange', () => {
-        console.log("Cambio de sección detectado:", window.location.hash);
         if (window.location.hash === '#agenda') nav('agenda');
         if (window.location.hash === '#activity') nav('activity');
     });
 
-    window.addEventListener('load', () => {
-        setTimeout(registerPush, 2000);
-    });
+    window.addEventListener('load', () => { setTimeout(registerPush, 2000); });
 </script>
 </body>
 </html>

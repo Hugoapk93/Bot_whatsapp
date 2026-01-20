@@ -1,8 +1,8 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
-const http = require('http'); 
-const { Server } = require('socket.io'); 
+const http = require('http');
+const { Server } = require('socket.io');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -13,16 +13,16 @@ const bodyParser = require('body-parser');
 // --- IMPORTS DEL FLUJO ---
 const { handleMessage, sendStepMessage } = require('./src/flow');
 
-const { 
-    initializeDB, 
-    getFullFlow, 
-    saveFlowStep, 
-    deleteFlowStep, 
-    getSettings, 
-    saveSettings, 
-    getAllUsers, 
-    updateUser, 
-    getUser, 
+const {
+    initializeDB,
+    getFullFlow,
+    saveFlowStep,
+    deleteFlowStep,
+    getSettings,
+    saveSettings,
+    getAllUsers,
+    updateUser,
+    getUser,
     deleteUser,
     clearAllSessions,
     getSubscriptions,
@@ -35,30 +35,24 @@ const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManual
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static('public'));
 
 // ==========================================
 // CONFIGURACIÓN WEB PUSH (VAPID)
 // ==========================================
-const publicVapidKey = 'BKdzNrgEPTOnZF14GlVWIQDQBO5e1fZqq0DqU3tcM_8dsCiVqjHslSYgNQVccHlhjyyebi3cpMTtpOHppN6i5RE'; 
+const publicVapidKey = 'BKdzNrgEPTOnZF14GlVWIQDQBO5e1fZqq0DqU3tcM_8dsCiVqjHslSYgNQVccHlhjyyebi3cpMTtpOHppN6i5RE';
 const privateVapidKey = 'J_4mSjwet7y8i_xmiBsS9aG_BQXJjjfVXWO6qtcDeaA';
 
 webpush.setVapidDetails(
-  'mailto:tu_email@ejemplo.com', // Puedes cambiar esto por tu email real si quieres
-  publicVapidKey,
-  privateVapidKey
+    'mailto:tu_email@ejemplo.com',
+    publicVapidKey,
+    privateVapidKey
 );
 
 // --- FUNCIÓN GLOBAL PARA NOTIFICAR A TODOS LOS ADMINS ---
-global.sendPushNotification = (title, body, url) => { // <--- Agregamos 'url' aquí
-    // Si no mandan URL, por defecto va al Monitor (#activity)
+global.sendPushNotification = (title, body, url) => {
     const targetUrl = url || '/index.html#activity';
-
-    const payload = JSON.stringify({ 
-        title, 
-        body,
-        url: targetUrl // <--- La empaquetamos en el envío
-    });
-    
+    const payload = JSON.stringify({ title, body, url: targetUrl });
     const subscriptions = getSubscriptions();
 
     subscriptions.forEach(subscription => {
@@ -72,7 +66,7 @@ global.sendPushNotification = (title, body, url) => { // <--- Agregamos 'url' aq
 };
 
 // =================================================================
-// 🛡️ MEJORA 1: ESCUDO ANTI-CAÍDAS (ANTI-CRASH)
+// 🛡️ ESCUDO ANTI-CAÍDAS
 // =================================================================
 process.on('uncaughtException', (err) => {
     console.error('🔥 CRITICAL ERROR (No Apagando):', err);
@@ -84,16 +78,14 @@ process.on('unhandledRejection', (reason, promise) => {
 // =================================================================
 // CONFIGURACIÓN DE SOCKET.IO Y SERVIDOR HTTP
 // =================================================================
-const server = http.createServer(app); 
+const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
-
-global.io = io; 
+global.io = io;
 
 io.on('connection', (socket) => {
-    console.log('🔌 Simulador Web conectado:', socket.id);
-    socket.on('message', (data) => console.log('Mensaje desde simulador:', data));
+    console.log('🔌 Simulador/Monitor conectado:', socket.id);
 });
 
 // =================================================================
@@ -109,16 +101,16 @@ const INSTANCE_ID = 'bot_' + PORT;
 
 // --- CONFIGURACIÓN DE CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
-const dataDir = path.join(__dirname, 'data'); 
-const authDir = 'auth_info_baileys'; 
+const dataDir = path.join(__dirname, 'data');
+const authDir = 'auth_info_baileys';
 
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
 // --- VARIABLES GLOBALES ---
 let globalSock;
-let globalQR = null; 
-let connectionStatus = 'disconnected'; 
+let globalQR = null;
+let connectionStatus = 'disconnected';
 
 // =================================================================
 // FUNCIÓN DE REPORTE A LA TORRE
@@ -133,7 +125,7 @@ async function reportToTower() {
                 port: PORT,
                 status: connectionStatus,
                 qr: globalQR,
-                version: '2.2.0' // Versión Robusta Contactos
+                version: '2.2.0'
             })
         });
     } catch (e) { /* Silencioso */ }
@@ -170,8 +162,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-app.use(express.static('public'));
-
 // Inicializar DB
 initializeDB();
 
@@ -182,7 +172,7 @@ async function connectToWhatsApp() {
     }
 
     connectionStatus = 'connecting';
-    reportToTower(); 
+    reportToTower();
     console.log("🔄 Iniciando conexión a WhatsApp...");
 
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
@@ -191,139 +181,178 @@ async function connectToWhatsApp() {
     const sock = makeWASocket({
         version,
         auth: state,
-        printQRInTerminal: true, 
+        printQRInTerminal: true,
         logger: pino({ level: 'silent' }),
-        keepAliveIntervalMs: 30000, 
-        retryRequestDelayMs: 2000,      
-        connectTimeoutMs: 60000,        
-        syncFullHistory: false,         
+        keepAliveIntervalMs: 30000,
+        retryRequestDelayMs: 2000,
+        connectTimeoutMs: 60000,
+        syncFullHistory: false,
         browser: ["CRM Bot", "Chrome", "2.0.0"],
     });
-    
     globalSock = sock;
 
     sock.ev.on('creds.update', saveCreds);
-    
+
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
-        
         if (qr) {
             console.log("📡 QR Generado");
-            globalQR = qr; 
+            globalQR = qr;
             connectionStatus = 'qr_ready';
-            reportToTower(); 
-            if(global.io) global.io.emit('qr', { qr });
+            reportToTower();
+            if (global.io) global.io.emit('qr', { qr });
         }
 
         if (connection === 'close') {
             const reason = (lastDisconnect.error)?.output?.statusCode;
             const shouldReconnect = reason !== DisconnectReason.loggedOut;
             console.log(`⚠️ Conexión cerrada. Razón: ${reason}, Reconectando: ${shouldReconnect}`);
-            
+
             if (connectionStatus !== 'rebooting') connectionStatus = 'disconnected';
             globalQR = null;
-            reportToTower(); 
-            if(global.io) global.io.emit('status', { status: 'disconnected' });
+            reportToTower();
+            if (global.io) global.io.emit('status', { status: 'disconnected' });
 
             if (shouldReconnect && connectionStatus !== 'rebooting') {
                 setTimeout(() => {
-                    connectionStatus = 'disconnected'; 
+                    connectionStatus = 'disconnected';
                     connectToWhatsApp();
-                }, 3000); 
+                }, 3000);
             }
         } else if (connection === 'open') {
             console.log('✅ Bot CONECTADO');
             connectionStatus = 'connected';
-            globalQR = null; 
-            reportToTower(); 
-            if(global.io) global.io.emit('status', { status: 'connected' });
+            globalQR = null;
+            reportToTower();
+            if (global.io) global.io.emit('status', { status: 'connected' });
         }
     });
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
-    // >>> LOGICA DE MENSAJES <<<
+    // >>> LOGICA DE MENSAJES MEJORADA (Auto-Guardado + Auto-Nombre) <<<
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
-        if (type !== 'notify') return;
+        const isFromMe = messages[0]?.key?.fromMe;
+        if (type !== 'notify' && !isFromMe) return;
 
         // 1. REVISAR LICENCIA
         const settings = getSettings();
         if (settings.license && settings.license.end) {
             const today = new Date().toISOString().split('T')[0];
-            if (today > settings.license.end) {
-                console.log("🔒 LICENCIA VENCIDA. Bot en pausa.");
-                return;
-            }
+            if (today > settings.license.end) return console.log("🔒 LICENCIA VENCIDA.");
         }
 
-        const allContacts = getAllContacts(); 
+        const allContacts = getAllContacts(); // Carga fresca de contactos
 
         for (const msg of messages) {
-            if (!msg.message || msg.key.fromMe) continue;
-            
+            if (!msg.message) continue;
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') continue;
 
-            const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, ''); 
-            const incomingName = msg.pushName || ''; 
+            // Limpieza de ID
+            const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
+            const incomingPushName = msg.pushName || 'Cliente Nuevo';
+            const isMe = msg.key.fromMe;
 
-            // === LÓGICA DE BLOQUEO ROBUSTA ===
-            const isBlocked = allContacts.some(contact => {
-                if (contact.bot_enabled !== false) return false; 
+            // ----------------------------------------------------------
+            // PASO 1: AUTO-REGISTRO (Si no existe, se crea y se avisa)
+            // ----------------------------------------------------------
+            let contactConfig = allContacts.find(c => c.phone === incomingPhoneRaw);
+            
+            if (!contactConfig && !isMe) {
+                console.log(`✨ Nuevo contacto detectado: ${incomingPhoneRaw}`);
+                // Creamos el contacto en la BD
+                addManualContact(incomingPhoneRaw, incomingPhoneRaw, true); // Nombre inicial = Teléfono
                 
-                const normalizeString = (str) => {
-                    if (!str) return '';
-                    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-                              .replace(/[^a-zA-Z0-9]/g, "") 
-                              .toLowerCase();
-                };
-
-                const normalizePhone = (ph) => {
-                    if (!ph) return '';
-                    let clean = ph.replace(/[^0-9]/g, '');
-                    if (clean.startsWith('52') && clean.length >= 12) return clean.slice(-10);
-                    return clean;
-                };
-
-                const dbPhoneNorm = normalizePhone(contact.phone || contact.id);
-                const incPhoneNorm = normalizePhone(incomingPhoneRaw);
-                if (dbPhoneNorm && incPhoneNorm && dbPhoneNorm === incPhoneNorm) return true;
-
-                const rawDB = (contact.phone || '').replace(/[^0-9]/g, '');
-                if (rawDB.length > 5 && rawDB === incomingPhoneRaw) return true;
-
-                const incNameClean = normalizeString(incomingName);
-                const dbNameClean = normalizeString(contact.name);
-                const dbNotifyClean = normalizeString(contact.notify); 
-
-                if (incNameClean.length < 3) return false;
-
-                if (dbNameClean && dbNameClean === incNameClean) {
-                    console.log(`⛔ Bloqueo por Nombre Guardado: "${contact.name}"`);
-                    return true;
-                }
-
-                if (dbNotifyClean && dbNotifyClean === incNameClean) {
-                    console.log(`⛔ Bloqueo por Nombre Sincronizado: "${contact.notify}"`);
-                    return true;
-                }
-
-                return false;
-            });
-
-            if (isBlocked) {
-                continue; 
+                // Actualizamos variable local
+                contactConfig = { phone: incomingPhoneRaw, name: incomingPhoneRaw, bot_enabled: true };
+                
+                // 🔥 AVISO AL MONITOR: "¡Pinta este nuevo chat ya!"
+                if (global.io) global.io.emit('new_user', { 
+                    phone: incomingPhoneRaw, 
+                    name: incomingPhoneRaw, 
+                    last_active: new Date().toISOString(),
+                    bot_enabled: true
+                });
             }
 
+            // --- GUARDAR MENSAJE EN HISTORIAL ---
+            const msgText = msg.message?.conversation || 
+                          msg.message?.extendedTextMessage?.text || 
+                          msg.message?.imageMessage?.caption || 
+                          '📷 (Media)';
+
+            let currentUser = getUser(incomingPhoneRaw);
+            if (!currentUser) { 
+                currentUser = { phone: incomingPhoneRaw, messages: [] }; 
+                // Aseguramos que el usuario también exista en users.json
+                await updateUser(incomingPhoneRaw, { created_at: Date.now() });
+            }
+            if (!currentUser.messages) currentUser.messages = [];
+
+            currentUser.messages.push({
+                text: msgText, 
+                fromMe: isMe, 
+                timestamp: Date.now(), 
+                stepId: currentUser.current_step || 'INICIO'
+            });
+
+            if (currentUser.messages.length > 60) currentUser.messages.shift();
+            await updateUser(incomingPhoneRaw, { messages: currentUser.messages });
+
+            // Emitir mensaje al socket (Para que se vea la burbuja)
+            if (global.io) {
+                global.io.emit('message', {
+                    phone: incomingPhoneRaw, 
+                    text: msgText, 
+                    fromMe: isMe, 
+                    stepId: currentUser.current_step,
+                    to: isMe ? incomingPhoneRaw : undefined, 
+                    from: !isMe ? incomingPhoneRaw : undefined
+                });
+            }
+
+            if (isMe) continue; // Si soy yo, no ejecuto el bot
+
+            // Verificar si el bot está apagado para este usuario
+            if (contactConfig && contactConfig.bot_enabled === false) continue;
+
+            // ----------------------------------------------------------
+            // PASO 2: EJECUTAR FLUJO DEL BOT
+            // ----------------------------------------------------------
             try {
                 await handleMessage(sock, msg);
 
-                if (global.io) {
-                    global.io.emit('message', { 
-                        fromMe: true, 
-                        text: 'UPDATE_MONITOR_TRIGGER',
-                        hidden: true 
-                    });
+                // ----------------------------------------------------------
+                // PASO 3: AUTO-ACTUALIZACIÓN DE NOMBRE (La Magia)
+                // ----------------------------------------------------------
+                // Re-leemos el usuario porque handleMessage pudo haber guardado variables
+                const postFlowUser = getUser(incomingPhoneRaw);
+
+                if (postFlowUser && postFlowUser.history) {
+                    // Buscamos variables comunes de nombre
+                    const capturedName = postFlowUser.history.nombre || 
+                                         postFlowUser.history.name || 
+                                         postFlowUser.history.cliente || 
+                                         postFlowUser.history.usuario;
+
+                    // Si el bot capturó un nombre Y es diferente al que tiene el contacto actualmente
+                    if (capturedName && contactConfig.name !== capturedName) {
+                        console.log(`📝 Auto-actualizando nombre: ${contactConfig.name} -> ${capturedName}`);
+
+                        // 1. Guardar en Base de Datos
+                        addManualContact(incomingPhoneRaw, capturedName, contactConfig.bot_enabled);
+                        await updateUser(incomingPhoneRaw, { name: capturedName });
+
+                        // 2. Avisar al Monitor para que cambie el nombre en vivo
+                        if (global.io) {
+                            // Emitimos un evento de actualización o forzamos recarga
+                            global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
+                        }
+                        
+                        // Actualizar variable local
+                        contactConfig.name = capturedName;
+                    }
                 }
 
             } catch (err) {
@@ -331,36 +360,84 @@ async function connectToWhatsApp() {
             }
         }
     });
-}
 
+}
 // ==========================================
 //              RUTAS API
 // ==========================================
-// RUTA PARA EDITAR (Actualizar nombre o activar/desactivar)
+
+// ACTUALIZAR CONTACTO (Activar/Desactivar Bot)
 app.post('/api/contacts/update', async (req, res) => {
     const { phone, name, enable } = req.body;
     await updateUser(phone, { name, bot_enabled: enable });
+    // También actualizamos en contacts.json si existe
+    toggleContactBot(phone, enable);
     res.json({ success: true });
 });
 
-// RUTA PARA ELIMINAR
+// TOGGLE RÁPIDO
+app.post('/api/contacts/toggle', (req, res) => { 
+    res.json(toggleContactBot(req.body.phone, req.body.enable)); 
+});
+
+// AÑADIR CONTACTO MANUAL
+app.post('/api/contacts/add', (req, res) => {
+    const { phone, name, enable } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Falta teléfono' });
+    res.json(addManualContact(phone, name, enable));
+});
+
+// ELIMINAR CONTACTO
 app.post('/api/contacts/delete', async (req, res) => {
     const { phone } = req.body;
-    const deleted = deleteUser(phone);
+    const deleted = deleteUser(phone); // Borra de usuarios
+    // Aquí podrías agregar lógica para borrar de contacts.json si quieres
     res.json({ success: deleted });
 });
 
+// ENVIAR MENSAJE MANUAL (DESDE EL CHAT)
+app.post('/api/send-message', async (req, res) => {
+    const { phone, text } = req.body;
+    if (!globalSock || !phone || !text) return res.status(400).json({ error: "Datos faltantes o bot offline" });
+
+    try {
+        let jid = phone.includes('@') ? phone : phone.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
+        
+        // CORRECCIÓN MÉXICO
+        if (jid.startsWith('52') && !jid.startsWith('521') && jid.length > 15) {
+             jid = '521' + jid.slice(2);
+        }
+
+        await globalSock.sendMessage(jid, { text: text });
+        
+        // Guardamos el mensaje saliente en DB para que se vea en el monitor
+        let currentUser = getUser(phone.replace(/[^0-9]/g, ''));
+        if(currentUser) {
+            if(!currentUser.messages) currentUser.messages = [];
+            currentUser.messages.push({
+                text: text,
+                fromMe: true,
+                timestamp: Date.now(),
+                stepId: currentUser.current_step
+            });
+            await updateUser(phone.replace(/[^0-9]/g, ''), { messages: currentUser.messages });
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        console.error("Error enviando:", e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// OTRAS RUTAS
 app.post('/api/subscribe', (req, res) => {
     const subscription = req.body;
     saveSubscription(subscription);
     res.status(201).json({});
-    console.log("🔔 Nueva suscripción Push registrada.");
 });
 
-// Ruta para obtener la llave pública (para el frontend)
-app.get('/api/vapid-key', (req, res) => {
-    res.json({ key: publicVapidKey });
-});
+app.get('/api/vapid-key', (req, res) => { res.json({ key: publicVapidKey }); });
 
 app.get('/api/status', (req, res) => {
     const sessionPath = path.join(__dirname, authDir);
@@ -383,47 +460,34 @@ app.post('/api/auth/init', (req, res) => {
     }
 });
 
-// LOGOUT / REINICIO SEGURO
 app.post('/api/logout', async (req, res) => {
     try {
         console.log("🛑 Solicitud de REINICIO recibida.");
-        connectionStatus = 'rebooting'; 
-        reportToTower(); 
+        connectionStatus = 'rebooting';
+        reportToTower();
         globalQR = null;
-
         if (globalSock) {
-            try { await globalSock.logout(); } catch(e) {}
-            try { globalSock.end(undefined); } catch(e) {}
+            try { await globalSock.logout(); } catch (e) { }
+            try { globalSock.end(undefined); } catch (e) { }
             globalSock = null;
         }
-        
         await new Promise(r => setTimeout(r, 500));
-
         const sessionPath = path.join(__dirname, authDir);
         if (fs.existsSync(sessionPath)) {
-            try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (err) {}
+            try { fs.rmSync(sessionPath, { recursive: true, force: true }); } catch (err) { }
         }
-        
-        connectionStatus = 'disconnected'; 
+        connectionStatus = 'disconnected';
         connectToWhatsApp();
-        
         res.json({ success: true, message: 'Reinicio completado.' });
     } catch (e) {
         console.error(e);
         connectionStatus = 'disconnected';
-        reportToTower(); 
+        reportToTower();
         res.status(500).json({ error: 'Error al reiniciar' });
     }
 });
 
 app.get('/api/contacts', (req, res) => { res.json(getAllContacts()); });
-app.post('/api/contacts/toggle', (req, res) => { res.json(toggleContactBot(req.body.phone, req.body.enable)); });
-
-app.post('/api/contacts/add', (req, res) => {
-    const { phone, name, enable } = req.body;
-    if (!phone) return res.status(400).json({ success: false, message: 'Falta teléfono' });
-    res.json(addManualContact(phone, name, enable));
-});
 
 app.post('/api/upload', upload.array('images', 10), (req, res) => {
     if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No files' });
@@ -434,23 +498,22 @@ app.post('/api/upload', upload.array('images', 10), (req, res) => {
 app.get('/api/flow', (req, res) => res.json(getFullFlow()));
 app.post('/api/flow/step', async (req, res) => { await saveFlowStep(req.body.stepId, req.body.stepData); res.json({ success: true }); });
 app.delete('/api/flow/step/:id', async (req, res) => { await deleteFlowStep(req.params.id); res.json({ success: true }); });
-
 app.get('/api/users', (req, res) => res.json(getAllUsers()));
-app.post('/api/users/toggle', async (req, res) => { await updateUser(req.body.phone, { blocked: req.body.isBlocked }); res.json({ success: true }); });
 
+// EJECUTAR ACCIÓN CRM (MOVER USUARIO)
 app.post('/api/crm/execute', async (req, res) => {
     const { phone, stepId } = req.body;
     if (!stepId) return res.status(400).json({ error: "Sin destino." });
     try {
         await updateUser(phone, { current_step: stepId });
-        
+
         if (phone === 'TEST_SIMULADOR' || phone === '5218991234567') {
-             await sendStepMessage(globalSock || {}, phone, stepId, getUser(phone));
-             return res.json({ success: true });
+            await sendStepMessage(globalSock || {}, phone, stepId, getUser(phone));
+            return res.json({ success: true });
         }
 
         if (!globalSock) return res.status(500).json({ error: "Bot offline" });
-        
+
         const user = getUser(phone);
         let targetJid = user?.jid;
         if (!targetJid) {
@@ -467,7 +530,6 @@ app.post('/api/crm/execute', async (req, res) => {
 });
 
 app.post('/api/users/sync', async (req, res) => { await updateUser(req.body.phone, req.body.data); res.json({ success: true }); });
-
 app.get('/api/agenda', (req, res) => res.json(getAgenda()));
 app.post('/api/agenda/book', (req, res) => {
     const { date, time, phone, name, note } = req.body;
@@ -475,55 +537,33 @@ app.post('/api/agenda/book', (req, res) => {
     if (!db[date]) db[date] = [];
     if (db[date].some(c => c.time === time)) return res.json({ success: false, message: 'Horario ocupado' });
     db[date].push({ time, phone: phone || '', name: name || 'Evento', note: note || '', created_at: new Date().toISOString() });
-    db[date].sort((a,b) => a.time.localeCompare(b.time));
+    db[date].sort((a, b) => a.time.localeCompare(b.time));
     saveAgenda(db);
     res.json({ success: true });
 });
 app.post('/api/agenda/delete', (req, res) => {
     const { date, time } = req.body;
-    const db = getAgenda(); 
+    const db = getAgenda();
     if (db[date]) {
         db[date] = db[date].filter(c => c.time !== time);
         if (db[date].length === 0) delete db[date];
-        saveAgenda(db); 
+        saveAgenda(db);
         res.json({ success: true });
     } else res.json({ success: false });
 });
-app.post('/api/agenda/update', (req, res) => {
-    const { oldDate, oldTime, newDate, newTime, name, phone, note } = req.body;
-    const db = getAgenda();
-    if (db[oldDate]) {
-        db[oldDate] = db[oldDate].filter(c => c.time !== oldTime);
-        if (db[oldDate].length === 0) delete db[oldDate];
-    }
-    if (!db[newDate]) db[newDate] = [];
-    if ((oldDate !== newDate || oldTime !== newTime) && db[newDate].some(c => c.time === newTime)) return res.json({ success: false, message: 'Ocupado' });
-    db[newDate].push({ time: newTime, phone: phone || '', name: name || 'Evento', note: note || '', updated_at: new Date().toISOString() });
-    db[newDate].sort((a,b) => a.time.localeCompare(b.time));
-    saveAgenda(db);
+
+app.get('/api/settings', (req, res) => res.json(getSettings()));
+app.post('/api/settings', async (req, res) => {
+    const current = getSettings();
+    const newSettings = { ...current, ...req.body };
+    await saveSettings(newSettings);
     res.json({ success: true });
 });
 
-app.get('/api/admin/clear-monitor', (req, res) => {
-    try {
-        if(typeof clearAllSessions === 'function') clearAllSessions(); 
-        res.send(`<h1 style="text-align:center;">✅ Monitor Limpiado</h1><script>setTimeout(() => window.location.href = '/', 2000);</script>`);
-    } catch (e) { res.status(500).send("Error"); }
-});
-
-app.get('/api/settings', (req, res) => res.json(getSettings()));
-
-app.post('/api/settings', async (req, res) => { 
-    const current = getSettings();
-    const newSettings = { ...current, ...req.body };
-    await saveSettings(newSettings); 
-    res.json({ success: true }); 
-});
-
+// SIMULADOR
 app.post('/api/simulate/text', async (req, res) => {
     const { phone, text } = req.body;
     if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
-
     const fakeMsg = {
         key: {
             remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
@@ -533,9 +573,7 @@ app.post('/api/simulate/text', async (req, res) => {
         message: { conversation: text },
         pushName: 'Usuario Simulador'
     };
-
     console.log(`🤖 Simulador: ${text}`);
-
     try {
         await handleMessage(globalSock || {}, fakeMsg);
         res.json({ success: true });
@@ -546,49 +584,19 @@ app.post('/api/simulate/text', async (req, res) => {
 });
 
 // =================================================================
-// 🔌 MEJORA 3: CIERRE ELEGANTE (GRACEFUL SHUTDOWN)
+// 🔌 CIERRE ELEGANTE
 // =================================================================
 const gracefulShutdown = () => {
     console.log('🛑 Cerrando bot (Signal recibida)...');
     reportToTower().then(() => {
         if (globalSock) {
-            try { globalSock.end(undefined); } catch (e) {}
+            try { globalSock.end(undefined); } catch (e) { }
         }
         process.exit(0);
     });
 };
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
-
-// --- RUTA DE PRUEBA DE NOTIFICACIONES ---
-app.get('/api/test-push', (req, res) => {
-    const subs = getSubscriptions();
-    console.log(`🔎 TEST PUSH: Intentando enviar a ${subs.length} dispositivos.`);
-    
-    if (subs.length === 0) {
-        return res.json({ success: false, message: "❌ No hay nadie suscrito. Ve al inicio y activa las alertas." });
-    }
-
-    const payload = JSON.stringify({ 
-        title: "🔔 Prueba de Sistema", 
-        body: "¡Si lees esto, el sistema funciona al 100%!" 
-    });
-
-    // Enviar a todos y reportar resultados en la consola
-    subs.forEach(sub => {
-        webpush.sendNotification(sub, payload)
-            .then(() => console.log(`✅ Enviado éxito a: ...${sub.endpoint.slice(-10)}`))
-            .catch(err => {
-                console.error(`❌ Fallo envío: ${err.statusCode}`, err.body || err);
-                if (err.statusCode === 410 || err.statusCode === 404) {
-                    removeSubscription(sub.endpoint);
-                    console.log("🗑️ Suscripción basura eliminada.");
-                }
-            });
-    });
-    
-    res.json({ success: true, message: "Enviando... Revisa la consola del servidor (terminal) para ver el resultado." });
-});
 
 // ARRANCAR EL BOT
 server.listen(PORT, () => {

@@ -1,4 +1,4 @@
-const { db } = require('./database'); 
+const { db } = require('./database');
 const fs = require('fs');
 const path = require('path');
 
@@ -10,17 +10,20 @@ function saveContactsToDisk() {
     try { fs.writeFileSync(dbPath, JSON.stringify(db.data, null, 2)); } catch (e) { console.error("❌ Error guardando contactos:", e); }
 }
 
+// 🔥 MEJORA LID: Limpieza suave, igual que en database.js
 function getCleanPhone(jid) {
     if (!jid) return '';
-    return jid.split('@')[0].replace(/[^0-9]/g, '');
+    // Solo quitamos el dominio y puerto, respetamos el ID sea cual sea
+    return String(jid).split('@')[0].split(':')[0];
 }
 
 function getLast10(phone) {
-    const p = phone.replace(/[^0-9]/g, '');
+    // Para LIDs largos, usamos el ID completo. Para tels, los últimos 10.
+    const p = String(phone).replace(/[^0-9]/g, '');
     return p.length > 10 ? p.slice(-10) : p;
 }
 
-// --- NUEVA FUNCIÓN: AGREGAR MANUALMENTE ---
+// --- FUNCIÓN CORREGIDA: AGREGAR O ACTUALIZAR ---
 function addManualContact(phone, name, enabled) {
     if (!db || !db.data) return { success: false };
     if (!db.data.contacts) db.data.contacts = [];
@@ -28,29 +31,39 @@ function addManualContact(phone, name, enabled) {
     const clean = getCleanPhone(phone);
     const target10 = getLast10(clean);
 
-    // Verificar si ya existe (por los 10 dígitos)
-    let exists = db.data.contacts.find(c => getLast10(c.phone) === target10);
+    // Verificar si ya existe
+    let existingContact = db.data.contacts.find(c => getLast10(c.phone) === target10);
 
-    if (exists) {
-        return { success: false, message: 'El contacto ya existe.' };
+    // 🔥 CAMBIO CLAVE: SI EXISTE, LO EDITAMOS 🔥
+    if (existingContact) {
+        // Actualizamos nombre y estado del bot
+        existingContact.name = name;
+        existingContact.bot_enabled = enabled;
+        existingContact.phone = clean; // Aseguramos que tenga el ID limpio actualizado
+        existingContact.last_synced = new Date().toISOString();
+        
+        saveContactsToDisk();
+        console.log(`✏️ Contacto actualizado: ${name} (${clean})`);
+        return { success: true, message: 'Actualizado' };
     }
 
-    // Construir JID falso si no lo tenemos, para compatibilidad
+    // SI NO EXISTE, LO CREAMOS (Tu lógica original)
     let jid = clean + '@s.whatsapp.net';
-    if(clean.length === 10) jid = '521' + clean + '@s.whatsapp.net'; // Asumimos MX por defecto si es corto
+    // Si parece un número de México y es corto, asumimos prefijo (opcional)
+    if(clean.length === 10 && !clean.includes('@')) jid = '521' + clean + '@s.whatsapp.net';
 
     db.data.contacts.push({
         phone: clean,
         jid: jid,
         name: name,
-        bot_enabled: enabled, // Aquí decide el toggle
+        bot_enabled: enabled,
         last_synced: new Date().toISOString(),
         added_at: new Date().toISOString()
     });
 
     saveContactsToDisk();
-    console.log(`👤 Contacto manual agregado: ${name} (${clean}) - Bot: ${enabled}`);
-    return { success: true };
+    console.log(`👤 Nuevo contacto creado: ${name} (${clean})`);
+    return { success: true, message: 'Creado' };
 }
 
 // --- SINCRONIZACIÓN AUTOMÁTICA ---
@@ -58,7 +71,7 @@ function syncContacts(contacts) {
     if (!db || !db.data) return;
     if (!db.data.contacts) db.data.contacts = [];
     if (!contacts || contacts.length === 0) return;
-    
+
     const now = new Date().toISOString();
     let hasChanges = false;
 
@@ -66,26 +79,26 @@ function syncContacts(contacts) {
         const jid = waContact.id;
         const phone = getCleanPhone(jid);
         if (!phone) return;
-        const phone10 = getLast10(phone);
-
-        let localContact = db.data.contacts.find(c => getLast10(c.phone) === phone10);
+        
+        // Usamos comparación estricta de ID limpio para LIDs
+        let localContact = db.data.contacts.find(c => getCleanPhone(c.phone) === phone);
+        
         const name = waContact.name || waContact.notify || waContact.verifiedName || phone;
 
         if (localContact) {
-            if (localContact.name !== name || localContact.jid !== jid) {
+            // Solo actualizamos si el nombre es diferente y no es el número pelón
+            if (localContact.name !== name && name !== phone) {
                 localContact.name = name;
-                localContact.jid = jid; 
-                localContact.phone = phone; 
                 localContact.last_synced = now;
                 hasChanges = true;
             }
         } else {
             db.data.contacts.push({
-                phone: phone, 
-                jid: jid, 
+                phone: phone,
+                jid: jid,
                 name: name,
-                bot_enabled: true, 
-                last_synced: now, 
+                bot_enabled: true,
+                last_synced: now,
                 added_at: now
             });
             hasChanges = true;
@@ -105,12 +118,20 @@ function getAllContacts() {
 
 function toggleContactBot(phoneOrJid, enable) {
     if (!db || !db.data || !db.data.contacts) return { success: false };
-    const target10 = getLast10(getCleanPhone(phoneOrJid));
-    let contact = db.data.contacts.find(c => getLast10(c.phone) === target10);
+    
+    const cleanId = getCleanPhone(phoneOrJid);
+    // Búsqueda más precisa
+    let contact = db.data.contacts.find(c => getCleanPhone(c.phone) === cleanId);
+
+    // Fallback a los últimos 10 dígitos si falla la exacta
+    if (!contact) {
+        const target10 = getLast10(cleanId);
+        contact = db.data.contacts.find(c => getLast10(c.phone) === target10);
+    }
 
     if (contact) {
         contact.bot_enabled = enable;
-        saveContactsToDisk(); 
+        saveContactsToDisk();
         return { success: true, newState: enable };
     }
     return { success: false };
@@ -118,11 +139,19 @@ function toggleContactBot(phoneOrJid, enable) {
 
 function isBotDisabled(jid) {
     if (!db || !db.data || !db.data.contacts) return false;
-    const incoming10 = getLast10(getCleanPhone(jid));
-    const contact = db.data.contacts.find(c => getLast10(c.phone) === incoming10);
+    const cleanId = getCleanPhone(jid);
+    
+    // Búsqueda precisa primero
+    let contact = db.data.contacts.find(c => getCleanPhone(c.phone) === cleanId);
+
+    // Fallback
+    if (!contact) {
+        const incoming10 = getLast10(cleanId);
+        contact = db.data.contacts.find(c => getLast10(c.phone) === incoming10);
+    }
 
     if (contact && contact.bot_enabled === false) return true;
-    return false; 
+    return false;
 }
 
 module.exports = { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact };
