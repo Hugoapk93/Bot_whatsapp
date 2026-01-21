@@ -10,7 +10,9 @@ const cors = require('cors');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
 
-// --- IMPORTS DEL FLUJO ---
+// --- IMPORTS DE BASE DE DATOS Y LÓGICA ---
+const { getKeywords, saveKeyword, deleteKeyword } = require('./src/database');
+const { findKeywordMatch } = require('./src/keywords');
 const { handleMessage, sendStepMessage } = require('./src/flow');
 
 const {
@@ -24,13 +26,12 @@ const {
     updateUser,
     getUser,
     deleteUser,
-    clearAllSessions,
     getSubscriptions,
     saveSubscription,
     removeSubscription
 } = require('./src/database');
 
-const { syncContacts, getAllContacts, toggleContactBot, isBotDisabled, addManualContact } = require('./src/contacts');
+const { syncContacts, getAllContacts, toggleContactBot, addManualContact } = require('./src/contacts');
 
 const app = express();
 app.use(cors());
@@ -230,7 +231,7 @@ async function connectToWhatsApp() {
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
-    // >>> LOGICA DE MENSAJES MEJORADA (Chat sube siempre + Auto-Nombre) <<<
+    // >>> LOGICA DE MENSAJES PRINCIPAL <<<
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         const isFromMe = messages[0]?.key?.fromMe;
         if (type !== 'notify' && !isFromMe) return;
@@ -242,16 +243,14 @@ async function connectToWhatsApp() {
             if (today > settings.license.end) return console.log("🔒 LICENCIA VENCIDA.");
         }
 
-        const allContacts = getAllContacts(); // Carga fresca de contactos
+        const allContacts = getAllContacts();
 
         for (const msg of messages) {
             if (!msg.message) continue;
             const remoteJid = msg.key.remoteJid;
             if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') continue;
 
-            // Limpieza de ID
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
-            const incomingPushName = msg.pushName || 'Cliente Nuevo';
             const isMe = msg.key.fromMe;
 
             // ----------------------------------------------------------
@@ -273,7 +272,7 @@ async function connectToWhatsApp() {
             }
 
             // ----------------------------------------------------------
-            // PASO 2: GUARDAR MENSAJE Y ACTUALIZAR FECHA (CRÍTICO)
+            // PASO 2: GUARDAR MENSAJE Y ACTUALIZAR FECHA
             // ----------------------------------------------------------
             const msgText = msg.message?.conversation ||
                           msg.message?.extendedTextMessage?.text ||
@@ -283,12 +282,10 @@ async function connectToWhatsApp() {
             let currentUser = getUser(incomingPhoneRaw);
             if (!currentUser) {
                 currentUser = { phone: incomingPhoneRaw, messages: [] };
-                // Aseguramos creación inicial
                 await updateUser(incomingPhoneRaw, { created_at: Date.now() });
             }
             if (!currentUser.messages) currentUser.messages = [];
 
-            // Hora actual exacta
             const now = new Date().toISOString();
 
             currentUser.messages.push({
@@ -300,16 +297,13 @@ async function connectToWhatsApp() {
 
             if (currentUser.messages.length > 60) currentUser.messages.shift();
 
-            // 🔥 AQUÍ ESTÁ EL CAMBIO: Guardamos last_active SIEMPRE
-            // Esto asegura que el chat suba al inicio aunque el bot esté apagado
+            // Guardamos mensaje y actualizamos fecha (para que suba en el monitor)
             await updateUser(incomingPhoneRaw, { 
                 messages: currentUser.messages,
                 last_active: now 
             });
 
-            // Emitir eventos al socket (Para ver burbuja y mover lista)
             if (global.io) {
-                // 1. Burbuja de chat
                 global.io.emit('message', {
                     phone: incomingPhoneRaw,
                     text: msgText,
@@ -319,7 +313,6 @@ async function connectToWhatsApp() {
                     from: !isMe ? incomingPhoneRaw : undefined
                 });
                 
-                // 2. Actualización de lista (Para reordenar visualmente)
                 global.io.emit('user_update', { 
                     phone: incomingPhoneRaw, 
                     last_active: now,
@@ -327,19 +320,46 @@ async function connectToWhatsApp() {
                 });
             }
 
-            if (isMe) continue; // Si soy yo, no ejecuto el bot
+            if (isMe) continue; 
 
             // ----------------------------------------------------------
             // PASO 3: VERIFICAR SI EL BOT ESTÁ ENCENDIDO
             // ----------------------------------------------------------
             if (contactConfig && contactConfig.bot_enabled === false) {
-                // El bot está apagado: ya guardamos el mensaje y subimos el chat.
-                // Aquí terminamos para no contestar.
                 continue;
             }
 
+            // ==========================================================
+            // 🔥 NUEVO MÓDULO INTERCEPTOR (RESPUESTAS RÁPIDAS) 🔥
+            // ==========================================================
+            // Analizamos el texto antes de pasarlo al flujo normal
+            const keywordMatch = findKeywordMatch(msgText);
+            
+            if (keywordMatch) {
+                console.log(`🧠 Interceptor activado: "${keywordMatch.keywords}"`);
+
+                // 1. Enviar la respuesta de la duda
+                await globalSock.sendMessage(remoteJid, { text: keywordMatch.answer });
+
+                // 2. Retomar el hilo (Magic Trick)
+                // Obtenemos el usuario actualizado para saber en qué paso estaba
+                const userState = getUser(incomingPhoneRaw);
+                const currentStep = userState.current_step || 'INICIO';
+                
+                // Pequeña pausa para que se sienta natural
+                setTimeout(async () => {
+                    await sendStepMessage(globalSock, remoteJid, currentStep, userState);
+                }, 1000);
+
+                // ⛔ IMPORTANTE: Cortamos el ciclo aquí.
+                // El flujo normal (handleMessage) NO se ejecuta.
+                continue; 
+            }
+            // ==========================================================
+
+
             // ----------------------------------------------------------
-            // PASO 4: EJECUTAR FLUJO DEL BOT (Solo si está encendido)
+            // PASO 4: EJECUTAR FLUJO DEL BOT (Normal)
             // ----------------------------------------------------------
             try {
                 await handleMessage(sock, msg);
@@ -368,55 +388,48 @@ async function connectToWhatsApp() {
         }
     });
 }
+
 // ==========================================
 //              RUTAS API
 // ==========================================
 
-// ACTUALIZAR CONTACTO (Activar/Desactivar Bot)
+// CONTACTOS
 app.post('/api/contacts/update', async (req, res) => {
     const { phone, name, enable } = req.body;
     await updateUser(phone, { name, bot_enabled: enable });
-    // También actualizamos en contacts.json si existe
     toggleContactBot(phone, enable);
     res.json({ success: true });
 });
 
-// TOGGLE RÁPIDO
 app.post('/api/contacts/toggle', (req, res) => { 
     res.json(toggleContactBot(req.body.phone, req.body.enable)); 
 });
 
-// AÑADIR CONTACTO MANUAL
 app.post('/api/contacts/add', (req, res) => {
     const { phone, name, enable } = req.body;
     if (!phone) return res.status(400).json({ success: false, message: 'Falta teléfono' });
     res.json(addManualContact(phone, name, enable));
 });
 
-// ELIMINAR CONTACTO
 app.post('/api/contacts/delete', async (req, res) => {
     const { phone } = req.body;
-    const deleted = deleteUser(phone); // Borra de usuarios
-    // Aquí podrías agregar lógica para borrar de contacts.json si quieres
+    const deleted = deleteUser(phone);
     res.json({ success: deleted });
 });
 
-// ENVIAR MENSAJE MANUAL (DESDE EL CHAT)
+// MENSAJES
 app.post('/api/send-message', async (req, res) => {
     const { phone, text } = req.body;
     if (!globalSock || !phone || !text) return res.status(400).json({ error: "Datos faltantes o bot offline" });
 
     try {
         let jid = phone.includes('@') ? phone : phone.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-        
-        // CORRECCIÓN MÉXICO
         if (jid.startsWith('52') && !jid.startsWith('521') && jid.length > 15) {
              jid = '521' + jid.slice(2);
         }
 
         await globalSock.sendMessage(jid, { text: text });
         
-        // Guardamos el mensaje saliente en DB para que se vea en el monitor
         let currentUser = getUser(phone.replace(/[^0-9]/g, ''));
         if(currentUser) {
             if(!currentUser.messages) currentUser.messages = [];
@@ -428,7 +441,6 @@ app.post('/api/send-message', async (req, res) => {
             });
             await updateUser(phone.replace(/[^0-9]/g, ''), { messages: currentUser.messages });
         }
-
         res.json({ success: true });
     } catch (e) {
         console.error("Error enviando:", e);
@@ -436,7 +448,49 @@ app.post('/api/send-message', async (req, res) => {
     }
 });
 
-// OTRAS RUTAS
+// SIMULADOR
+app.post('/api/simulate/text', async (req, res) => {
+    const { phone, text } = req.body;
+    if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
+    const fakeMsg = {
+        key: {
+            remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
+            fromMe: false,
+            id: 'SIM_' + Date.now()
+        },
+        message: { conversation: text },
+        pushName: 'Usuario Simulador'
+    };
+    console.log(`🤖 Simulador: ${text}`);
+    try {
+        await handleMessage(globalSock || {}, fakeMsg);
+        res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// KEYWORDS (NUEVO MÓDULO)
+app.get('/api/keywords', (req, res) => {
+    res.json(getKeywords());
+});
+
+app.post('/api/keywords', (req, res) => {
+    const rule = req.body; 
+    if (!rule.keywords || !rule.answer) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
+    const saved = saveKeyword(rule);
+    res.json({ success: true, rule: saved });
+});
+
+app.delete('/api/keywords/:id', (req, res) => {
+    deleteKeyword(req.params.id);
+    res.json({ success: true });
+});
+
+// VARIOS
 app.post('/api/subscribe', (req, res) => {
     const subscription = req.body;
     saveSubscription(subscription);
@@ -506,20 +560,16 @@ app.post('/api/flow/step', async (req, res) => { await saveFlowStep(req.body.ste
 app.delete('/api/flow/step/:id', async (req, res) => { await deleteFlowStep(req.params.id); res.json({ success: true }); });
 app.get('/api/users', (req, res) => res.json(getAllUsers()));
 
-// EJECUTAR ACCIÓN CRM (MOVER USUARIO)
 app.post('/api/crm/execute', async (req, res) => {
     const { phone, stepId } = req.body;
     if (!stepId) return res.status(400).json({ error: "Sin destino." });
     try {
         await updateUser(phone, { current_step: stepId });
-
         if (phone === 'TEST_SIMULADOR' || phone === '5218991234567') {
             await sendStepMessage(globalSock || {}, phone, stepId, getUser(phone));
             return res.json({ success: true });
         }
-
         if (!globalSock) return res.status(500).json({ error: "Bot offline" });
-
         const user = getUser(phone);
         let targetJid = user?.jid;
         if (!targetJid) {
@@ -564,29 +614,6 @@ app.post('/api/settings', async (req, res) => {
     const newSettings = { ...current, ...req.body };
     await saveSettings(newSettings);
     res.json({ success: true });
-});
-
-// SIMULADOR
-app.post('/api/simulate/text', async (req, res) => {
-    const { phone, text } = req.body;
-    if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
-    const fakeMsg = {
-        key: {
-            remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
-            fromMe: false,
-            id: 'SIM_' + Date.now()
-        },
-        message: { conversation: text },
-        pushName: 'Usuario Simulador'
-    };
-    console.log(`🤖 Simulador: ${text}`);
-    try {
-        await handleMessage(globalSock || {}, fakeMsg);
-        res.json({ success: true });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: e.message });
-    }
 });
 
 // =================================================================

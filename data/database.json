@@ -2,322 +2,425 @@
   "users": [
     {
       "phone": "65356567699524",
-      "current_step": "DIRECCIÓN",
+      "current_step": "EFECTIVO",
       "history": {
-        "nombre": "Hugo",
-        "nacimiento": "27",
-        "dirección": "Hacienda del sol #100"
+        "nombre": "Hugo Alberto Martinez García",
+        "nacimiento": "27/12 del 1993",
+        "dirección": "Hacienda del sol #100 hacienda del sol."
       },
       "jid": "65356567699524@lid",
-      "last_active": "2026-01-18T16:26:58.652Z",
+      "last_active": "2026-01-21T17:47:33.329Z",
       "messages": [
         {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1768955394835,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": false,
+          "timestamp": 1768955395038,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": false,
+          "timestamp": 1768955395133,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Elige la opoción deseada:\n\n1️⃣ Tramite nuevo\n2️⃣ Seguimiento a mi solicitud",
+          "fromMe": false,
+          "timestamp": 1768955395196,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": true,
+          "timestamp": 1768955395282,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": true,
+          "timestamp": 1768955395310,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": true,
+          "timestamp": 1768955395324,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": false,
+          "timestamp": 1768955395423,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": true,
+          "timestamp": 1768955395751,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": false,
+          "timestamp": 1768955397664,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "⚠️ No entendí esa opción.\nPor favor escribe el número o el nombre de la opción.",
+          "fromMe": true,
+          "timestamp": 1768955399782,
+          "stepId": "BIENVENIDA"
+        },
+        {
           "text": "Hola",
           "fromMe": false,
-          "timestamp": 1768670965537,
-          "stepId": "SI"
+          "timestamp": 1769003885255,
+          "stepId": "BIENVENIDA"
         },
         {
           "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
           "fromMe": true,
-          "timestamp": 1768670969000,
+          "timestamp": 1769003887645,
           "stepId": "BIENVENIDA"
         },
         {
           "text": "1",
           "fromMe": false,
-          "timestamp": 1768670972479,
+          "timestamp": 1769003893139,
           "stepId": "BIENVENIDA"
         },
         {
           "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
           "fromMe": true,
-          "timestamp": 1768670974673,
+          "timestamp": 1769003895329,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769003939653,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Buenos días.\n\nBienvenido a Elektra Motos Reynosa.\nSoy Hugo Martinez asesor de Banco Azteca, y estoy aqui para ayudarte.\n\n¿Que tipo de préstamo te interesa?\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto",
+          "fromMe": false,
+          "timestamp": 1769003943002,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "1",
+          "fromMe": true,
+          "timestamp": 1769003953660,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Elige la opoción deseada:\n\n1️⃣ Tramite nuevo\n2️⃣ Seguimiento a mi solicitud",
+          "fromMe": false,
+          "timestamp": 1769003956220,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "1",
+          "fromMe": true,
+          "timestamp": 1769003965001,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Excelente.\n\nPor favor envíame los siguientes datos para validar su información.\n\n- Nombre completo.",
+          "fromMe": false,
+          "timestamp": 1769003967381,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Mi nombre es Hugo Alberto Martinez García",
+          "fromMe": true,
+          "timestamp": 1769003974968,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Muy bien Mi ahora su:\n\n- Fecha de nacimiento\n  (DD/MM/AAAA)",
+          "fromMe": false,
+          "timestamp": 1769003977366,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1769015013339,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1769015015867,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1769015049602,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1769015051836,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1769015058837,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+          "fromMe": true,
+          "timestamp": 1769015061036,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hu",
+          "fromMe": false,
+          "timestamp": 1769015067209,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "⚠️ Texto muy largo o inválido para un nombre.\nEscribe solo tu nombre completo.",
+          "fromMe": true,
+          "timestamp": 1769015067384,
           "stepId": "EFECTIVO"
         },
         {
           "text": "Hugo Alberto Martinez García",
           "fromMe": false,
-          "timestamp": 1768670980460,
+          "timestamp": 1769015081277,
           "stepId": "EFECTIVO"
         },
         {
           "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
           "fromMe": true,
-          "timestamp": 1768670982544,
+          "timestamp": 1769015083403,
           "stepId": "FECHA_DE_NACIMIENTO"
         },
         {
-          "text": "27/12/1993",
+          "text": "5 de diciembre del 93",
           "fromMe": false,
-          "timestamp": 1768670994947,
+          "timestamp": 1769016677367,
           "stepId": "FECHA_DE_NACIMIENTO"
         },
         {
           "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
           "fromMe": true,
-          "timestamp": 1768670997140,
+          "timestamp": 1769016679802,
           "stepId": "DIRECCIÓN"
         },
         {
-          "text": "Hacienda del sol #100",
+          "text": "Hacienda del sol #100 hacienda del sol.",
           "fromMe": false,
-          "timestamp": 1768671009333,
+          "timestamp": 1769016692868,
           "stepId": "DIRECCIÓN"
         },
         {
-          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol #100*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
+          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*5 de diciembre del 93*\nY su dirección:\n*Hacienda del sol #100 hacienda del sol.*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
           "fromMe": true,
-          "timestamp": 1768671011535,
+          "timestamp": 1769016695089,
           "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1768671018482,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "Muy bien Hugo\nEstamos validando su información.",
-          "fromMe": true,
-          "timestamp": 1768671020598,
-          "stepId": "FILTRO"
-        },
-        {
-          "text": "¡Perfecto, Hugo! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?\n\n👉 Sí, si se dónde está.\n👉 No, no sé dónde está.",
-          "fromMe": true,
-          "timestamp": 1768671450324,
-          "stepId": "CITAR"
         },
         {
           "text": "Hola",
           "fromMe": false,
-          "timestamp": 1768671460445,
-          "stepId": "CITAR"
+          "timestamp": 1769016714932,
+          "stepId": "CONFIRMAR"
         },
         {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
           "fromMe": true,
-          "timestamp": 1768671462642,
+          "timestamp": 1769016717127,
           "stepId": "BIENVENIDA"
         },
         {
           "text": "1",
           "fromMe": false,
-          "timestamp": 1768671845206,
+          "timestamp": 1769016721324,
           "stepId": "BIENVENIDA"
         },
         {
           "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
           "fromMe": true,
-          "timestamp": 1768671847646,
+          "timestamp": 1769016723518,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hu",
+          "fromMe": false,
+          "timestamp": 1769016729185,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "⚠️ Texto muy largo o inválido para un nombre.\nEscribe solo tu nombre completo.",
+          "fromMe": true,
+          "timestamp": 1769016729349,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1769017532722,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1769017535673,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1769017538826,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+          "fromMe": true,
+          "timestamp": 1769017541021,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hu",
+          "fromMe": false,
+          "timestamp": 1769017545919,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "⚠️ Error:\nPor favor escribe solo tu nombre completo.",
+          "fromMe": true,
+          "timestamp": 1769017546087,
           "stepId": "EFECTIVO"
         },
         {
           "text": "Hugo Alberto Martinez García",
           "fromMe": false,
-          "timestamp": 1768671857536,
+          "timestamp": 1769017557056,
           "stepId": "EFECTIVO"
         },
         {
           "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
           "fromMe": true,
-          "timestamp": 1768671859615,
+          "timestamp": 1769017559141,
           "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "27/12 del 1993",
+          "fromMe": false,
+          "timestamp": 1769017574970,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+          "fromMe": true,
+          "timestamp": 1769017577173,
+          "stepId": "DIRECCIÓN"
         },
         {
           "text": "Hola",
           "fromMe": false,
-          "timestamp": 1768672086767,
-          "stepId": "FECHA_DE_NACIMIENTO"
+          "timestamp": 1769017634574,
+          "stepId": "DIRECCIÓN"
         },
         {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
           "fromMe": true,
-          "timestamp": 1768672089291,
+          "timestamp": 1769017636779,
           "stepId": "BIENVENIDA"
         },
         {
           "text": "1",
           "fromMe": false,
-          "timestamp": 1768672098033,
+          "timestamp": 1769017642140,
           "stepId": "BIENVENIDA"
         },
         {
           "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
           "fromMe": true,
-          "timestamp": 1768672100245,
+          "timestamp": 1769017644348,
           "stepId": "EFECTIVO"
         },
         {
-          "text": "Hugo Alberto Martinez García",
+          "text": "Cuales son los requisitos?",
           "fromMe": false,
-          "timestamp": 1768672127252,
+          "timestamp": 1769017650136,
           "stepId": "EFECTIVO"
         },
         {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
+          "text": "Los requisitos son chtm",
           "fromMe": true,
-          "timestamp": 1768672129352,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1768672145812,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Hola?",
-          "fromMe": false,
-          "timestamp": 1768672162971,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1768672177824,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "27/12/1993",
-          "fromMe": false,
-          "timestamp": 1768672190291,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1768672192494,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hola",
-          "fromMe": true,
-          "timestamp": 1768678554087,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hola",
-          "fromMe": true,
-          "timestamp": 1768678554227,
-          "stepId": "DIRECCIÓN"
+          "timestamp": 1769017650288,
+          "stepId": "EFECTIVO"
         },
         {
           "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
           "fromMe": true,
-          "timestamp": 1768678713779,
+          "timestamp": 1769017653329,
           "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hugo Alberto Martinez García",
-          "fromMe": false,
-          "timestamp": 1768678724945,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1768678727039,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "27/12/1993",
-          "fromMe": false,
-          "timestamp": 1768678747962,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1768678750188,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1768678914866,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1768678917134,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1768679067520,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1768679070310,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1768696159202,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol #100*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
-          "fromMe": true,
-          "timestamp": 1768700406418,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1768752019637,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1768752022648,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1768752849068,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1768752852176,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hugo",
-          "fromMe": false,
-          "timestamp": 1768753293691,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1768753296099,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "27",
-          "fromMe": false,
-          "timestamp": 1768753618635,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1768753621078,
-          "stepId": "DIRECCIÓN"
         }
-      ]
+      ],
+      "name": "Hugo Alberto Martinez García"
+    },
+    {
+      "phone": "5218148232063",
+      "messages": [
+        {
+          "text": "📷 (Media)",
+          "fromMe": false,
+          "timestamp": 1768955406063,
+          "stepId": "INICIO"
+        },
+        {
+          "text": "📷 (Media)",
+          "fromMe": false,
+          "timestamp": 1769011417034,
+          "stepId": "INICIO"
+        },
+        {
+          "text": "📷 (Media)",
+          "fromMe": false,
+          "timestamp": 1769011419133,
+          "stepId": "INICIO"
+        },
+        {
+          "text": "📷 (Media)",
+          "fromMe": false,
+          "timestamp": 1769012286733,
+          "stepId": "INICIO"
+        },
+        {
+          "text": "📷 (Media)",
+          "fromMe": false,
+          "timestamp": 1769012289368,
+          "stepId": "INICIO"
+        },
+        {
+          "text": "📷 (Media)",
+          "fromMe": false,
+          "timestamp": 1769013169739,
+          "stepId": "INICIO"
+        },
+        {
+          "text": "📷 (Media)",
+          "fromMe": false,
+          "timestamp": 1769017890532,
+          "stepId": "INICIO"
+        }
+      ],
+      "last_active": "2026-01-21T17:51:30.531Z"
     }
   ],
   "contacts": [
@@ -13860,9 +13963,9 @@
     {
       "phone": "65356567699524",
       "jid": "65356567699524@s.whatsapp.net",
-      "name": "Hugo Alberto Martinez García ",
+      "name": "Hugo Alberto Martinez García",
       "bot_enabled": true,
-      "last_synced": "2026-01-15T22:06:26.075Z",
+      "last_synced": "2026-01-21T17:04:43.272Z",
       "added_at": "2026-01-15T22:06:26.075Z"
     },
     {
@@ -13912,6 +14015,14 @@
       "bot_enabled": true,
       "last_synced": "2026-01-17T23:17:37.508Z",
       "added_at": "2026-01-17T23:17:37.508Z"
+    },
+    {
+      "phone": "5218148232063",
+      "jid": "5218148232063@s.whatsapp.net",
+      "name": "5218148232063",
+      "bot_enabled": true,
+      "last_synced": "2026-01-21T00:30:06.056Z",
+      "added_at": "2026-01-21T00:30:06.056Z"
     }
   ],
   "settings": {
@@ -14051,11 +14162,37 @@
         "p256dh": "BL1duR0Hjil6Jy70TcpftqGayTcUeYIokLA0WP6qifTio45Wk9PyCt666aaJZmMeS-nYTWqWg80aUi7A8HDykr0",
         "auth": "0nWIsuugi38aLqvwdm9jNQ"
       }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/eyyIms2lHj0:APA91bGcN-AE4REDKMZCzgdGjkkkKgnh_TDTys7GGdnrr-ykqY1eiOvjEl1QqF_s8oHeTgjvIMSe8EGSXHXfOgqchazYAmktKqm3tJ5PiWOoDB8a4QfxB7ue7G9jqPl1-pIIRkOHd7wL",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BBgkOZUkakgkbxvnzswBU0xbbtXeUwuBZorz9uyX0Rcorq2IY3c5dW-xRtG6JyG45YU2j6H_eEnBDeqsN1YjDPA",
+        "auth": "5-PpbixrrcmQR1WoO_VqOw"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fUIzHx2xVsE:APA91bESWTjyoojM4jgOUy-h1UU5AiSyWlEUw4eK36dOoMxv58eIDI8wTr6jDp24DhASL_i_x_Sd8SLO4lM124HnYAZ-oVtmEtwQLJW2Xn1SN_P2Ce4D38ogpJ4Cszl-ILyfgYnfZJIG",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BLvvhvMjHHBuwPLyjBxXo5rdf3y6CmMWpBwcugl-fCDPP7xSfYVjjIfOozSKOVn1j7yTaErJMVGsESO3tcj3A98",
+        "auth": "xbP20vjgpeSXaMfbJDJCbw"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fsDYc502_8I:APA91bE7S9yWF88J96VRjCn5_nHRUovcDCZqtZwSMu1ZuuhLmEnkQLXu1f0ya_tteEn6EqHpt6J4BNhAGivtkAiAzrNg1gpIqSMFyOLuIDS1Xq41_0ZUleeI57AV0-LYtKFQLRMPyrbu",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BHb05n9LSZyEzBZF5W6I0ZCHaiSlOFe1L4b6GyuVIJrWJxphLmX5A26YTzKxFjiDVfCnPG2xT74Wv5ttM7Gw_Fk",
+        "auth": "Sb3XtIGM80ySSf-KgaGOYw"
+      }
     }
   ],
   "flow": {
     "BIENVENIDA": {
       "type": "menu",
+      "message": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n",
+      "media": [],
       "keywords": [
         "hola",
         "buenos días",
@@ -14065,22 +14202,20 @@
         "préstamo",
         "prestamos"
       ],
-      "message": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n",
-      "media": [],
       "options": [
         {
-          "trigger": "1️⃣",
           "label": "Préstamo en efectivo",
+          "trigger": "Préstamo en efectivo",
           "next_step": "EFECTIVO"
         },
         {
-          "trigger": "2️⃣",
           "label": "Préstamo para Moto",
+          "trigger": "Préstamo para Moto",
           "next_step": "MOTO"
         },
         {
-          "trigger": "3️⃣",
           "label": "Ya tengo crédito",
+          "trigger": "Ya tengo crédito",
           "next_step": "YA_TENGO"
         }
       ]
@@ -15402,5 +15537,6 @@
       "media": [],
       "options": []
     }
-  }
+  },
+  "keywords": []
 }

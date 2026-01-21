@@ -5,22 +5,14 @@ const path = require('path');
 const dataDir = path.join(__dirname, '../data');
 const dbPath = path.join(dataDir, 'database.json');
 
-// Variable en memoria
+// Variable en memoria (para usuarios y flujos que cambian rápido)
 const db = {
     data: {
         users: [],
         contacts: [],
         settings: { schedule: { active: false, days: [] } },
-        subscriptions: [],
-        flow: {}
+        subscriptions: []
     }
-};
-
-// --- HELPER SEGURO PARA LIDs ---
-// Convierte '12345@lid' -> '12345' sin romper caracteres raros
-const getCleanId = (id) => {
-    if (!id) return '';
-    return String(id).split('@')[0].split(':')[0];
 };
 
 // Inicializar DB
@@ -30,8 +22,7 @@ function initializeDB() {
     if (fs.existsSync(dbPath)) {
         try {
             const raw = fs.readFileSync(dbPath, 'utf-8');
-            const loaded = JSON.parse(raw);
-            db.data = { ...db.data, ...loaded };
+            db.data = JSON.parse(raw);
             console.log("📂 Base de datos cargada correctamente.");
         } catch (e) {
             console.error("Error leyendo DB, reiniciando:", e);
@@ -44,129 +35,34 @@ function initializeDB() {
 
 // Guardar DB (Escribir en disco)
 function saveDB() {
-    try {
-        fs.writeFileSync(dbPath, JSON.stringify(db.data, null, 2));
-    } catch (e) {
-        console.error("Error guardando DB:", e);
-    }
+    fs.writeFileSync(dbPath, JSON.stringify(db.data, null, 2));
 }
 
-// Recargar memoria desde disco (Seguridad)
-function reloadDB() {
-    if (fs.existsSync(dbPath)) {
-        try {
-            const raw = fs.readFileSync(dbPath, 'utf-8');
-            const diskData = JSON.parse(raw);
-            db.data = {
-                ...db.data,
-                ...diskData,
-                settings: { ...db.data.settings, ...(diskData.settings || {}) }
-            };
-        } catch (e) {}
-    }
-}
-
-// --- FUNCIONES DE USUARIOS Y CONTACTOS ---
-
-function getAllUsers() { 
-    reloadDB();
-    return db.data.users || []; 
-}
-
-function getAllContacts() { 
-    reloadDB();
-    return db.data.contacts || []; 
-}
+// --- FUNCIONES DE USUARIOS (FLOW) ---
+function getAllUsers() { return db.data.users || []; }
 
 function getUser(phone) {
-    reloadDB();
     if (!db.data.users) db.data.users = [];
-    const target = getCleanId(phone);
-    return db.data.users.find(u => getCleanId(u.phone) === target) || {};
+    return db.data.users.find(u => u.phone === phone) || {};
 }
 
-// 🔥 AQUÍ ESTÁ LA MAGIA QUE CONECTA EL BOT CON LOS CONTACTOS 🔥
 async function updateUser(phone, updates) {
+    // Recargar DB por seguridad antes de escribir usuarios
     reloadDB();
 
-    const targetKey = getCleanId(phone);
-
-    // 1. ACTUALIZAR USUARIOS (Historial del chat)
     if (!db.data.users) db.data.users = [];
-    let userIndex = db.data.users.findIndex(u => getCleanId(u.phone) === targetKey);
+    let userIndex = db.data.users.findIndex(u => u.phone === phone);
 
     if (userIndex === -1) {
-        db.data.users.push({ 
-            phone: phone, 
-            ...updates,
-            created_at: new Date().toISOString()
-        });
+        db.data.users.push({ phone, ...updates });
     } else {
-        db.data.users[userIndex] = { 
-            ...db.data.users[userIndex], 
-            ...updates 
-        };
+        db.data.users[userIndex] = { ...db.data.users[userIndex], ...updates };
     }
-
-    // 2. ACTUALIZAR CONTACTOS (Lista Visual)
-    // Si el bot descubre el nombre, lo guardamos también en la lista de contactos
-    // para que el Monitor no muestre el número al recargar.
-    if (updates.name || updates.bot_enabled !== undefined) {
-        if (!db.data.contacts) db.data.contacts = [];
-        let contactIndex = db.data.contacts.findIndex(c => getCleanId(c.phone) === targetKey);
-
-        const contactData = {
-            phone: phone,
-            name: updates.name, 
-            bot_enabled: updates.bot_enabled
-        };
-
-        if (contactIndex === -1) {
-             if (updates.name) { // Solo crear si hay nombre
-                db.data.contacts.push({ ...contactData, bot_enabled: true });
-             }
-        } else {
-            const oldContact = db.data.contacts[contactIndex];
-            db.data.contacts[contactIndex] = {
-                ...oldContact,
-                ...(updates.name ? { name: updates.name } : {}),
-                ...(updates.bot_enabled !== undefined ? { bot_enabled: updates.bot_enabled } : {})
-            };
-        }
-    }
-
-    saveDB(); // Guardar cambios en disco
-    return getUser(phone);
+    saveDB();
 }
 
-function deleteUser(phone) {
-    reloadDB();
-    let changed = false;
-    const target = getCleanId(phone);
-
-    // Borrar de users
-    const initialUsers = db.data.users.length;
-    db.data.users = db.data.users.filter(u => getCleanId(u.phone) !== target);
-    if(db.data.users.length !== initialUsers) changed = true;
-
-    // Borrar de contacts
-    const initialContacts = db.data.contacts.length;
-    db.data.contacts = db.data.contacts.filter(c => getCleanId(c.phone) !== target);
-    if(db.data.contacts.length !== initialContacts) changed = true;
-
-    if(changed) saveDB();
-    return changed;
-}
-
-// --- FUNCIONES DE FLOW ---
-function getFullFlow() { 
-    reloadDB();
-    return db.data.flow || {}; 
-}
-
-function getFlowStep(id) {
-    return getFullFlow()[id];
-}
+// --- FUNCIONES DE FLOW (PASOS) ---
+function getFullFlow() { return db.data.flow || {}; }
 
 async function saveFlowStep(id, data) {
     reloadDB();
@@ -183,20 +79,41 @@ async function deleteFlowStep(id) {
     }
 }
 
-// --- SETTINGS Y SUBSCRIPCIONES ---
+// 🔥 AQUÍ ESTÁ LA CORRECCIÓN CLAVE PARA EL HORARIO 🔥
+// "getSettings" ahora lee directo del DISCO, ignorando la memoria vieja
 function getSettings() {
-    reloadDB();
+    if (fs.existsSync(dbPath)) {
+        try {
+            const raw = fs.readFileSync(dbPath, 'utf-8');
+            const data = JSON.parse(raw);
+            // Actualizamos la memoria de paso
+            db.data.settings = data.settings;
+            return data.settings || {};
+        } catch (e) {
+            return db.data.settings || {};
+        }
+    }
     return db.data.settings || {};
 }
 
 async function saveSettings(s) {
+    // 1. Leemos lo más nuevo del disco para no borrar usuarios nuevos
     reloadDB();
+
+    // 2. Aplicamos el cambio de horario
     db.data.settings = s;
+
+    // 3. Guardamos inmediatamente
     saveDB();
 }
 
+// --- FUNCION AUXILIAR PARA OBTENER UN PASO ---
+function getFlowStep(id) {
+    const flow = getFullFlow();
+    return flow[id];
+}
+
 function getSubscriptions() {
-    reloadDB();
     return db.data.subscriptions || [];
 }
 
@@ -217,21 +134,99 @@ function removeSubscription(endpoint) {
     saveDB();
 }
 
+// Helper para recargar memoria desde disco (evita sobrescribir datos de otros procesos)
+function reloadDB() {
+    if (fs.existsSync(dbPath)) {
+        try {
+            const raw = fs.readFileSync(dbPath, 'utf-8');
+            const diskData = JSON.parse(raw);
+            db.data = { ...db.data, ...diskData }; // Merge seguro
+        } catch (e) {}
+    }
+}
+
+function deleteUser(phone) {
+    // 1. Recargar datos por seguridad
+    reloadDB();
+
+    let huboCambios = false;
+
+    // A) Borrar de la lista de USUARIOS (Historial y Flow)
+    if (db.data.users) {
+        const initialLen = db.data.users.length;
+        db.data.users = db.data.users.filter(u => u.phone !== phone);
+        if (db.data.users.length !== initialLen) huboCambios = true;
+    }
+
+    // B) Borrar de la lista de CONTACTOS (La que se ve en la pantalla "Contactos")
+    if (db.data.contacts) {
+        const initialLen = db.data.contacts.length;
+        // Filtramos buscando por 'phone' o por 'id' (formato de WhatsApp)
+        db.data.contacts = db.data.contacts.filter(c => {
+            // Normalizamos para comparar solo números
+            const cPhone = (c.phone || c.id || '').replace(/[^0-9]/g, '');
+            const target = phone.replace(/[^0-9]/g, '');
+            return !cPhone.includes(target);
+        });
+
+        if (db.data.contacts.length !== initialLen) huboCambios = true;
+    }
+
+    // 3. Guardar solo si borramos algo
+    if (huboCambios) {
+        saveDB();
+        return true;
+    }
+
+    return false;
+}
+
+function getKeywords() {
+    reloadDB();
+    return db.data.keywords || [];
+}
+
+function saveKeyword(rule) {
+    reloadDB();
+    if (!db.data.keywords) db.data.keywords = [];
+    
+    // Si ya existe (edición), lo actualizamos
+    const index = db.data.keywords.findIndex(k => k.id === rule.id);
+    if (index !== -1) {
+        db.data.keywords[index] = rule;
+    } else {
+        // Si es nuevo, le ponemos ID
+        if (!rule.id) rule.id = Date.now().toString();
+        db.data.keywords.push(rule);
+    }
+    saveDB();
+    return rule;
+}
+
+function deleteKeyword(id) {
+    reloadDB();
+    if (!db.data.keywords) return;
+    db.data.keywords = db.data.keywords.filter(k => k.id !== id);
+    saveDB();
+}
+
 module.exports = {
     db,
     initializeDB,
     getAllUsers,
-    getAllContacts, 
     getUser,
     updateUser,
-    deleteUser,
     getFullFlow,
-    getFlowStep,
     saveFlowStep,
     deleteFlowStep,
     getSettings,
     saveSettings,
+    getFlowStep,
     getSubscriptions,
     saveSubscription,
-    removeSubscription
+    removeSubscription,
+    deleteUser,
+    getKeywords,
+    saveKeyword,
+    deleteKeyword
 };
