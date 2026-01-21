@@ -2,9 +2,8 @@ const { updateUser, getUser } = require('../database');
 const { normalizeText, isSimilar, analyzeNaturalLanguage } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
-
-// 🔥 CORREGIDO: Importamos validadores una sola vez
-const { isValidName, isValidBirthDate } = require('./validators');
+const { isValidName } = require('./validators');
+const { isValidName, isValidBirthDate } = require('./validators'); 
 
 // --- MANEJADOR DE MENÚS ---
 async function handleMenuStep(stepConfig, text, remoteJid, sock) {
@@ -32,7 +31,7 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
         if (matchesFound.length === 1) match = matchesFound[0];
         else if (matchesFound.length > 1) {
             const txt = `🤔 Tu respuesta coincide con varias opciones. Sé más específico.`;
-            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
             else await sock.sendMessage(remoteJid, { text: txt });
             return null; // Detenemos flujo
         }
@@ -42,7 +41,7 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
         return match.next_step; // ✅ Retornamos el ID del siguiente paso
     } else {
         const txt = `⚠️ Opción no válida.\nEscribe el número o nombre de la opción.`;
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
         else await sock.sendMessage(remoteJid, { text: txt });
         return null;
     }
@@ -54,7 +53,7 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
 
     // 1. Validación de NOMBRE
     if (varName === 'nombre' && !isValidName(text)) {
-        const txt = "⚠️ Error:\nPor favor escribe solo tu nombre completo.";
+        const txt = "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.";
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
         else await sock.sendMessage(remoteJid, { text: txt });
         return null;
@@ -62,11 +61,14 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
 
     // 2. Validación de FECHA DE NACIMIENTO 
     if (varName === 'fecha_nacimiento' && !isValidBirthDate(text)) {
-        const txt = "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: DD/MM/AAAA \n(Ej: 02/07/1984)";
+        const txt = "⚠️ Fecha incorrecta.\n\nPor favor escribe tu fecha así: DD/MM/AAAA \n(Ej: 02/07/1984)";
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
         else await sock.sendMessage(remoteJid, { text: txt });
-        return null; // No avanzamos, pedimos de nuevo
+        return null;
     }
+
+    // 🛡️ PROTECCIÓN ANTI-CRASH: Si history no existe, lo creamos
+    if (!user.history) user.history = {}; 
 
     // Guardamos dato
     user.history[varName] = text;
@@ -114,31 +116,4 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
         delete user.history['hora']; await updateUser(dbKey, { history: user.history });
         return null;
     }
-
-    // --- ESTA PARTE FALTABA EN TU CÓDIGO ---
-    const isAvailable = await checkAvailability(fechaMemoria, horaMemoria);
-    if (!isAvailable) {
-        const txt = `❌ Horario ocupado.`;
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-        delete user.history['hora']; await updateUser(dbKey, { history: user.history });
-        return null;
-    }
-
-    // Agendar
-    const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
-    await bookAppointment(fechaMemoria, horaMemoria, dbKey, finalName);
-
-    if (global.sendPushNotification) {
-        global.sendPushNotification("📅 Nueva Cita", `Cliente: ${finalName}`, "/#agenda");
-    }
-
-    if (stepConfig.next_step) {
-        return stepConfig.next_step; // ✅ Avanzamos
-    } else {
-        const txt = `✅ Cita confirmada: ${friendlyDate(fechaMemoria)} a las ${horaMemoria}`;
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-        return null;
-    }
 }
-
-module.exports = { handleMenuStep, handleInputStep, handleCitaStep };
