@@ -62,7 +62,7 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
 
     // 2. Validación de FECHA DE NACIMIENTO 
     if (varName === 'fecha_nacimiento' && !isValidBirthDate(text)) {
-        const txt = "⚠️ Fecha incorrecta.\n\nPor favor escribe tu fecha así: DD/MM/AAAA \n(Ej: 02/07/1984)";
+        const txt = "⚠️ Fecha incorrecta.\n\nPor favor escribe tu fecha así: \nDD/MM/AAAA \n(Ej: 02/07/1984)";
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
         else await sock.sendMessage(remoteJid, { text: txt });
         return null; // No avanzamos, pedimos de nuevo
