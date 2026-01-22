@@ -2,93 +2,15 @@
   "users": [
     {
       "phone": "65356567699524",
-      "current_step": "EFECTIVO",
+      "current_step": "APROBAR",
       "history": {
         "nombre": "Hugo Alberto Martinez García",
-        "nacimiento": "27/12 del 1993",
-        "dirección": "Hacienda del sol #100 hacienda del sol."
+        "nacimiento": "27/12/1993",
+        "dirección": "Hacienda del sol #100"
       },
       "jid": "65356567699524@lid",
-      "last_active": "2026-01-22T14:23:31.792Z",
+      "last_active": "2026-01-22T16:54:45.701Z",
       "messages": [
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769015049602,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1769015051836,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1769015058837,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1769015061036,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hu",
-          "fromMe": false,
-          "timestamp": 1769015067209,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "⚠️ Texto muy largo o inválido para un nombre.\nEscribe solo tu nombre completo.",
-          "fromMe": true,
-          "timestamp": 1769015067384,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hugo Alberto Martinez García",
-          "fromMe": false,
-          "timestamp": 1769015081277,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1769015083403,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "5 de diciembre del 93",
-          "fromMe": false,
-          "timestamp": 1769016677367,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1769016679802,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hacienda del sol #100 hacienda del sol.",
-          "fromMe": false,
-          "timestamp": 1769016692868,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*5 de diciembre del 93*\nY su dirección:\n*Hacienda del sol #100 hacienda del sol.*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
-          "fromMe": true,
-          "timestamp": 1769016695089,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769016714932,
-          "stepId": "CONFIRMAR"
-        },
         {
           "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
           "fromMe": true,
@@ -412,6 +334,84 @@
           "fromMe": true,
           "timestamp": 1769091811792,
           "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1769100834318,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1769100837449,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1769100842291,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+          "fromMe": true,
+          "timestamp": 1769100844486,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hugo Alberto Martinez García",
+          "fromMe": false,
+          "timestamp": 1769100848032,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
+          "fromMe": true,
+          "timestamp": 1769100850121,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "27/12/1993",
+          "fromMe": false,
+          "timestamp": 1769100859186,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+          "fromMe": true,
+          "timestamp": 1769100861399,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hacienda del sol #100",
+          "fromMe": false,
+          "timestamp": 1769100867988,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol #100*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
+          "fromMe": true,
+          "timestamp": 1769100870194,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1769100872605,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "Muy bien Hugo\nEstamos validando su información.",
+          "fromMe": true,
+          "timestamp": 1769100874838,
+          "stepId": "FILTRO"
+        },
+        {
+          "text": "¡Perfecto, Hugo! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?\n\n👉 Sí, si sé dónde está.\n👉 No, no sé.",
+          "fromMe": true,
+          "timestamp": 1769100885701,
+          "stepId": "APROBAR"
         }
       ],
       "name": "Hugo Alberto Martinez García"
@@ -14086,203 +14086,11 @@
   },
   "subscriptions": [
     {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/dcw_Ks8OMlE:APA91bFKWCPF9WbU7dFOXO9MN_3LhKKFX1oZwlEd6Udvj5WvUGYAUgG7FgtZJdp8AJWMTx3Qjrnwj3qUhlPxsDuhk4Qav2N-7AIGKidX9FkPX2zR3AvRj9PAxAxueAZpDKy7swLMnNsc",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fbPNDCtaF2w:APA91bEUGTShCZe53mG78C8IPGGLi8fec1BX9NssANXlT7yfP6QfRfOEEXzthcBx-UAktcwM4u3Vl7yb-a7MTP0ix6QqscYuRa17sY75ynWktiqgXMe6hkWOSo01IjjUmHTrXrSvwbpf",
       "expirationTime": null,
       "keys": {
-        "p256dh": "BIQ3rvojhEN67XDSLEq5EcPuG3moHVOWZ-8HZccXhAqKWGynfXrEyiyFjJWlGhQ0-HkxxMeOEVH-s6WWpO5M6H0",
-        "auth": "lToM0Tv7FT0mbd5x3Fy5WA"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fa_aUndx6KA:APA91bHX2RQDwWHhoxxsPJGffTdFu6CwZfSAudnWFAVTKR_F8Sm2GQgqCnJyzEcOdjDCW-npbdySW4brMhDBevB6EZBQVLpoTkZDV4cyk9MY6tJJ_FfVrg7ZIC1gVkS2ZOGy8ym8LpsH",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BL5Pvx0Jtzke4yGNCYlfKJ2WbJPN7FU8l-mv1bIeFFZD9nzhE6--UFSbptowl7hQCbyxk5OZEkpLX6Z5Geh_BGw",
-        "auth": "BDbr5RubGH8OQFV61xLRhw"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/f-E4BjWlYP4:APA91bFDtBQD0VJ9Sm7-Blbb4H-GS0jOUR2d8yo71BhFwGWMC6YY6Jy8LamOJCA9bnaYS3ydCaCDsCrQBgQuNoxTuqcJHHXeTHCq-Fyz_cYLP2le4u1HepPMtLm4_1tTuq2KEUKs1eFL",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BBfxDnTGAH6MaA-uFvMTSrFegbCuzmzaxOKbley860CpsdvtIHSoNHbCEX6osZ77crWtqgBCDZKBV7TSD8X_qaU",
-        "auth": "qUsDKI1gz201DanQhAp0Hw"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/c7x9uJJnRAs:APA91bGBQj7KojyzK7c4br5UVtb2Maxv7ylZrUPqSHl8JcYosdHwBMK8n1hA0GSAeX6a9LWNxzg7qhIWgZBxIaMY_xJftadA3YXQq98GseMtqQ3O8JD5moz4aw5x320J7mKSbRAby8we",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BPXXdmddCLDGL52VnMtBZJKgbH0C515yzOJyuPaFhZtD6hmbNnS8eq0u3wBSR7XTjpWexcffdZiHzXtodHpyXOg",
-        "auth": "UL6fofX2oEJvJ1-hDd_6yg"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/d4rINq396JY:APA91bHwfgeXIfQGPZN_tGiRndIMzpxjZv4A3300d56aFpBDkzLb2igbY2GVxhLS1wlDWSXWU2wLM-QEGTfc3ayj2zHDPUmgvzUjuFb-g3wS7q0YVBgJh048tzFawRSrSQrRVfY_TgOn",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BJtuY9CTzvuIxxKFrZc9n15B9n1fU-daob29XyEtrNzVV6xvNYntDIj23oTt7AIJDxXMcM57pB24R4pmtbvmb-Q",
-        "auth": "--Jo2gwtPsi1COhEs0IZ6A"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/f3a_rP22jCo:APA91bEgPa7x1tUcKB7V5xYiyGB6gTiF2y1UJAmaywyCABt1g9I5tVsRknzWxDYFFaaKUdHp3k-fAgtgr8Jeyw89F_elpWeySZ0E06sCo930rtA3MlhZWlOlii6etlRiuApfztzfDo4l",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BB3Tt5xi4ny-OaVmQXqmY12oaItwXdjLwMBWsIWNbnYUSdhf2zHZWYClAuI5XwqKPhoqq_clkOqb1OL-sLF70n4",
-        "auth": "e5w5QUxftvKQdD6f60yzdQ"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/cqcZ2Ki0FIs:APA91bFuEuch4WDcVbicdRgKcKhVL-8mE8k_XJTVFzsBPw3nUv9wJq7eTHeXy4ZfM4xowHSwUze92syv5e1UrvcDgX-u-WBlIZGuwsecq6rjf3W6X7NV8L2gLRAJCOXgHWTHpg_utbtV",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BEEiNiEtKgTkYg3qkd91JC6Y78Yky8HmX7I08EiP27yvFO_zWrsCwlLh4u2_4o3Pf3Q_f7wAHBO6gD-mEf6RrPc",
-        "auth": "GQWHUbH-mfBnn9-Jc6n1-w"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fd1-AJkNFSE:APA91bE-qhhavNbfawHpSZZdeom8LUNqh7u6w_Vw1L5_AwwoYDzN2ntWG-v72mKLB-vYOaHF9tcqwbu9OZqHTzHW1x4yw1HC6DDw-iWJU9sU12ddpJy5v6cyduXEa18u3xuyiCM1DlM1",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BHGM6Rc_-H84Uvb4MfalDwJ-7DhDJNksQxE1SONOLLjYvmt4ocyQ0XI56rRLdDElScgDSejcrkSPFfdpSMGrkl4",
-        "auth": "dbSDOWokox6j2NnjleE-aA"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/cd_88nqMKzY:APA91bGD7LkAuSHXKxCtCzybgFr5s9V7a-oAUsxFBv9Gvz7dnqgdwhud905wQJUSgLoxMWt9moe8djqWdIL2tmipIQ5EUiUiH7TQ9WIG2P9XiNia6IEtHgSazdFydlEcUYOFzDd91Nty",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BEGM9z0PpGy6MoW6AzUWLZKAsb1qxYzECYDo2M1ngJCgt3BAYMhf9b-s7-yzTdhCkfIyXNFUD7zLrH2_GVbig-k",
-        "auth": "CjadNh2qXnGR5MQRPkWfWA"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/cdacyvA1NbE:APA91bE1-SOxHzpggAej12eAMo7u4q_i4YdYGD4ESdKrXjkAV83qSHYwNF6vy4mFx8kbmiy295_JESZRFgRkRuaW_vSv9IT94ycW_e9i3hVFSyl0XKoTfObHs6Ipsxv8eRl2Jwqg5JMw",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BDqPvGdpX5wP1vDmn18OCCZvg56aXI1PBFIzH39hxz8mdQZ6bh9rQtH7gnrANOx-b4-eMcLvUufiyGgBWOXMaPQ",
-        "auth": "0ELT7nkBdXcEjRVDMIRdFg"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/eLnMnBSiD48:APA91bGjSoI5NRIYu4aRTMrasySL6y8f6dv9D9t25RElq1Rh5uz_1vOkNBbiXFYjQmqoF42EajAq_3H2dUYZqSVaKN6_Gg7WNdXIt4dwaCeShVo0WWgT6sOWdMEQQ4olW-AUDwbj6HQE",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BN3k9cwxYF2InVjoDtQ0olO38_KWq6Iw-89bFns7GW9tsQU9ig2eDc63wR7dCHMy_NsXTjoAGgECE6fmN-iapmo",
-        "auth": "of5OJ80sTnSDD_lXd9Gyfw"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fBIJl7RNNOY:APA91bH0VtRe-7H3JdtYBqc0GOVY0Xw3vmkkZSBX59HWh5IZCca7lDhIdzjn_2bqW5s97gqK_P5SYk5N9QYh91jfzTHOAlGjJFv-4lX3h2rc4ipcmDqfoozPD6NpWAqPZ39mtnbndRES",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BOD7F0V8agOcXlpWkgfFBuptTnewqZ3ef5T_e4s-FO0nrGWEblPv7jkko2yjUuo0fk_3szipQFemfmNyEoKzx_E",
-        "auth": "QaubHd8LAXcYGFCNpelGdw"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/erbYIPBc89U:APA91bHqn2gVVrQdIGa_O1WOyuBOm0K-6jzkKsaUih_o80lin4lqhirQqBgW5pC_a8_yWUFuy96oACaNP9Ct4w4iyq0a1Z8yJb9IzmJ5mTNItdo6bGyI-piSaHrwcWqxeU0_wqCJhl_z",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BJgt8Upl6RkkTlctX_UOz8JedA6AYhcFd4lTqiK7YdfnFsSu0zHBw1yHeSs9oO2vCUYK_l6yAokgDTAc3hubCI0",
-        "auth": "0SFEdmPtRxyatqG9_FTjJA"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/eAqet-OYii0:APA91bF4WtqkqyBOLt5fG5mNgRY1uYI8va3oaCo0TwIdmqjR1JCR0YLhCwzFJR2uZbC-Rcem2xpr1jzJR3La4yjHVkrhgyInJminENZIookWMQWZ37W9Nk5tzX0JWpelczcnTqCR8Xpk",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BO0xVO6j8r1XQykjwO9vJ1SEClFTD_hUV680VB6R8mM6bYvcGo35IZGUkP5IirCeYHQ2OEusos4e6htzVy-GuGw",
-        "auth": "EId5gLpF3pLV7nZl2okD0g"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/ecx2MFKhyns:APA91bHhbHmPquGD0IKPd1otDGBC2s-0t7VL-TO8a6TK-XTLUKrv-9L2vgEycu--JrZXkl02o6wFMlMBXioaDBSYsDNRK-tNgN7JWwv9eJo_8s0gN9SISL4USD5GdAIrM0jIaPjXQ5sB",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BL1duR0Hjil6Jy70TcpftqGayTcUeYIokLA0WP6qifTio45Wk9PyCt666aaJZmMeS-nYTWqWg80aUi7A8HDykr0",
-        "auth": "0nWIsuugi38aLqvwdm9jNQ"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/eyyIms2lHj0:APA91bGcN-AE4REDKMZCzgdGjkkkKgnh_TDTys7GGdnrr-ykqY1eiOvjEl1QqF_s8oHeTgjvIMSe8EGSXHXfOgqchazYAmktKqm3tJ5PiWOoDB8a4QfxB7ue7G9jqPl1-pIIRkOHd7wL",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BBgkOZUkakgkbxvnzswBU0xbbtXeUwuBZorz9uyX0Rcorq2IY3c5dW-xRtG6JyG45YU2j6H_eEnBDeqsN1YjDPA",
-        "auth": "5-PpbixrrcmQR1WoO_VqOw"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fUIzHx2xVsE:APA91bESWTjyoojM4jgOUy-h1UU5AiSyWlEUw4eK36dOoMxv58eIDI8wTr6jDp24DhASL_i_x_Sd8SLO4lM124HnYAZ-oVtmEtwQLJW2Xn1SN_P2Ce4D38ogpJ4Cszl-ILyfgYnfZJIG",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BLvvhvMjHHBuwPLyjBxXo5rdf3y6CmMWpBwcugl-fCDPP7xSfYVjjIfOozSKOVn1j7yTaErJMVGsESO3tcj3A98",
-        "auth": "xbP20vjgpeSXaMfbJDJCbw"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fsDYc502_8I:APA91bE7S9yWF88J96VRjCn5_nHRUovcDCZqtZwSMu1ZuuhLmEnkQLXu1f0ya_tteEn6EqHpt6J4BNhAGivtkAiAzrNg1gpIqSMFyOLuIDS1Xq41_0ZUleeI57AV0-LYtKFQLRMPyrbu",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BHb05n9LSZyEzBZF5W6I0ZCHaiSlOFe1L4b6GyuVIJrWJxphLmX5A26YTzKxFjiDVfCnPG2xT74Wv5ttM7Gw_Fk",
-        "auth": "Sb3XtIGM80ySSf-KgaGOYw"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fYxuJ-aYKpE:APA91bFT_p7ZVdaRvw7XzAKSg37lCFzwYkKonh54aK2Z7ggARL7cLrjFuA0nJSbPjNc5QnoAJi33mA_1QX5Pfs6I0_ssh_Nq2YOvhNuNBn-3SFGIY8swmK9GXqNnS4r12LJAAooKCJFe",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BDEcF3NL056ZpgcoH2ChTIn8Rz2BAaPsii40foMqqSI0o6Q8jLNNYzF5cIk8W9eglyM6f60Dts2WdclvnuvI8ZQ",
-        "auth": "FwcoeP3QHcnLQxxUDTdzkg"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/f_6JKaFCzHA:APA91bHffSlN2wIqVSGv4-kwX2gToiXe2XQ9683vyZh1WJUwN1bqVoYVyCYoUyAfFeUUUPcn0dNAkDyoLp1lS3VpX1J2H3p1ZTpRlFJhjHub_QAtTt3RBOtHBtaZSkqjnshM2F4btjGz",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BG9jRl-W2nCLrsVuIle7spWERHAex4FeX8sc3cU9zy8T3loYXVX7eLRPBk1GZnOZ641DbqHiwyZ_syK8tNZnWME",
-        "auth": "MDw_bMHnvf5APgl72BA5WA"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fYv3cMGFDWc:APA91bHsxj3R0vAws5hdqIE7mRmh3_ZaunAXlWPFEdVHnaRnqqB0I6w1-xzW0HSwSPyH8GEK1SblJfvHR3CMNvn4769RRoSRhAULfEhgvFW02HuVETKJ2gaYk4QSccph0mjjFiHJuOpd",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BG66s6k5wLXgtrrzzYA82aUN02sdx7AePcNYFAX2pW2w6KuFZni6Wdzq2rQM1IGg6aBmt8n2ELUB3wzZDjGFZn4",
-        "auth": "0_56H0v0UIpItdI5AyeCqg"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/cPZmn_Do3nA:APA91bFWSVOvv8TGcmZSQ9bUqMr6EYpakwMIlsuNjAmwuOKYrzdcqDXHclADTF5Uh4beuDPHijDh5Mi9hcEERTJhrJaopXviAnL593hRE-t6hgezqrpv2azJPT_BLtZVsw8DOStLTp2Z",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BBDbUKix0RGxBRgwVR_3cRV9QcowajIXYMRyfV5AfXMkDCN2J0DiR6A66XFXWHImCznTv9CSzJ1LNFcEa-0t8AU",
-        "auth": "sBSMzbM8c_3LvobjgPHHVg"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/f9Asl59W-DQ:APA91bFodTyLW1aUgWGaZjZdebkal0ykqQCGAAzdaJ1bwISlrjzGD6Ideitdo5AhS6TYnZHRp09R9ENMeSR_5vBG82bRrdpCDIDyMtYkKbm9VLxeFYME1R8FS2G8DNpXnoQS9teTgYZV",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BFUq3nNdQ_BX4uXysCu-vFjXG_UOVDjodxGcvr5rQeEbfv_1tijZC3U1G7_nxjmW06PxcSVVum4A_s7QK5IQi_s",
-        "auth": "EZD9r-CHUqpGYL0f-xbSSg"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fXuMGKfIdYg:APA91bEruihjALpEzy_QfyKNDp_QM4Zfu6Pg0P2P_dxRyywmoiBc4ddjfaDZcD8Kn1dNsP9af-f2EJamS87cKkV4AzByyUXB0UiRAvjUnLxIuJc8NbWUWHquAHzDkQa_PbfDw2mCqhkP",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BDwJoiF__bpqYb1cTx35IMS0y5X30jbqrcUJGWEUjqW1UtRiUR64Qpi3SweiFsLJAVqlkc_e3iLOxtIGbfFFV5c",
-        "auth": "bBh9JirkFEtQA9rPurQDfg"
-      }
-    },
-    {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/d6IpbU5gZ2I:APA91bEvCKpht_Fza0J78H54kVjkegMFocblryE8ACx6MsYXeNRSotz9rhCwJzbfi_Mmz2rOfwdvCw4QWSUUeYoXNytiaZGq29OWpQgh46soSbeOZcbP0N9tuyj1NODETkjMCJzEHFqO",
-      "expirationTime": null,
-      "keys": {
-        "p256dh": "BI0rT-U3yWEK05Mq2GYoqzq__3iGXNDbWY6anbVvgVTTrqMHlzx98IWZfk4WQYhrpJ9imGK_wIvmhFTeahmQk9c",
-        "auth": "L7vl06ckXvqxzHUn0L8t1A"
+        "p256dh": "BDtuxpzy397VzfMDeWfFnQjFlTwKQluQKknk8kzJu0YLcMEdXscdlyBptZU1K4fwofHdS9AYsKmrGAEO5GluDPc",
+        "auth": "KJx5xynr4Is37O38_lf_og"
       }
     }
   ],

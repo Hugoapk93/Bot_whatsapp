@@ -1396,18 +1396,29 @@
 
     async function executeCrmAction() {
         if(!pendingCrmAction) return;
-        await fetch(`${API_BASE}/api/crm/execute`, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-                phone: pendingCrmAction.phone,
-                stepId: pendingCrmAction.step
-            })
-        });
+
         document.getElementById('actionConfirmModal').classList.remove('active');
-        pendingCrmAction = null;
-        loadActivity();
-        showToast('Acción ejecutada');
+
+        showToast("🔄 Procesando acción...");
+
+        try {
+            await fetch(`${API_BASE}/api/crm/execute`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    phone: pendingCrmAction.phone,
+                    stepId: pendingCrmAction.step
+                })
+            });
+
+            pendingCrmAction = null;
+
+            setTimeout(loadActivity, 500);
+
+        } catch (e) {
+            console.error(e);
+            showToast("❌ Error al ejecutar acción");
+        }
     }
 
     // --- FLUJO Y EDITOR ---
