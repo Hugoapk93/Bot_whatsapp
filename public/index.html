@@ -1299,41 +1299,41 @@
         const txt = inp.value.trim();
         if(!txt || !currentChatPhone) return;
 
-        // Limpiamos input visualmente rápido
+        // Limpiamos input y reseteamos iconos
         inp.value = '';
         handleInputTyping();
-        document.getElementById('waFlowDrawer').classList.remove('open'); // Cerrar menú si estaba abierto
+        document.getElementById('waFlowDrawer').classList.remove('open'); 
 
-        // 🔥 DETECTOR DE COMANDO MAGICOS (>> PASO)
+        // 🔥 COMANDOS (>> PASO)
         if (txt.startsWith('>> ')) {
             const targetStep = txt.replace('>> ', '').trim();
             
-            // 1. Feedback visual inmediato en el chat (Solo local)
+            // Aquí SÍ usamos addBubble porque es un mensaje interno del sistema (no de WhatsApp)
             addBubble(`🔄 <i>Forzando paso: ${targetStep}</i>`, true);
 
-            // 2. Ejecutar Acción CRM (Reciclamos tu lógica de movimiento)
             try {
                 await fetch(`${API_BASE}/api/crm/execute`, {
                     method: 'POST',
                     headers: {'Content-Type':'application/json'},
                     body: JSON.stringify({ phone: currentChatPhone, stepId: targetStep })
                 });
-                // Recargar para ver el cambio de estado
                 setTimeout(loadActivity, 500);
             } catch (e) {
                 showToast("❌ Error al cambiar paso");
             }
-            return; // ⛔ IMPORTANTE: Aquí cortamos para NO enviar mensaje a WhatsApp
+            return; 
         }
 
-        // --- ENVÍO NORMAL (Si no es comando) ---
-        addBubble(txt, true);
-        
-        await fetch(`${API_BASE}/api/send-message`, {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ phone: currentChatPhone, text: txt })
-        });
+        try {
+            await fetch(`${API_BASE}/api/send-message`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ phone: currentChatPhone, text: txt })
+            });
+        } catch (e) {
+            console.error(e);
+            showToast("❌ Error enviando mensaje");
+        }
     }
 
     function filterChats(q) {

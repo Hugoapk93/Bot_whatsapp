@@ -10,11 +10,10 @@ const cors = require('cors');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
 
-// --- IMPORTS DE BASE DE DATOS Y LÓGICA ---
+// --- IMPORTS LOCALES ---
 const { getKeywords, saveKeyword, deleteKeyword } = require('./src/database');
 const { findKeywordMatch } = require('./src/keywords');
 const { handleMessage, sendStepMessage } = require('./src/flow');
-
 const {
     initializeDB,
     getFullFlow,
@@ -30,9 +29,9 @@ const {
     saveSubscription,
     removeSubscription
 } = require('./src/database');
-
 const { syncContacts, getAllContacts, toggleContactBot, addManualContact } = require('./src/contacts');
 
+// CONFIGURACIÓN EXPRESS
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -50,7 +49,7 @@ webpush.setVapidDetails(
     privateVapidKey
 );
 
-// --- FUNCIÓN GLOBAL PARA NOTIFICAR A TODOS LOS ADMINS ---
+// --- NOTIFICACIONES PUSH GLOBALES ---
 global.sendPushNotification = (title, body, url) => {
     const targetUrl = url || '/index.html#activity';
     const payload = JSON.stringify({ title, body, url: targetUrl });
@@ -77,7 +76,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // =================================================================
-// CONFIGURACIÓN DE SOCKET.IO Y SERVIDOR HTTP
+// SERVIDOR HTTP & SOCKET.IO
 // =================================================================
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -90,17 +89,16 @@ io.on('connection', (socket) => {
 });
 
 // =================================================================
-// CONFIGURACIÓN DINÁMICA DE PUERTO
+// PUERTO Y TORRE DE CONTROL
 // =================================================================
 const args = process.argv.slice(2);
 const portArgIndex = args.indexOf('--port');
 const PORT = portArgIndex !== -1 ? parseInt(args[portArgIndex + 1]) : 3000;
 
-// CONFIG DE LA TORRE
 const TOWER_URL = 'http://localhost:8888/api/instances/report';
 const INSTANCE_ID = 'bot_' + PORT;
 
-// --- CONFIGURACIÓN DE CARPETAS ---
+// --- CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
 const dataDir = path.join(__dirname, 'data');
 const authDir = 'auth_info_baileys';
@@ -113,9 +111,7 @@ let globalSock;
 let globalQR = null;
 let connectionStatus = 'disconnected';
 
-// =================================================================
-// FUNCIÓN DE REPORTE A LA TORRE
-// =================================================================
+// --- REPORTE DE ESTADO ---
 async function reportToTower() {
     try {
         await fetch(TOWER_URL, {
@@ -132,7 +128,7 @@ async function reportToTower() {
     } catch (e) { /* Silencioso */ }
 }
 
-// --- HELPER PARA LEER JSON SEGURO ---
+// --- HELPER JSON ---
 function safeReadJSON(filePath, defaultVal) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, JSON.stringify(defaultVal, null, 2));
@@ -148,12 +144,12 @@ function safeReadJSON(filePath, defaultVal) {
     }
 }
 
-// --- LÓGICA DE AGENDA ---
+// --- AGENDA ---
 const agendaPath = path.join(dataDir, 'agenda.json');
 function getAgenda() { return safeReadJSON(agendaPath, {}); }
 function saveAgenda(data) { fs.writeFileSync(agendaPath, JSON.stringify(data, null, 2)); }
 
-// Multer Config
+// --- MULTER (SUBIDA DE ARCHIVOS) ---
 const storage = multer.diskStorage({
     destination: function (req, file, cb) { cb(null, 'public/uploads/') },
     filename: function (req, file, cb) {
@@ -163,15 +159,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Inicializar DB
+// INICIALIZAR DB
 initializeDB();
 
-// --- LÓGICA DE CONEXIÓN WHATSAPP ---
+// =================================================================
+// CONEXIÓN WHATSAPP
+// =================================================================
 async function connectToWhatsApp() {
     if (connectionStatus === 'connecting' || connectionStatus === 'rebooting' || connectionStatus === 'connected') {
         return;
     }
-
     connectionStatus = 'connecting';
     reportToTower();
     console.log("🔄 Iniciando conexión a WhatsApp...");
@@ -196,6 +193,7 @@ async function connectToWhatsApp() {
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
+        
         if (qr) {
             console.log("📡 QR Generado");
             globalQR = qr;
@@ -231,7 +229,9 @@ async function connectToWhatsApp() {
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
-    // >>> LOGICA DE MENSAJES PRINCIPAL <<<
+    // ==========================================================
+    // >>> LÓGICA DE MENSAJES PRINCIPAL <<<
+    // ==========================================================
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         const isFromMe = messages[0]?.key?.fromMe;
         if (type !== 'notify' && !isFromMe) return;
@@ -253,16 +253,13 @@ async function connectToWhatsApp() {
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
             const isMe = msg.key.fromMe;
 
-            // ----------------------------------------------------------
-            // PASO 1: AUTO-REGISTRO
-            // ----------------------------------------------------------
+            // --- 1. AUTO-REGISTRO ---
             let contactConfig = allContacts.find(c => c.phone === incomingPhoneRaw);
-
             if (!contactConfig && !isMe) {
                 console.log(`✨ Nuevo contacto detectado: ${incomingPhoneRaw}`);
                 addManualContact(incomingPhoneRaw, incomingPhoneRaw, true);
                 contactConfig = { phone: incomingPhoneRaw, name: incomingPhoneRaw, bot_enabled: true };
-
+                
                 if (global.io) global.io.emit('new_user', {
                     phone: incomingPhoneRaw,
                     name: incomingPhoneRaw,
@@ -271,13 +268,11 @@ async function connectToWhatsApp() {
                 });
             }
 
-            // ----------------------------------------------------------
-            // PASO 2: GUARDAR MENSAJE Y ACTUALIZAR FECHA
-            // ----------------------------------------------------------
+            // --- 2. GUARDAR MENSAJE ---
             const msgText = msg.message?.conversation ||
-                          msg.message?.extendedTextMessage?.text ||
-                          msg.message?.imageMessage?.caption ||
-                          '📷 (Media)';
+                            msg.message?.extendedTextMessage?.text ||
+                            msg.message?.imageMessage?.caption ||
+                            '📷 (Media)';
 
             let currentUser = getUser(incomingPhoneRaw);
             if (!currentUser) {
@@ -287,7 +282,6 @@ async function connectToWhatsApp() {
             if (!currentUser.messages) currentUser.messages = [];
 
             const now = new Date().toISOString();
-
             currentUser.messages.push({
                 text: msgText,
                 fromMe: isMe,
@@ -297,10 +291,9 @@ async function connectToWhatsApp() {
 
             if (currentUser.messages.length > 60) currentUser.messages.shift();
 
-            // Guardamos mensaje y actualizamos fecha (para que suba en el monitor)
-            await updateUser(incomingPhoneRaw, { 
+            await updateUser(incomingPhoneRaw, {
                 messages: currentUser.messages,
-                last_active: now 
+                last_active: now
             });
 
             if (global.io) {
@@ -312,59 +305,46 @@ async function connectToWhatsApp() {
                     to: isMe ? incomingPhoneRaw : undefined,
                     from: !isMe ? incomingPhoneRaw : undefined
                 });
-                
-                global.io.emit('user_update', { 
-                    phone: incomingPhoneRaw, 
+                global.io.emit('user_update', {
+                    phone: incomingPhoneRaw,
                     last_active: now,
                     last_message: msgText
                 });
             }
 
-            if (isMe) continue; 
+            if (isMe) continue; // Si soy yo, termino aquí
 
-            // ----------------------------------------------------------
-            // PASO 3: VERIFICAR SI EL BOT ESTÁ ENCENDIDO
-            // ----------------------------------------------------------
+            // --- 3. VERIFICAR BOT ENCENDIDO ---
             if (contactConfig && contactConfig.bot_enabled === false) {
                 continue;
             }
 
             // ==========================================================
-            // 🔥 NUEVO MÓDULO INTERCEPTOR (RESPUESTAS RÁPIDAS) 🔥
+            // 🔥 INTERCEPTOR (RESPUESTAS RÁPIDAS) 🔥
             // ==========================================================
-            // Analizamos el texto antes de pasarlo al flujo normal
             const keywordMatch = findKeywordMatch(msgText);
-            
             if (keywordMatch) {
                 console.log(`🧠 Interceptor activado: "${keywordMatch.keywords}"`);
-
-                // 1. Enviar la respuesta de la duda
+                
+                // Enviar respuesta
                 await globalSock.sendMessage(remoteJid, { text: keywordMatch.answer });
 
-                // 2. Retomar el hilo (Magic Trick)
-                // Obtenemos el usuario actualizado para saber en qué paso estaba
+                // Retomar hilo visualmente
                 const userState = getUser(incomingPhoneRaw);
                 const currentStep = userState.current_step || 'INICIO';
-                
-                // Pequeña pausa para que se sienta natural
                 setTimeout(async () => {
                     await sendStepMessage(globalSock, remoteJid, currentStep, userState);
                 }, 1000);
 
-                // ⛔ IMPORTANTE: Cortamos el ciclo aquí.
-                // El flujo normal (handleMessage) NO se ejecuta.
-                continue; 
+                continue; // ⛔ CORTAR FLUJO AQUÍ
             }
             // ==========================================================
 
-
-            // ----------------------------------------------------------
-            // PASO 4: EJECUTAR FLUJO DEL BOT (Normal)
-            // ----------------------------------------------------------
+            // --- 4. FLUJO NORMAL DEL BOT ---
             try {
                 await handleMessage(sock, msg);
 
-                // --- AUTO-ACTUALIZACIÓN DE NOMBRE ---
+                // Auto-actualización de nombre
                 const postFlowUser = getUser(incomingPhoneRaw);
                 if (postFlowUser && postFlowUser.history) {
                     const capturedName = postFlowUser.history.nombre ||
@@ -376,12 +356,10 @@ async function connectToWhatsApp() {
                         console.log(`📝 Auto-actualizando nombre: ${contactConfig.name} -> ${capturedName}`);
                         addManualContact(incomingPhoneRaw, capturedName, contactConfig.bot_enabled);
                         await updateUser(incomingPhoneRaw, { name: capturedName });
-
                         if (global.io) global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
                         contactConfig.name = capturedName;
                     }
                 }
-
             } catch (err) {
                 console.error("Error procesando mensaje:", err);
             }
@@ -393,7 +371,7 @@ async function connectToWhatsApp() {
 //              RUTAS API
 // ==========================================
 
-// CONTACTOS
+// --- CONTACTOS ---
 app.post('/api/contacts/update', async (req, res) => {
     const { phone, name, enable } = req.body;
     await updateUser(phone, { name, bot_enabled: enable });
@@ -401,8 +379,8 @@ app.post('/api/contacts/update', async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/api/contacts/toggle', (req, res) => { 
-    res.json(toggleContactBot(req.body.phone, req.body.enable)); 
+app.post('/api/contacts/toggle', (req, res) => {
+    res.json(toggleContactBot(req.body.phone, req.body.enable));
 });
 
 app.post('/api/contacts/add', (req, res) => {
@@ -417,20 +395,29 @@ app.post('/api/contacts/delete', async (req, res) => {
     res.json({ success: deleted });
 });
 
-// MENSAJES
+// --- MENSAJES (BLINDADO) ---
 app.post('/api/send-message', async (req, res) => {
     const { phone, text } = req.body;
     if (!globalSock || !phone || !text) return res.status(400).json({ error: "Datos faltantes o bot offline" });
 
     try {
-        let jid = phone.includes('@') ? phone : phone.replace(/[^0-9]/g, '') + '@s.whatsapp.net';
-        if (jid.startsWith('52') && !jid.startsWith('521') && jid.length > 15) {
+        // 🔥 CORRECCIÓN DE JID PARA MÉXICO Y OTROS
+        let jid = phone.toString().replace(/\D/g, ''); 
+        
+        // Manejo especial de lada México (52 -> 521)
+        if (jid.startsWith('52') && !jid.startsWith('521') && jid.length === 12) {
              jid = '521' + jid.slice(2);
+        }
+        
+        if (!jid.includes('@s.whatsapp.net')) {
+            jid = jid + '@s.whatsapp.net';
         }
 
         await globalSock.sendMessage(jid, { text: text });
         
-        let currentUser = getUser(phone.replace(/[^0-9]/g, ''));
+        // Guardar en historial local
+        let cleanPhone = phone.replace(/[^0-9]/g, '');
+        let currentUser = getUser(cleanPhone);
         if(currentUser) {
             if(!currentUser.messages) currentUser.messages = [];
             currentUser.messages.push({
@@ -439,7 +426,7 @@ app.post('/api/send-message', async (req, res) => {
                 timestamp: Date.now(),
                 stepId: currentUser.current_step
             });
-            await updateUser(phone.replace(/[^0-9]/g, ''), { messages: currentUser.messages });
+            await updateUser(cleanPhone, { messages: currentUser.messages });
         }
         res.json({ success: true });
     } catch (e) {
@@ -448,10 +435,11 @@ app.post('/api/send-message', async (req, res) => {
     }
 });
 
-// SIMULADOR
+// --- SIMULADOR ---
 app.post('/api/simulate/text', async (req, res) => {
     const { phone, text } = req.body;
     if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
+
     const fakeMsg = {
         key: {
             remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
@@ -471,34 +459,25 @@ app.post('/api/simulate/text', async (req, res) => {
     }
 });
 
-// KEYWORDS (NUEVO MÓDULO)
-app.get('/api/keywords', (req, res) => {
-    res.json(getKeywords());
-});
-
+// --- KEYWORDS ---
+app.get('/api/keywords', (req, res) => res.json(getKeywords()));
 app.post('/api/keywords', (req, res) => {
-    const rule = req.body; 
-    if (!rule.keywords || !rule.answer) {
-        return res.status(400).json({ error: 'Faltan datos' });
-    }
+    const rule = req.body;
+    if (!rule.keywords || !rule.answer) return res.status(400).json({ error: 'Faltan datos' });
     const saved = saveKeyword(rule);
     res.json({ success: true, rule: saved });
 });
-
 app.delete('/api/keywords/:id', (req, res) => {
     deleteKeyword(req.params.id);
     res.json({ success: true });
 });
 
-// VARIOS
+// --- VARIOS ---
 app.post('/api/subscribe', (req, res) => {
-    const subscription = req.body;
-    saveSubscription(subscription);
+    saveSubscription(req.body);
     res.status(201).json({});
 });
-
 app.get('/api/vapid-key', (req, res) => { res.json({ key: publicVapidKey }); });
-
 app.get('/api/status', (req, res) => {
     const sessionPath = path.join(__dirname, authDir);
     const sessionExists = connectionStatus !== 'rebooting' && fs.existsSync(sessionPath) && fs.readdirSync(sessionPath).length > 0;
@@ -510,7 +489,6 @@ app.get('/api/status', (req, res) => {
         statusString: connectionStatus
     });
 });
-
 app.post('/api/auth/init', (req, res) => {
     if (connectionStatus === 'disconnected') {
         connectToWhatsApp();
@@ -519,7 +497,6 @@ app.post('/api/auth/init', (req, res) => {
         res.json({ message: `Ya en proceso (${connectionStatus})` });
     }
 });
-
 app.post('/api/logout', async (req, res) => {
     try {
         console.log("🛑 Solicitud de REINICIO recibida.");
@@ -546,37 +523,42 @@ app.post('/api/logout', async (req, res) => {
         res.status(500).json({ error: 'Error al reiniciar' });
     }
 });
-
 app.get('/api/contacts', (req, res) => { res.json(getAllContacts()); });
-
 app.post('/api/upload', upload.array('images', 10), (req, res) => {
     if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No files' });
     const urls = req.files.map(file => '/uploads/' + file.filename);
     res.json({ urls: urls });
 });
-
 app.get('/api/flow', (req, res) => res.json(getFullFlow()));
 app.post('/api/flow/step', async (req, res) => { await saveFlowStep(req.body.stepId, req.body.stepData); res.json({ success: true }); });
 app.delete('/api/flow/step/:id', async (req, res) => { await deleteFlowStep(req.params.id); res.json({ success: true }); });
 app.get('/api/users', (req, res) => res.json(getAllUsers()));
 
+// --- CRM EXECUTE ---
 app.post('/api/crm/execute', async (req, res) => {
     const { phone, stepId } = req.body;
     if (!stepId) return res.status(400).json({ error: "Sin destino." });
     try {
         await updateUser(phone, { current_step: stepId });
+        
+        // Si es simulador
         if (phone === 'TEST_SIMULADOR' || phone === '5218991234567') {
             await sendStepMessage(globalSock || {}, phone, stepId, getUser(phone));
             return res.json({ success: true });
         }
+
         if (!globalSock) return res.status(500).json({ error: "Bot offline" });
+        
         const user = getUser(phone);
         let targetJid = user?.jid;
+        
+        // Si no tenemos JID guardado, lo construimos
         if (!targetJid) {
             let clean = phone.replace(/[^0-9]/g, '');
             if (clean.startsWith('52') && clean.length === 12) clean = '521' + clean.slice(2);
             targetJid = clean + '@s.whatsapp.net';
         }
+        
         await sendStepMessage(globalSock, targetJid, stepId, user);
         res.json({ success: true });
     } catch (e) {
@@ -587,6 +569,7 @@ app.post('/api/crm/execute', async (req, res) => {
 
 app.post('/api/users/sync', async (req, res) => { await updateUser(req.body.phone, req.body.data); res.json({ success: true }); });
 app.get('/api/agenda', (req, res) => res.json(getAgenda()));
+
 app.post('/api/agenda/book', (req, res) => {
     const { date, time, phone, name, note } = req.body;
     const db = getAgenda();
@@ -597,6 +580,7 @@ app.post('/api/agenda/book', (req, res) => {
     saveAgenda(db);
     res.json({ success: true });
 });
+
 app.post('/api/agenda/delete', (req, res) => {
     const { date, time } = req.body;
     const db = getAgenda();

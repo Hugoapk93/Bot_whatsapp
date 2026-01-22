@@ -9,32 +9,8 @@
         "dirección": "Hacienda del sol #100 hacienda del sol."
       },
       "jid": "65356567699524@lid",
-      "last_active": "2026-01-22T04:18:09.887Z",
+      "last_active": "2026-01-22T14:23:31.792Z",
       "messages": [
-        {
-          "text": "Mi nombre es Hugo Alberto Martinez García",
-          "fromMe": true,
-          "timestamp": 1769003974968,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Mi ahora su:\n\n- Fecha de nacimiento\n  (DD/MM/AAAA)",
-          "fromMe": false,
-          "timestamp": 1769003977366,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769015013339,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n👉 Préstamo en efectivo\n👉 Préstamo para Moto\n👉 Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1769015015867,
-          "stepId": "BIENVENIDA"
-        },
         {
           "text": "Hola",
           "fromMe": false,
@@ -387,6 +363,54 @@
           "text": "Gkfl",
           "fromMe": true,
           "timestamp": 1769055489887,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091256237,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091256358,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091452436,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091452570,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091462461,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091462586,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091811669,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hola",
+          "fromMe": true,
+          "timestamp": 1769091811792,
           "stepId": "EFECTIVO"
         }
       ],
@@ -13982,7 +14006,7 @@
       "phone": "65356567699524",
       "jid": "65356567699524@s.whatsapp.net",
       "name": "Hugo Alberto Martinez García",
-      "bot_enabled": false,
+      "bot_enabled": true,
       "last_synced": "2026-01-21T17:04:43.272Z",
       "added_at": "2026-01-15T22:06:26.075Z"
     },
@@ -14243,6 +14267,22 @@
       "keys": {
         "p256dh": "BFUq3nNdQ_BX4uXysCu-vFjXG_UOVDjodxGcvr5rQeEbfv_1tijZC3U1G7_nxjmW06PxcSVVum4A_s7QK5IQi_s",
         "auth": "EZD9r-CHUqpGYL0f-xbSSg"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fXuMGKfIdYg:APA91bEruihjALpEzy_QfyKNDp_QM4Zfu6Pg0P2P_dxRyywmoiBc4ddjfaDZcD8Kn1dNsP9af-f2EJamS87cKkV4AzByyUXB0UiRAvjUnLxIuJc8NbWUWHquAHzDkQa_PbfDw2mCqhkP",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BDwJoiF__bpqYb1cTx35IMS0y5X30jbqrcUJGWEUjqW1UtRiUR64Qpi3SweiFsLJAVqlkc_e3iLOxtIGbfFFV5c",
+        "auth": "bBh9JirkFEtQA9rPurQDfg"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/d6IpbU5gZ2I:APA91bEvCKpht_Fza0J78H54kVjkegMFocblryE8ACx6MsYXeNRSotz9rhCwJzbfi_Mmz2rOfwdvCw4QWSUUeYoXNytiaZGq29OWpQgh46soSbeOZcbP0N9tuyj1NODETkjMCJzEHFqO",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BI0rT-U3yWEK05Mq2GYoqzq__3iGXNDbWY6anbVvgVTTrqMHlzx98IWZfk4WQYhrpJ9imGK_wIvmhFTeahmQk9c",
+        "auth": "L7vl06ckXvqxzHUn0L8t1A"
       }
     }
   ],
