@@ -395,40 +395,48 @@ app.post('/api/contacts/delete', async (req, res) => {
     res.json({ success: deleted });
 });
 
-// --- MENSAJES (BLINDADO) ---
 app.post('/api/send-message', async (req, res) => {
     const { phone, text } = req.body;
     if (!globalSock || !phone || !text) return res.status(400).json({ error: "Datos faltantes o bot offline" });
 
     try {
-        // 🔥 CORRECCIÓN DE JID PARA MÉXICO Y OTROS
-        let jid = phone.toString().replace(/\D/g, ''); 
+        // 1. Buscamos al usuario en la BD para ver su JID real
+        // Esto es clave para LIDs: recuperamos el ID exacto que WhatsApp nos dio cuando el cliente escribió.
+        const cleanPhone = phone.toString().replace(/\D/g, ''); 
+        const user = getUser(cleanPhone);
         
-        // Manejo especial de lada México (52 -> 521)
-        if (jid.startsWith('52') && !jid.startsWith('521') && jid.length === 12) {
-             jid = '521' + jid.slice(2);
-        }
-        
-        if (!jid.includes('@s.whatsapp.net')) {
-            jid = jid + '@s.whatsapp.net';
+        let targetJid;
+
+        if (user && user.jid) {
+            // ✅ CASO 1: Usuario conocido (LID o Normal) -> Usamos su JID exacto
+            targetJid = user.jid;
+        } else {
+            // ⚠️ CASO 2: Usuario nuevo o sin JID guardado -> Construcción manual
+            // Respetamos tu decisión: NO normalizamos 52/521, solo pegamos el dominio.
+            if (phone.includes('@')) {
+                targetJid = phone;
+            } else {
+                targetJid = cleanPhone + '@s.whatsapp.net';
+            }
         }
 
-        await globalSock.sendMessage(jid, { text: text });
+        // 2. Enviar mensaje
+        await globalSock.sendMessage(targetJid, { text: text });
         
-        // Guardar en historial local
-        let cleanPhone = phone.replace(/[^0-9]/g, '');
-        let currentUser = getUser(cleanPhone);
-        if(currentUser) {
-            if(!currentUser.messages) currentUser.messages = [];
-            currentUser.messages.push({
+        // 3. Guardar en historial local
+        if (user) {
+            if(!user.messages) user.messages = [];
+            user.messages.push({
                 text: text,
                 fromMe: true,
                 timestamp: Date.now(),
-                stepId: currentUser.current_step
+                stepId: user.current_step || 'MANUAL'
             });
-            await updateUser(cleanPhone, { messages: currentUser.messages });
+            await updateUser(cleanPhone, { messages: user.messages });
         }
+        
         res.json({ success: true });
+
     } catch (e) {
         console.error("Error enviando:", e);
         res.status(500).json({ error: e.message });
