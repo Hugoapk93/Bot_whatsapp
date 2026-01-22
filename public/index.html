@@ -128,10 +128,91 @@
         .wa-bubble.out { background-color: #005c4b !important; color: #e9edef; align-self: flex-end !important; border-top-right-radius: 0; }
         .wa-time { font-size: 11px; color: rgba(255, 255, 255, 0.6); align-self: flex-end; margin: 0 0 0 8px; display: flex; align-items: center; gap: 3px; line-height: 1; padding-top: 2px; }
 
-        .wa-input-area { min-height: 60px; background: #202c33; padding: 5px 10px; display: flex; align-items: center; gap: 8px; z-index: 10; }
-        #waInput { flex: 1; margin: 0; background: #2a3942; border: none; border-radius: 25px; padding: 10px 15px; color: #fff; font-size: 15px; }
-        .wa-mic-btn { width: 45px; height: 45px; background: #00a884; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; flex-shrink: 0; }
+        .wa-input-area { min-height: 60px; background: #202c33; padding: 5px 10px; display: flex; align-items: flex-end; gap: 8px; z-index: 10; }
+        /* La píldora que contiene input + iconos */
+        .wa-input-pill {
+            flex: 1;
+            background: #2a3942;
+            border-radius: 25px;
+            padding: 8px 12px 8px 15px; /* Padding ajustado */
+            display: flex;
+            align-items: center;
+            position: relative;
+            transition: all 0.3s ease;
+            min-height: 45px;
+        }
 
+        /* El Input transparente */
+        #waInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #fff;
+            font-size: 16px;
+            margin: 0;
+            width: 100%;
+        }
+
+        /* Contenedor de iconos internos (Clip, Cámara, Rayo) */
+        .wa-input-icons {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-left: 10px;
+            overflow: hidden;
+            /* Transición suave para ocultar */
+            max-width: 150px; 
+            opacity: 1;
+            transform: translateX(0);
+            transition: max-width 0.3s ease, opacity 0.2s ease, transform 0.3s ease;
+        }
+
+        .wa-input-icons i {
+            color: #8696a0;
+            font-size: 1.3rem;
+            cursor: pointer;
+            flex-shrink: 0; /* Evita que se aplasten */
+        }
+
+        /* --- ESTADO: ESCRIBIENDO (Typing) --- */
+        /* Cuando agregamos la clase .typing vía JS */
+        .wa-input-pill.typing .wa-input-icons {
+            max-width: 0px;  /* Se reduce a 0 ancho */
+            opacity: 0;      /* Se hace invisible */
+            transform: translateX(20px); /* Se mueve un poco a la derecha */
+            pointer-events: none; /* Ya no se pueden clickear */
+            margin-left: 0;
+        }
+
+        /* Botón de Micrófono / Enviar */
+        .wa-mic-btn {
+            width: 48px;
+            height: 48px;
+            background: #00a884;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            border: none;
+            transition: transform 0.2s, background 0.2s;
+            flex-shrink: 0;
+            margin-bottom: 2px; /* Alineación visual */
+        }
+
+        /* Animación al cambiar de icono */
+        .wa-mic-btn i {
+            transition: transform 0.2s;
+        }
+
+        /* Cambio de color cuando es "Enviar" */
+        .wa-mic-btn.is-send {
+            background: #008f6f; /* Un poco más oscuro o igual */
+        }
         #waQuickReplies { background: transparent; padding: 8px 15px; display: flex; gap: 8px; overflow-x: auto; justify-content: center; display: none; }
         .quick-btn { background-color: #202c33; border: 1px solid #37404a; color: #00a884; padding: 6px 16px; border-radius: 18px; font-size: 13px; font-weight: 500; cursor: pointer; flex-shrink: 0; }
         .quick-btn:hover { background-color: #2a3942; }
@@ -150,6 +231,51 @@
             .wa-chat-col.mobile-open { transform: translateX(0); }
             .wa-back-btn { display: block; }
         }
+
+        /* --- VISOR DE FLUJO VERTICAL (CMD MODE) --- */
+        #waFlowDrawer {
+            position: absolute;
+            bottom: 60px; /* Justo encima del input */
+            left: 0;
+            width: 100%;
+            max-height: 0; /* Oculto por defecto */
+            background: var(--bg-sidebar);
+            transition: max-height 0.3s ease;
+            overflow-y: auto;
+            border-top: 1px solid var(--border);
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+
+        #waFlowDrawer.open {
+            max-height: 250px; /* Altura cuando se abre */
+            padding: 10px 0;
+        }
+
+        .flow-item-row {
+            padding: 8px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 3px solid transparent;
+            color: var(--text-muted);
+        }
+
+        .flow-item-row:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .flow-item-row.past { opacity: 0.6; }
+        .flow-item-row.current {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--primary);
+            border-left-color: var(--primary);
+            font-weight: bold;
+        }
+        .flow-item-row.future { color: var(--text-main); }
 
         /* Utils & Modals */
         .step-hidden { display: none !important; }
@@ -284,18 +410,29 @@
                         </div>
                     </div>
 
+                    <div id="waFlowDrawer"></div>
+
                     <div id="waQuickReplies"></div>
 
                     <div class="wa-input-area" id="waInputArea" style="display:none;">
-                        <i class="far fa-smile" style="color:#8696a0; font-size:1.3rem; cursor:pointer; margin-right:8px;"></i>
-                        <i class="fas fa-plus" style="color:#8696a0; font-size:1.3rem; cursor:pointer; margin-right:8px;"></i>
-                        <input type="text" id="waInput" placeholder="Mensaje" onkeyup="if(event.key==='Enter') sendWaMsg()">
-                        <div style="margin-left:8px;">
-                            <button onclick="sendWaMsg()" class="wa-mic-btn">
-                                <i class="fas fa-paper-plane" style="font-size:1rem; margin-right:2px;"></i>
-                            </button>
+    
+                        <div class="wa-input-pill" id="waInputPill">
+                            <input type="text" id="waInput" placeholder="Mensaje" 
+                                   autocomplete="off"
+                                   oninput="handleInputTyping()"
+                                   onkeyup="if(event.key==='Enter') sendWaMsg()">
+        
+                            <div class="wa-input-icons">
+                                <i class="fas fa-paperclip" title="Adjuntar archivo" onclick="document.getElementById('imgUpload').click()"></i>
+                                <i class="fas fa-camera" title="Cámara"></i>
+                                <i class="fas fa-bolt" onclick="toggleFlowDrawer()" title="Respuestas Rápidas"></i>
+                            </div>
                         </div>
-                     </div>
+
+                        <button class="wa-mic-btn" id="waMainBtn" onclick="handleMainBtn()">
+                            <i class="fas fa-microphone" id="waMainIcon"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -308,7 +445,7 @@
                         <b id="jumpTargetStep" style="color:var(--text-main);"></b>?
                     </p>
                     <div style="display:flex; gap:10px;">
-                        <button onclick="executeJump()" class="btn-primary">Confirmar</button>
+                        <button onclick="executeJump(this)" class="btn-primary">Confirmar</button>
                         <button onclick="document.getElementById('jumpModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
                     </div>
                 </div>
@@ -1162,9 +1299,36 @@
         const txt = inp.value.trim();
         if(!txt || !currentChatPhone) return;
 
-        addBubble(txt, true);
+        // Limpiamos input visualmente rápido
         inp.value = '';
+        handleInputTyping();
+        document.getElementById('waFlowDrawer').classList.remove('open'); // Cerrar menú si estaba abierto
 
+        // 🔥 DETECTOR DE COMANDO MAGICOS (>> PASO)
+        if (txt.startsWith('>> ')) {
+            const targetStep = txt.replace('>> ', '').trim();
+            
+            // 1. Feedback visual inmediato en el chat (Solo local)
+            addBubble(`🔄 <i>Forzando paso: ${targetStep}</i>`, true);
+
+            // 2. Ejecutar Acción CRM (Reciclamos tu lógica de movimiento)
+            try {
+                await fetch(`${API_BASE}/api/crm/execute`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ phone: currentChatPhone, stepId: targetStep })
+                });
+                // Recargar para ver el cambio de estado
+                setTimeout(loadActivity, 500);
+            } catch (e) {
+                showToast("❌ Error al cambiar paso");
+            }
+            return; // ⛔ IMPORTANTE: Aquí cortamos para NO enviar mensaje a WhatsApp
+        }
+
+        // --- ENVÍO NORMAL (Si no es comando) ---
+        addBubble(txt, true);
+        
         await fetch(`${API_BASE}/api/send-message`, {
             method:'POST',
             headers:{'Content-Type':'application/json'},
@@ -1199,14 +1363,28 @@
 
     async function executeJump() {
         if(!pendingJumpStep || !currentChatPhone) return;
-        await fetch(`${API_BASE}/api/crm/execute`, {
-            method:'POST', 
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ phone: currentChatPhone, stepId: pendingJumpStep })
-        });
+
+        // 1. 🔥 ¡CERRAR AL INSTANTE! 🔥
         document.getElementById('jumpModal').classList.remove('active');
-        addBubble(`🔄 Sistema: Usuario movido a ${pendingJumpStep}`, true);
-        loadActivity();
+        
+        // Opcional: Mostrar un toast para que sepa que sí pasó algo
+        showToast("🔄 Procesando...");
+
+        try {
+            // 2. La petición se hace mientras la ventana ya está cerrada
+            await fetch(`${API_BASE}/api/crm/execute`, {
+                method:'POST', 
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ phone: currentChatPhone, stepId: pendingJumpStep })
+            });
+
+            // 3. Cuando el servidor termine, actualizamos el chat
+            addBubble(`🔄 Sistema: Usuario movido a ${pendingJumpStep}`, true);
+            loadActivity();
+        } catch (e) {
+            console.error(e);
+            alert("❌ Error de conexión: No se pudo mover al usuario.");
+        }
     }
 
     function askCrmAction(phone, step, label, clientName) {
@@ -1353,6 +1531,117 @@
             if (s.options) s.options.forEach(o => { if(o.next_step) targetedSteps.add(o.next_step); });
         });
         return allSteps.filter(s => !targetedSteps.has(s));
+    }
+
+    // --- LÓGICA DE FLUJO VERTICAL ---
+    function getLinearFlowSequence() {
+        const steps = Object.keys(flow);
+        if(steps.length === 0) return [];
+        
+        let seq = [];
+        // Intentamos seguir el hilo lógico comenzando por BIENVENIDA o el primero que hallemos
+        let curr = 'BIENVENIDA'; 
+        if(!flow[curr]) curr = steps[0]; // Fallback
+
+        let safety = 0;
+        
+        // Rastreamos hacia adelante
+        while(curr && flow[curr] && safety < 100) {
+            if(!seq.includes(curr)) seq.push(curr);
+            
+            // Lógica para adivinar el siguiente paso "natural"
+            let next = flow[curr].next_step;
+            
+            // Si no tiene next_step directo, miramos sus opciones (botones)
+            if(!next && flow[curr].options && flow[curr].options.length > 0) {
+                // Tomamos la primera opción como el camino "principal"
+                next = flow[curr].options[0].next_step;
+            }
+            
+            // Evitar bucles infinitos
+            if(seq.includes(next)) break; 
+            
+            curr = next;
+            safety++;
+        }
+
+        // Agregamos pasos huérfanos que no se alcanzaron (para que aparezcan al final)
+        steps.forEach(s => {
+            if(!seq.includes(s)) seq.push(s);
+        });
+
+        return seq;
+    }
+
+    // 2. Renderizador del Cajón
+    function toggleFlowDrawer() {
+        const drawer = document.getElementById('waFlowDrawer');
+        if(drawer.classList.contains('open')) {
+            drawer.classList.remove('open');
+        } else {
+            renderFlowDrawerContent();
+            drawer.classList.add('open');
+        }
+    }
+
+    function renderFlowDrawerContent() {
+        if(!currentChatPhone) return;
+        const user = users.find(u => getCleanPhone(u.phone) === getCleanPhone(currentChatPhone));
+        const currentStep = user ? user.current_step : '';
+        const sequence = getLinearFlowSequence();
+        const drawer = document.getElementById('waFlowDrawer');
+        
+        drawer.innerHTML = '';
+        
+        let currentIndex = sequence.indexOf(currentStep);
+        if(currentIndex === -1) currentIndex = -1; // No encontrado
+
+        sequence.forEach((stepId, index) => {
+            let statusClass = 'future';
+            let icon = '<i class="far fa-circle"></i>';
+
+            if (stepId === currentStep) {
+                statusClass = 'current';
+                icon = '<i class="fas fa-dot-circle"></i>';
+            } else if (index < currentIndex && currentIndex !== -1) {
+                statusClass = 'past';
+                icon = '<i class="fas fa-check-circle"></i>';
+            }
+
+            const div = document.createElement('div');
+            div.className = `flow-item-row ${statusClass}`;
+            div.onclick = () => injectStepCommand(stepId);
+            div.innerHTML = `
+                <span>${icon} ${stepId}</span>
+                <i class="fas fa-reply" style="opacity:0.5; font-size:0.8rem;"></i>
+            `;
+            drawer.appendChild(div);
+        });
+
+        // Auto-scroll para centrar el paso actual
+        setTimeout(() => {
+            const currentEl = drawer.querySelector('.current');
+            if(currentEl) {
+                currentEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }, 100);
+    }
+
+    // 3. Inyectar Comando en el Input
+    function injectStepCommand(stepId) {
+        const inp = document.getElementById('waInput');
+        
+        // 1. Escribimos el comando
+        inp.value = `>> ${stepId}`; 
+        
+        // 2. 🔥 ESTO FALTABA: Avisar que hubo un cambio para activar la animación
+        handleInputTyping(); 
+
+        // 3. Poner el foco en el input
+        inp.focus();
+        
+        // Opcional: Cerrar el menú automáticamente al elegir
+        toggleFlowDrawer(); 
     }
 
     // --- EDITOR DE PASOS ---
@@ -1695,6 +1984,59 @@
         phoneToDelete = phone;
         document.getElementById('delContactName').innerText = name || phone;
         document.getElementById('deleteConfirmModal').classList.add('active');
+    }
+
+    // --- LÓGICA VISUAL DE BARRA WHATSAPP ---
+
+    function handleInputTyping() {
+        const inp = document.getElementById('waInput');
+        const pill = document.getElementById('waInputPill');
+        const btn = document.getElementById('waMainBtn');
+        const icon = document.getElementById('waMainIcon');
+        
+        const text = inp.value; // No usamos trim() aquí para detectar espacios también
+
+        if (text.length > 0) {
+            // ESTADO: ESCRIBIENDO
+            if (!pill.classList.contains('typing')) {
+                pill.classList.add('typing'); // Oculta iconos
+                
+                // Cambiar Micrófono -> Avión
+                btn.classList.add('is-send');
+                icon.className = 'fas fa-paper-plane';
+                // Pequeña animación de entrada
+                icon.style.transform = 'scale(0)';
+                setTimeout(() => icon.style.transform = 'scale(1)', 50);
+            }
+        } else {
+            // ESTADO: VACÍO
+            if (pill.classList.contains('typing')) {
+                pill.classList.remove('typing'); // Muestra iconos
+                
+                // Cambiar Avión -> Micrófono
+                btn.classList.remove('is-send');
+                icon.className = 'fas fa-microphone';
+                icon.style.transform = 'scale(0)';
+                setTimeout(() => icon.style.transform = 'scale(1)', 50);
+            }
+        }
+    }
+
+    // Maneja el clic en el botón grande
+    function handleMainBtn() {
+        const icon = document.getElementById('waMainIcon');
+        
+        // Si es el avión de papel, enviamos
+        if (icon.classList.contains('fa-paper-plane')) {
+            sendWaMsg();
+            // Reseteamos la vista manualmente después de enviar
+            document.getElementById('waInputPill').classList.remove('typing');
+            document.getElementById('waMainBtn').classList.remove('is-send');
+            document.getElementById('waMainIcon').className = 'fas fa-microphone';
+        } else {
+            // Si es micrófono
+            showToast("🎤 Grabación de voz no disponible");
+        }
     }
 
     async function executeDelete() {
