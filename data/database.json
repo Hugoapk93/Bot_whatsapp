@@ -14012,7 +14012,7 @@
       "phone": "65356567699524",
       "jid": "65356567699524@s.whatsapp.net",
       "name": "Hugo Alberto Martinez García",
-      "bot_enabled": true,
+      "bot_enabled": false,
       "last_synced": "2026-01-21T17:04:43.272Z",
       "added_at": "2026-01-15T22:06:26.075Z"
     },
@@ -14105,6 +14105,14 @@
       "keys": {
         "p256dh": "BI16k6usMFmH7bZpdkKXsvzP9xAJUJeyPQDl_qpZO7y_L0T5-2HtUrx4zN42QGh-zwhIWyweSRE_qthwcg3sUWY",
         "auth": "SebgpFb-MwEipHpUzIl43Q"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/dax2ItyWwSI:APA91bH4qcbAdiStbhQQJFcgqGG4dJVVm-2jrhJu-s_fy-ojPup2rFtUbkxK7H7DBhk2nPIZG_ymhmkZy8zErQTbOB8_O4j03vQyNe3bIrMmSfFfjF3fcpfIKEip9JwNPr0f9_mQSICH",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BDWheI8nLUGOIfEOj0OwIXKoqxR6NVhH7sF85uBT0ULLV5QSF1rU3atzRJgIDw2lLvdf2agmr0ORJZzwrKNQVf8",
+        "auth": "qQeW_nij5b2nRv2lz-4E8g"
       }
     }
   ],

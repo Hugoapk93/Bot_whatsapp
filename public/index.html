@@ -106,8 +106,57 @@
         .wa-chat-item.active { background: #2a3942; }
         .wa-avatar { width: 45px; height: 45px; background: #6a7175; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 12px; flex-shrink: 0; color: #fff; overflow:hidden;}
         .wa-chat-info { flex: 1; overflow: hidden; }
-        .wa-name { font-weight: 500; color: #e9edef; font-size: 1rem; margin-bottom: 3px; }
-        .wa-meta { font-size: 0.8rem; color: #8696a0; }
+        /* --- AJUSTES LISTA DE CHATS (Estilo WhatsApp) --- */
+
+        .wa-chat-info { 
+            flex: 1; 
+            overflow: hidden; 
+            display: flex;           /* Flexbox vertical */
+            flex-direction: column;  /* Uno debajo del otro */
+            justify-content: center;
+        }
+
+        /* Fila superior: Nombre (Izquierda) --- Hora (Derecha) */
+        .wa-row-top {
+            display: flex;
+            justify-content: space-between; /* LA CLAVE: Separa los extremos */
+            align-items: center;
+            margin-bottom: 3px;
+        }
+
+        .wa-name {
+            font-weight: 500;
+            color: #e9edef;
+            font-size: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin: 0;
+        }
+
+        .wa-time-meta {
+            font-size: 0.75rem;
+            color: #8696a0; /* Gris más claro */
+            white-space: nowrap;
+            margin-left: 10px;
+            font-weight: 400;
+        }
+
+        /* Fila inferior: Último mensaje */
+        .wa-row-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wa-meta {
+            font-size: 0.85rem;
+            color: #8696a0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 90%;
+        }
 
         /* Columna Derecha: Chat Area */
         .wa-chat-col { flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative; }
@@ -307,6 +356,12 @@
         .flow-nav span { color: var(--text-muted); cursor: pointer; font-weight: 500; }
         .flow-nav span:hover { color: var(--primary); text-decoration: underline; }
         .flow-nav span:last-child { color: var(--text-main); cursor: default; font-weight: 700; text-decoration: none; }
+        #deleteApptModal, 
+        #deleteConfirmModal, 
+        #jumpModal, 
+        #actionConfirmModal {
+            z-index: 4000 !important; /* Más alto que el 3000 estándar */
+        }
     </style>
 </head>
 <body>
@@ -445,7 +500,8 @@
                         <b id="jumpTargetStep" style="color:var(--text-main);"></b>?
                     </p>
                     <div style="display:flex; gap:10px;">
-                        <button onclick="executeJump(this)" class="btn-primary">Confirmar</button>
+                        <button onclick="executeJump(this)" class="btn-primary" style="flex:1;">Confirmar</button>
+    
                         <button onclick="document.getElementById('jumpModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
                     </div>
                 </div>
@@ -903,16 +959,7 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW Fail', err));
         }
-        
-        // Fix teclado móvil
-        const simInput = document.getElementById('simInput'); // Si existe (usado en simulador antiguo, opcional)
-        if (simInput) {
-            simInput.addEventListener('focus', () => {
-                setTimeout(() => window.scrollTo(0, 0), 300);
-            });
-        }
     };
-
 
     document.body.addEventListener('click', function() {
         if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
@@ -1036,7 +1083,7 @@
 
     function renderChatList(list) {
         const c = document.getElementById('waChatList');
-        if(!c) return; // Seguridad
+        if(!c) return; 
         c.innerHTML = '';
         
         list.sort((a,b) => new Date(b.last_active) - new Date(a.last_active));
@@ -1044,9 +1091,13 @@
         list.forEach(u => {
             if(u.phone === 'TEST_SIMULADOR') return;
             
+            // 1. Datos
             const name = u.savedName || u.history?.nombre || u.history?.cliente || u.history?.usuario || u.phone;
-            const time = new Date(u.last_active).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             
+            // 🔥 CAMBIO: Usamos el formateador inteligente
+            const timeDisplay = formatSmartDate(u.last_active);
+            
+            // 2. Estados y Clases
             const isSelected = selectedChats.includes(u.phone);
             const activeClass = (currentChatPhone === u.phone) ? 'active' : '';
             const selectedClass = isSelected ? 'selected' : '';
@@ -1062,22 +1113,28 @@
             div.className = `wa-chat-item ${activeClass} ${selectedClass}`;
             div.oncontextmenu = function(e) { e.preventDefault(); return false; }; 
             
+            // 🔥 CAMBIO: Nueva estructura HTML para separar nombre y hora
             div.innerHTML = `
                 <div class="wa-avatar" style="position:relative; overflow:visible;">
                     ${name[0].toUpperCase()} 
                     ${checkIcon}
                 </div>
+                
                 <div class="wa-chat-info">
-                    <div class="wa-row">
-                        <span class="wa-name">${name}</span>
-                        <span class="wa-meta">${time}</span>
+                    <div class="wa-row-top">
+                        <span class="wa-name" title="${name}">${name}</span>
+                        <span class="wa-time-meta">${timeDisplay}</span>
                     </div>
-                    <div class="wa-msg-preview" style="color:#8696a0;">
-                        ${statusIcon} <span style="color:var(--primary); font-size:0.75rem; margin-right:5px;">[${u.current_step}]</span> ${lastMsg}
+                    
+                    <div class="wa-msg-preview">
+                        ${statusIcon} 
+                        <span style="color:var(--primary); font-size:0.75rem; margin:0 5px;">[${u.current_step}]</span> 
+                        <span style="overflow:hidden; text-overflow:ellipsis;">${lastMsg}</span>
                     </div>
                 </div>
             `;
 
+            // --- Lógica de Eventos (INTACTA) ---
             const startPress = (e) => {
                 if (e.type === 'mousedown' && e.button !== 0) return;
                 ignoreClick = false;
@@ -2071,6 +2128,31 @@
         showToast('Contacto eliminado');
     }
 
+    // --- FORMATEADOR DE FECHA ESTILO WHATSAPP ---
+    function formatSmartDate(isoString) {
+        if (!isoString) return '';
+        const date = new Date(isoString);
+        const now = new Date();
+
+        // Creamos fechas sin horas para comparar solo días
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+        if (msgDate.getTime() === today.getTime()) {
+            // ES HOY: Mostrar solo hora (Ej: 14:30)
+            return date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }); // O true si prefieres AM/PM
+        } else if (msgDate.getTime() === yesterday.getTime()) {
+            // ES AYER
+            return 'Ayer';
+        } else {
+            // FECHA ANTERIOR (Ej: 21/01/2026)
+            return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+    }
+
     // --- NAVEGACIÓN Y MENÚ ---
     function toggleMenu() { 
         document.getElementById('sidebar').classList.toggle('active'); 
@@ -2093,7 +2175,7 @@
         // --- CARGADORES DE CADA VISTA ---
         if(v === 'agenda') renderCalendar();
         if(v === 'activity') loadActivity();
-        if(v === 'keywords') loadKeywords(); // <--- AGREGADO
+        if(v === 'keywords') loadKeywords();
 
         // --- TÍTULOS ---
         const titles = { 
@@ -2101,7 +2183,7 @@
             flow:'FLUJO', 
             agenda:'AGENDA', 
             settings:'AJUSTES',
-            keywords: 'RESPUESTAS RÁPIDAS' // <--- AGREGADO
+            keywords: 'RESPUESTAS RÁPIDAS'
         };
         
         const titleEl = document.getElementById('pageTitle');
