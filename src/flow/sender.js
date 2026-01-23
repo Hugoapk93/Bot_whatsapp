@@ -100,10 +100,13 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
              const tituloPush = isClosed ? "⚠️ Solicitud (Fuera de Horario)" : "⚠️ Solicitud Pendiente";
              
+             // 🔥 CAMBIO: Generamos el enlace directo al chat
+             const targetUrl = `/#activity?chat=${cleanClientPhone}`;
+
              global.sendPushNotification(
-                 tituloPush, 
+                 tituloPush,
                  `Cliente: ${cleanClientPhone}\n${variablesResumen || '(Ver detalles en Monitor)'}`,
-                 "/#activity"
+                 targetUrl
              );
         }
     }

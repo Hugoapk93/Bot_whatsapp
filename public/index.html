@@ -863,14 +863,25 @@
                     document.getElementById('mainApp').classList.add('visible');
 
                     loadAll();
-                    loadActivity();
+                    // 🔥 AGREGADO: 'await' para asegurar que carguen los chats antes de intentar abrir uno
+                    await loadActivity();
 
+                    // --- AGENDA (INTACTO, NO SE TOCA) ---
                     if (window.location.hash === '#agenda') {
                         nav('agenda'); 
                         history.replaceState(null, null, ' ');
                     }
-                    else if (window.location.hash === '#activity') {
+                    // --- ACTIVITY (MODIFICADO PARA ABRIR CHAT) ---
+                    else if (window.location.hash.startsWith('#activity')) {
+                        const hash = window.location.hash;
                         nav('activity');
+                        
+                        // Si la URL trae "?chat=521...", abrimos ese chat específico
+                        if (hash.includes('chat=')) {
+                            const phone = hash.split('chat=')[1];
+                            setTimeout(() => openWaChat(phone), 200);
+                        }
+
                         history.replaceState(null, null, ' ');
                     }
 
@@ -901,6 +912,7 @@
             });
         }
     };
+
 
     document.body.addEventListener('click', function() {
         if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
