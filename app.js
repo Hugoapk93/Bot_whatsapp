@@ -14,6 +14,10 @@ const bodyParser = require('body-parser');
 const { getKeywords, saveKeyword, deleteKeyword } = require('./src/database');
 const { findKeywordMatch } = require('./src/keywords');
 const { handleMessage, sendStepMessage } = require('./src/flow');
+
+// 🔥 NUEVO IMPORT: SCHEDULER 🔥
+const { initScheduler } = require('./src/flow/scheduler'); 
+
 const {
     initializeDB,
     getFullFlow,
@@ -224,6 +228,10 @@ async function connectToWhatsApp() {
             globalQR = null;
             reportToTower();
             if (global.io) global.io.emit('status', { status: 'connected' });
+            
+            // 🔥 INICIAR CRON DE AGENDA 🔥
+            // Esto activa el revisor de citas automático
+            initScheduler(sock);
         }
     });
 

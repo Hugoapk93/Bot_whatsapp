@@ -411,7 +411,7 @@
             <div id="view-activity" class="view">
                 <div class="wa-list-col">
                     <div id="waHeaderSearch" class="wa-search-bar" style="display:block;">
-                        <input type="text" class="wa-search-input" placeholder="🔍 Buscar chat..." onkeyup="filterChats(this.value)">
+                        <input type="text" class="wa-search-input" placeholder="🔍 Buscar..." onkeyup="filterChats(this.value)">
                     </div>
 
                     <div id="waHeaderSelection" class="wa-selection-header" style="display:none;">
@@ -517,7 +517,7 @@
                             </p>
                         </div>
                         <button class="btn-primary" onclick="openKeywordModal()" style="width:auto; padding:10px 20px;">
-                            <i class="fas fa-plus"></i> Nueva Regla
+                            <i class="fas fa-plus"></i> Nuevo
                         </button>
                     </div>
 
@@ -538,7 +538,7 @@
                     <textarea id="kwAnswer" rows="5" placeholder="El precio es de $500 pesos e incluye..."></textarea>
 
                     <div style="display:flex; gap:10px; margin-top:20px;">
-                        <button onclick="saveKeywordRule()" class="btn-primary" style="flex:1;">Guardar Regla</button>
+                        <button onclick="saveKeywordRule()" class="btn-primary" style="flex:1;">Guardar</button>
                         <button onclick="document.getElementById('keywordModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
                     </div>
                 </div>
@@ -559,6 +559,42 @@
                     <div class="calendar-grid"><div class="weekday">DOM</div><div class="weekday">LUN</div><div class="weekday">MAR</div><div class="weekday">MIÉ</div><div class="weekday">JUE</div><div class="weekday">VIE</div><div class="weekday">SÁB</div></div>
                     <div id="calendarDays" class="calendar-grid"></div>
                 </div>
+
+                <div class="card" style="border-left: 4px solid var(--primary);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h3 style="margin:0; display:flex; align-items:center; gap:10px;">
+                                <i class="fas fa-robot" style="color:var(--primary);"></i> Recordatorios Automáticos
+                            </h3>
+                            <p style="margin:5px 0 0 0; color:var(--text-muted); font-size:0.85rem;">
+                                
+                            </p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="schActive">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; margin-top:20px;">
+                        <div>
+                            <label style="font-size:0.85rem; color:var(--text-muted);">Hora</label>
+                            <input type="time" id="schTime">
+                        </div>
+                        <div>
+                            <label style="font-size:0.85rem; color:var(--text-muted);">Mover a</label>
+                            <select id="schStepSelect">
+                                <option value="">-- Selecciona un paso --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="text-align:right; margin-top:10px;">
+                        <button onclick="saveSchedulerConfig()" class="btn-primary" style="width:auto; padding:8px 20px;">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <div id="view-settings" class="view view-padding">
@@ -574,7 +610,7 @@
                     </div>
                     <label style="margin-top:10px; display:block;">Mensaje de Ausencia</label>
                     <textarea id="schedMsg" rows="3" placeholder="No estamos disponibles..."></textarea>
-                    <button class="btn-primary" onclick="saveSettings()" style="margin-top:15px;">Guardar Cambios</button>
+                    <button class="btn-primary" onclick="saveSettings()" style="margin-top:15px;">Guardar</button>
                 </div>
             </div>
         </div>
@@ -674,7 +710,7 @@
             <h3>¿Cerrar Sesión?</h3>
             <p style="color:var(--text-muted); margin-bottom:20px;">Se desconectará el monitor y dejarás de recibir alertas.</p>
             <div style="display:flex; gap:10px;">
-                <button onclick="confirmLogout()" class="btn-primary" style="background:var(--danger); flex:1;">Sí, Salir</button>
+                <button onclick="confirmLogout()" class="btn-primary" style="background:var(--danger); flex:1;">Salir</button>
                 <button onclick="document.getElementById('logoutModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
             </div>
         </div>
@@ -1974,6 +2010,69 @@
         renderCalendar();
     }
 
+    // 1. Cargar configuración al abrir Agenda
+    async function loadSchedulerConfig() {
+        try {
+            // Llenar el Select con los pasos existentes en 'flow'
+            const select = document.getElementById('schStepSelect');
+            select.innerHTML = '<option value="">-- Selecciona un paso --</option>';
+            
+            // Ordenamos los pasos alfabéticamente
+            Object.keys(flow).sort().forEach(stepKey => {
+                const opt = document.createElement('option');
+                opt.value = stepKey;
+                opt.innerText = stepKey;
+                select.appendChild(opt);
+            });
+
+            // Obtener configuración del servidor
+            const settings = await (await fetch(`${API_BASE}/api/settings`)).json();
+            
+            if (settings.scheduler) {
+                document.getElementById('schActive').checked = settings.scheduler.active || false;
+                document.getElementById('schTime').value = settings.scheduler.time || "06:00";
+                
+                if (settings.scheduler.target_step) {
+                    select.value = settings.scheduler.target_step;
+                }
+            }
+        } catch (e) {
+            console.error("Error cargando scheduler config", e);
+        }
+    }
+
+    // 2. Guardar configuración
+    async function saveSchedulerConfig() {
+        const active = document.getElementById('schActive').checked;
+        const time = document.getElementById('schTime').value;
+        const targetStep = document.getElementById('schStepSelect').value;
+
+        if (active && (!time || !targetStep)) {
+            return showToast("❌ Faltan datos (Hora o Paso)");
+        }
+
+        const payload = {
+            scheduler: {
+                active: active,
+                time: time,
+                target_step: targetStep,
+                // Mantenemos last_run vacío o el que ya estaba para no resetearlo hoy si no quieres
+                last_run: "" 
+            }
+        };
+
+        try {
+            await fetch(`${API_BASE}/api/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            showToast("✅ Automatización Guardada");
+        } catch (e) {
+            showToast("Error al guardar");
+        }
+    }
+
     // --- CONTACTOS Y UTILIDADES ---
     let phoneToDelete = null;
     let isEditingMode = false;
@@ -2163,9 +2262,18 @@
         document.getElementById('sidebarOverlay').classList.remove('active');
 
         // --- CARGADORES DE CADA VISTA ---
-        if(v === 'agenda') renderCalendar();
+        
+        // 1. Si es Monitor
         if(v === 'activity') loadActivity();
+        
+        // 2. Si es Respuestas
         if(v === 'keywords') loadKeywords();
+        
+        // 3. Si es Agenda (AQUÍ ESTABA EL ERROR, AHORA ESTÁ UNIFICADO)
+        if(v === 'agenda') {
+            renderCalendar();       // Carga el calendario UNA sola vez
+            loadSchedulerConfig();  // Carga la configuración del bot
+        }
 
         // --- TÍTULOS ---
         const titles = { 
