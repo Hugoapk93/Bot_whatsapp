@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-// Importamos las funciones de TU base de datos y del sender
 const { getSettings, saveSettings, updateUser, getUser } = require('../database');
 const { sendStepMessage } = require('./sender');
 
@@ -75,9 +74,11 @@ const checkScheduler = async (sock) => {
                     if (dbPhone) {
                         console.log(`🚀 Moviendo a ${appt.name} al paso: ${config.target_step}`);
 
-                        // A. Actualizar estado en DB (usando tu función updateUser)
-                        await updateUser(dbPhone, { current_step: config.target_step });
-                        
+                        // A. Mover y REACTIVAR el bot
+                        await updateUser(dbPhone, { 
+                            current_step: config.target_step,
+                            bot_enabled: true });
+
                         // B. Obtener datos frescos del usuario
                         const userData = getUser(dbPhone) || { phone: dbPhone };
 
