@@ -2,69 +2,15 @@
   "users": [
     {
       "phone": "65356567699524",
-      "current_step": "RECHAZAR",
+      "current_step": "DIRECCIÓN",
       "history": {
         "nombre": "Hugo Alberto Martinez García",
         "nacimiento": "27/12/1993",
         "dirección": "Hacienda del sol #100"
       },
       "jid": "65356567699524@lid",
-      "last_active": "2026-01-23T01:22:36.375Z",
+      "last_active": "2026-01-23T17:56:29.721Z",
       "messages": [
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1769017577173,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769017634574,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1769017636779,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1769017642140,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1769017644348,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Cuales son los requisitos?",
-          "fromMe": false,
-          "timestamp": 1769017650136,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Los requisitos son chtm",
-          "fromMe": true,
-          "timestamp": 1769017650288,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1769017653329,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1769047934397,
-          "stepId": "BIENVENIDA"
-        },
         {
           "text": "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)",
           "fromMe": false,
@@ -418,6 +364,60 @@
           "fromMe": true,
           "timestamp": 1769131356375,
           "stepId": "RECHAZAR"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1769190900788,
+          "stepId": "RECHAZAR"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1769190903302,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1769190905912,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+          "fromMe": true,
+          "timestamp": 1769190908138,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hugo Alberto Martinez García",
+          "fromMe": false,
+          "timestamp": 1769190911636,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
+          "fromMe": true,
+          "timestamp": 1769190913758,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "27/12/1993",
+          "fromMe": false,
+          "timestamp": 1769190941878,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+          "fromMe": true,
+          "timestamp": 1769190944160,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1769190989721,
+          "stepId": "DIRECCIÓN"
         }
       ],
       "name": "Hugo Alberto Martinez García"
@@ -14100,19 +14100,19 @@
   },
   "subscriptions": [
     {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/eLewww8ezgE:APA91bFxC7vO4YSOvK_7KmWct654jzSTq_DGvLkfBVKHzkMl3NxgOIGrmW5KkEe24xw_2-01njCYUgjRh3FDlgHTmbGus2xKHCY-eFp08c9DpnCvIhGu4BBwxEurLeOmLBB3itmZOQGe",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/d38M4cTrVFo:APA91bG2FvP1noNiQZ8QfpFU3u6u6RW8w5foCQd8ylngas0wZ-ZhE_YAcxvhfKqF2_LNFk7kZw5bcuU0aSMotzZO5fOZrADCohkBVam9OiHfw-Xr82YwG-MiBZA3AoFlYg0bOuhtgsqH",
       "expirationTime": null,
       "keys": {
-        "p256dh": "BI16k6usMFmH7bZpdkKXsvzP9xAJUJeyPQDl_qpZO7y_L0T5-2HtUrx4zN42QGh-zwhIWyweSRE_qthwcg3sUWY",
-        "auth": "SebgpFb-MwEipHpUzIl43Q"
+        "p256dh": "BEDl_gIGwSGC09VZH2v08JEXbA1sMTVhCVlp9ntX6lpNR-vFmKzG9IAHvP_9YQT6TcTjwqLeh5ZxlnSbKHeJcMQ",
+        "auth": "K4Wj20DojiRC7HZTzI3_4g"
       }
     },
     {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/dax2ItyWwSI:APA91bH4qcbAdiStbhQQJFcgqGG4dJVVm-2jrhJu-s_fy-ojPup2rFtUbkxK7H7DBhk2nPIZG_ymhmkZy8zErQTbOB8_O4j03vQyNe3bIrMmSfFfjF3fcpfIKEip9JwNPr0f9_mQSICH",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/cYEAGjsVyXs:APA91bHID1mSx6yaehdFgQzA-n9sCHpkCOM1AsE-rQHeSXbvWZs1u_RVTHjTmXWG6u9lNPZZ3PvHtjHUsZNakuk_VKgFhlBDCOTzFoN87xO1zuwkG5j1fiOhuZv6kb6bABJz-jypRtIM",
       "expirationTime": null,
       "keys": {
-        "p256dh": "BDWheI8nLUGOIfEOj0OwIXKoqxR6NVhH7sF85uBT0ULLV5QSF1rU3atzRJgIDw2lLvdf2agmr0ORJZzwrKNQVf8",
-        "auth": "qQeW_nij5b2nRv2lz-4E8g"
+        "p256dh": "BA9hHUqmgsRSSfYZWi_m_Ex0w9iVvhtlnAsc4FHTYFdd7cQflkMHr1wez-eru-Kx715RyfcgC5SHo81ms36Esi4",
+        "auth": "vW-Gn9jz-rbcsnwxXnP7RQ"
       }
     }
   ],

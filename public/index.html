@@ -779,16 +779,6 @@
     socket.on('disconnect', () => { updateConnStatus(false); });
 
     socket.on('message', (data) => {
-        // 1. Notificaciones (Igual que antes)
-        if (!data.fromMe && document.visibilityState === 'visible') {
-            showInAppNotify(data.text || "📷 Archivo recibido");
-            const audio = document.getElementById('alertSound');
-            if(audio) { audio.volume = 0.5; audio.play().catch(()=>{}); }
-        } else if (!data.fromMe && Notification.permission === 'granted') {
-            new Notification("Nuevo Mensaje", { body: data.text || "Archivo", icon: "logo.svg" });
-        }
-
-        // 2. 🔥 ACTUALIZACIÓN INTELIGENTE (SOPORTE LID/TELÉFONO) 🔥
         if (currentChatPhone) {
             // Limpiamos los IDs para evitar problemas de formato
             const currentKey = String(currentChatPhone).replace(/\D/g, ''); // Chat abierto

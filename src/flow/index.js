@@ -31,17 +31,36 @@ const handleMessage = async (sock, msg) => {
         const timestamp = new Date().toISOString();
         let isFlowReset = false;
 
+        // Lógica de creación / actualización
         if (!user?.phone) {
             console.log(`✨ Nuevo usuario: ${dbKey}`);
             await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
             user = getUser(dbKey);
             isFlowReset = true;
-            if (global.sendPushNotification) global.sendPushNotification("🔔 Nuevo Cliente", `${dbKey}`, "/#activity");
+            // (Opcional: Dejamos la notificación de nuevo usuario o la quitamos si la de abajo es suficiente)
         } else {
             await updateUser(dbKey, { last_active: timestamp, jid: remoteJid });
         }
 
         if (user.blocked) return;
+
+        // =================================================================
+        // 🔥 AQUÍ AGREGAMOS LA NOTIFICACIÓN PUSH PARA TODOS LOS MENSAJES
+        // =================================================================
+        if (global.sendPushNotification) {
+            // Usamos el nombre guardado si existe, si no, el número
+            const clientName = user.history?.nombre || user.history?.cliente || user.history?.name || dbKey;
+            
+            // Usamos el enlace directo al chat que creamos antes
+            const targetUrl = `/#activity?chat=${dbKey}`;
+
+            global.sendPushNotification(
+                `💬 ${clientName}`,  // Título: Nombre del cliente
+                text,                // Cuerpo: El mensaje que escribió
+                targetUrl            // Link: Abre directo el chat
+            );
+        }
+        // =================================================================
 
         // Reset por Inactividad
         const lastActive = new Date(user.last_active || timestamp).getTime();
@@ -89,24 +108,11 @@ const handleMessage = async (sock, msg) => {
 
         // 🔥 AQUÍ ESTÁ LA MAGIA MODULAR 🔥
         switch (currentStepConfig.type) {
-            case 'menu':
-                nextStepId = await handleMenuStep(currentStepConfig, text, remoteJid, sock);
-                break;
-
-            case 'input':
-                nextStepId = await handleInputStep(currentStepConfig, text, user, dbKey, remoteJid, sock);
-                break;
-
-            case 'cita':
-                nextStepId = await handleCitaStep(currentStepConfig, text, user, dbKey, remoteJid, sock, msg);
-                break;
-
-            case 'filtro':
-                // Filtro no hace nada, espera humano
-                break;
-                
-            default:
-                console.warn("Tipo de paso desconocido:", currentStepConfig.type);
+            case 'menu': nextStepId = await handleMenuStep(currentStepConfig, text, remoteJid, sock); break;
+            case 'input': nextStepId = await handleInputStep(currentStepConfig, text, user, dbKey, remoteJid, sock); break;
+            case 'cita': nextStepId = await handleCitaStep(currentStepConfig, text, user, dbKey, remoteJid, sock, msg); break;
+            case 'filtro': break;
+            default: console.warn("Tipo de paso desconocido:", currentStepConfig.type);
         }
 
         // --- 3. TRANSICIÓN ---
