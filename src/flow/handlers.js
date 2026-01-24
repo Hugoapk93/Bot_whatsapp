@@ -1,51 +1,72 @@
 const { updateUser, getUser } = require('../database');
-const { normalizeText, isSimilar, analyzeNaturalLanguage } = require('./utils');
+// Nota: Ya no necesitamos normalizeText ni isSimilar de utils porque usamos basicClean aquí mismo
+const { analyzeNaturalLanguage } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
-
-// 🔥 ESTA LÍNEA SOLO DEBE APARECER UNA VEZ:
 const { isValidName, isValidBirthDate } = require('./validators');
 
-// --- MANEJADOR DE MENÚS ---
+// 🔥 HELPER: Limpieza básica (Quitar acentos y mayúsculas)
+const basicClean = (str) => {
+    if (!str) return "";
+    return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+};
+
+// --- MANEJADOR DE MENÚS (MEJORADO) ---
 async function handleMenuStep(stepConfig, text, remoteJid, sock) {
-    const userClean = normalizeText(text);
-    let match = null;
-
-    // 1. Por Número
-    const index = parseInt(text) - 1;
-    if (!isNaN(index) && stepConfig.options?.[index]) {
-        match = stepConfig.options[index];
-    }
-    // 2. Por Texto Exacto
-    if (!match) {
-        match = stepConfig.options?.find(opt =>
-            isSimilar(text, opt.trigger) || isSimilar(text, opt.label)
-        );
-    }
-    // 3. Por Texto Parcial
-    if (!match && stepConfig.options) {
-        const matchesFound = stepConfig.options.filter(opt => {
-            const btnText = normalizeText(opt.label);
-            return (btnText.includes(userClean) && userClean.length > 3);
-        });
-
-        if (matchesFound.length === 1) match = matchesFound[0];
-        else if (matchesFound.length > 1) {
-            const txt = `🤔 Tu respuesta coincide con varias opciones. Sé más específico.`;
-            if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
-            else await sock.sendMessage(remoteJid, { text: txt });
-            return null; // Detenemos flujo
+    const userText = basicClean(text);
+    const isNumber = /^[0-9]+$/.test(userText);
+    
+    // 1. Prioridad: Coincidencia por NÚMERO
+    if (isNumber) {
+        const index = parseInt(userText) - 1;
+        if (stepConfig.options && stepConfig.options[index]) {
+            return stepConfig.options[index].next_step;
         }
     }
 
-    if (match) {
-        return match.next_step; // ✅ Retornamos el ID del siguiente paso
-    } else {
-        const txt = `⚠️ Opción no válida.\nEscribe el número o nombre de la opción.`;
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
-        else await sock.sendMessage(remoteJid, { text: txt });
-        return null;
+    // 2. Coincidencia por PALABRAS CLAVE
+    if (stepConfig.options && Array.isArray(stepConfig.options)) {
+        
+        // Separamos lo que escribió el cliente: "prestamo moto" -> ["prestamo", "moto"]
+        const userWords = userText.split(' ').filter(w => w.length > 2); 
+        
+        if (userWords.length > 0) {
+            // Filtramos: ¿Qué opciones contienen TODAS las palabras que escribió el usuario?
+            const matches = stepConfig.options.filter(opt => {
+                const optLabel = basicClean(opt.label);
+                const optTrigger = basicClean(opt.trigger || "");
+                
+                // Revisa en la etiqueta O en el trigger oculto
+                return userWords.every(word => optLabel.includes(word) || optTrigger.includes(word));
+            });
+
+            // --- TOMA DE DECISIÓN ---
+
+            if (matches.length === 1) {
+                // ✅ CASO PERFECTO: Solo hay una coincidencia
+                return matches[0].next_step;
+            }
+
+            if (matches.length > 1) {
+                // ⚠️ AMBIGÜEDAD: Hay varias opciones parecidas
+                // Listamos los nombres reales para preguntar
+                const suggestions = matches.map(m => `"${m.label}"`).join(' o ');
+                const txt = `⚠️ Hay varias opciones con esa palabra.\n¿Quisiste decir: ${suggestions}?`;
+
+                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+                else await sock.sendMessage(remoteJid, { text: txt });
+                
+                return null; // Detenemos para que aclare
+            }
+        }
     }
+
+    // ❌ CASO ERROR: No entendió nada
+    const txt = `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`;
+    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+    else await sock.sendMessage(remoteJid, { text: txt });
+    
+    return null;
 }
 
 // --- MANEJADOR DE INPUTS (DATOS) ---
@@ -65,10 +86,10 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
         const txt = "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)";
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
         else await sock.sendMessage(remoteJid, { text: txt });
-        return null; // No avanzamos, pedimos de nuevo
+        return null; // No avanzamos
     }
 
-    // 🛡️ PROTECCIÓN ANTI-CRASH: Si history no existe, lo creamos
+    // 🛡️ PROTECCIÓN ANTI-CRASH
     if (!user.history) user.history = {};
 
     // Guardamos dato
@@ -83,7 +104,6 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
     console.log(`🧠 Analizando Cita: "${text}"`);
     const analysis = analyzeNaturalLanguage(text);
 
-    // 🛡️ PROTECCIÓN ANTI-CRASH TAMBIÉN AQUÍ
     if (!user.history) user.history = {};
 
     if (analysis.date) {
@@ -138,7 +158,7 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
     }
 
     if (stepConfig.next_step) {
-        return stepConfig.next_step; // ✅ Avanzamos
+        return stepConfig.next_step; 
     } else {
         const txt = `✅ Cita confirmada: ${friendlyDate(fechaMemoria)} a las ${horaMemoria}`;
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
