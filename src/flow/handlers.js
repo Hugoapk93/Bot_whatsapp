@@ -119,12 +119,12 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
         return null;
     }
     if (!horaMemoria) {
-        const txt = `Perfecto, para el *${friendlyDate(fechaMemoria)}*.\n¿A qué hora? (Ej: 4:00 PM)`;
+        const txt = `Perfecto, para el *${friendlyDate(fechaMemoria)}*.\n¿A qué hora puedes venir?`;
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
         return null;
     }
     if (isDateInPast(fechaMemoria, horaMemoria)) {
-        const txt = "⚠️ Fecha pasada. Indica una futura.";
+        const txt = "⚠️ Fecha pasada. \nIndica una futura.";
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
         delete user.history['hora']; await updateUser(dbKey, { history: user.history });
         return null;
