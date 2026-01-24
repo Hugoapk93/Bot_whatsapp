@@ -1,5 +1,4 @@
 const { updateUser, getUser } = require('../database');
-// Nota: Ya no necesitamos normalizeText ni isSimilar de utils porque usamos basicClean aquí mismo
 const { analyzeNaturalLanguage } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
@@ -11,7 +10,7 @@ const basicClean = (str) => {
     return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 };
 
-// --- MANEJADOR DE MENÚS (MEJORADO) ---
+// --- MANEJADOR DE MENÚS (CORREGIDO "SI/NO") ---
 async function handleMenuStep(stepConfig, text, remoteJid, sock) {
     const userText = basicClean(text);
     const isNumber = /^[0-9]+$/.test(userText);
@@ -27,8 +26,9 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
     // 2. Coincidencia por PALABRAS CLAVE
     if (stepConfig.options && Array.isArray(stepConfig.options)) {
         
-        // Separamos lo que escribió el cliente: "prestamo moto" -> ["prestamo", "moto"]
-        const userWords = userText.split(' ').filter(w => w.length > 2); 
+        // 🔥 CORRECCIÓN AQUÍ: Cambiamos > 2 por > 1 para aceptar "Si", "No", "TV", etc.
+        // Solo filtramos letras sueltas como "y", "o", "a".
+        const userWords = userText.split(' ').filter(w => w.length > 1); 
         
         if (userWords.length > 0) {
             // Filtramos: ¿Qué opciones contienen TODAS las palabras que escribió el usuario?
@@ -48,21 +48,20 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
             }
 
             if (matches.length > 1) {
-                // ⚠️ AMBIGÜEDAD: Hay varias opciones parecidas
-                // Listamos los nombres reales para preguntar
+                // ⚠️ AMBIGÜEDAD
                 const suggestions = matches.map(m => `"${m.label}"`).join(' o ');
-                const txt = `⚠️ Varias opciones con esa palabra.\n\n¿Quisiste decir: ${suggestions}?`;
+                const txt = `⚠️ Varias opciones con esa palabra.\n\nCual quieres elegir:\n ${suggestions}`;
 
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
                 else await sock.sendMessage(remoteJid, { text: txt });
                 
-                return null; // Detenemos para que aclare
+                return null; 
             }
         }
     }
 
-    // ❌ CASO ERROR: No entendió nada
-    const txt = `⚠️ Opción no válida.\n\nEscribe el número o el nombre de la opción.`;
+    // ❌ CASO ERROR
+    const txt = `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`;
     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
     else await sock.sendMessage(remoteJid, { text: txt });
     
@@ -86,13 +85,11 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
         const txt = "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)";
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
         else await sock.sendMessage(remoteJid, { text: txt });
-        return null; // No avanzamos
+        return null; 
     }
 
-    // 🛡️ PROTECCIÓN ANTI-CRASH
     if (!user.history) user.history = {};
 
-    // Guardamos dato
     user.history[varName] = text;
     await updateUser(dbKey, { history: user.history });
     
@@ -116,7 +113,6 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
     const fechaMemoria = user.history['fecha'];
     const horaMemoria = user.history['hora'];
 
-    // Validaciones
     if (!fechaMemoria) {
         const txt = "📅 ¿Para qué día te gustaría agendar?";
         if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
@@ -149,7 +145,6 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
         return null;
     }
 
-    // Agendar
     const finalName = user.history['nombre'] || msg.pushName || 'Cliente';
     await bookAppointment(fechaMemoria, horaMemoria, dbKey, finalName);
 
