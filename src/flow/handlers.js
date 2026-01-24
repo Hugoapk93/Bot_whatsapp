@@ -51,7 +51,7 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
                 // ⚠️ AMBIGÜEDAD: Hay varias opciones parecidas
                 // Listamos los nombres reales para preguntar
                 const suggestions = matches.map(m => `"${m.label}"`).join(' o ');
-                const txt = `⚠️ Hay varias opciones con esa palabra.\n¿Quisiste decir: ${suggestions}?`;
+                const txt = `⚠️ Varias opciones con esa palabra.\n\n¿Quisiste decir: ${suggestions}?`;
 
                 if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
                 else await sock.sendMessage(remoteJid, { text: txt });
@@ -62,7 +62,7 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
     }
 
     // ❌ CASO ERROR: No entendió nada
-    const txt = `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`;
+    const txt = `⚠️ Opción no válida.\n\nEscribe el número o el nombre de la opción.`;
     if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
     else await sock.sendMessage(remoteJid, { text: txt });
     
