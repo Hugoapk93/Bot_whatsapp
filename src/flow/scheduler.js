@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { getSettings, saveSettings, updateUser, getUser } = require('../database');
+// 🔥 IMPORTANTE: Importamos toggleContactBot para mover el interruptor maestro
+const { toggleContactBot } = require('../contacts'); 
 const { sendStepMessage } = require('./sender');
 
 // 🔥 RUTA EXACTA: Como estamos en src/flow, salimos 2 niveles para ir a data
@@ -55,14 +57,12 @@ const checkScheduler = async (sock) => {
                 let movedCount = 0;
 
                 for (const appt of todayAppts) {
-                    // --- FILTRO INTELIGENTE (OPCIÓN 1) ---
-                    // Si el cliente agendó HOY MISMO, no lo molestamos con recordatorios.
+                    // --- FILTRO INTELIGENTE ---
                     if (appt.created_at) {
                         const createdDate = new Date(appt.created_at).toLocaleString("en-US", {timeZone: "America/Mexico_City"});
-                        const createdDateStr = new Date(createdDate).toISOString().split('T')[0]; // YYYY-MM-DD
-
+                        const createdDateStr = new Date(createdDate).toISOString().split('T')[0]; 
                         if (createdDateStr === todayStr) {
-                            console.log(`⏩ Saltando a ${appt.name} (Agendó hoy, no requiere recordatorio).`);
+                            console.log(`⏩ Saltando a ${appt.name} (Agendó hoy).`);
                             continue;
                         }
                     }
@@ -72,36 +72,47 @@ const checkScheduler = async (sock) => {
                     const dbPhone = rawPhone.replace(/\D/g, ''); 
 
                     if (dbPhone) {
-                        console.log(`🚀 Moviendo a ${appt.name} al paso: ${config.target_step}`);
+                        console.log(`🚀 Reactivando y moviendo a ${appt.name}...`);
 
-                        // A. Mover y REACTIVAR el bot
+                        // PASO A: ENCENDER INTERRUPTOR MAESTRO (Memoria)
+                        // Esto asegura que el sistema sepa que el bot está activo para este número
+                        toggleContactBot(dbPhone, true);
+
+                        // PASO B: MOVER DE PASO (Base de Datos)
                         await updateUser(dbPhone, { 
                             current_step: config.target_step,
-                            bot_enabled: true });
+                            bot_enabled: true 
+                        });
 
-                        // B. Obtener datos frescos del usuario
+                        // ⏳ PASO C: PAUSA DE SEGURIDAD (500ms)
+                        // Damos tiempo a que la DB guarde y el estado se propague
+                        await new Promise(r => setTimeout(r, 500));
+
+                        // PASO D: OBTENER DATOS Y ENVIAR
                         const userData = getUser(dbPhone) || { phone: dbPhone };
+                        
+                        // Forzamos el flag en el objeto local por si getUser leyó caché vieja
+                        userData.bot_enabled = true; 
 
-                        // C. Construir JID (Manejo básico de LIDs)
+                        // Construir JID
                         let targetJid = userData.jid; 
                         if (!targetJid) {
                             targetJid = dbPhone.length > 15 ? `${dbPhone}@lid` : `${dbPhone}@s.whatsapp.net`;
                         }
 
-                        // D. Enviar Mensaje (Disparador del flujo)
+                        // Enviar Mensaje
                         await sendStepMessage(sock, targetJid, config.target_step, userData);
                         
                         movedCount++;
-                        // Pausa de 2 segundos para no saturar
+                        // Pausa de 2 segundos entre clientes
                         await new Promise(r => setTimeout(r, 2000));
                     }
                 }
                 console.log(`✅ Proceso completado. ${movedCount} mensajes enviados.`);
             }
 
-            // 4. ACTUALIZAR LAST_RUN (Para que no se repita hoy)
+            // 4. ACTUALIZAR LAST_RUN
             settings.scheduler.last_run = todayStr;
-            // Guardamos usando tu función saveSettings
             await saveSettings(settings);
         }
 
