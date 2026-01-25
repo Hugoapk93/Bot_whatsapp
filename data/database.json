@@ -9,20 +9,8 @@
         "dirección": "Hacienda del sol #100"
       },
       "jid": "65356567699524@lid",
-      "last_active": "2026-01-23T17:56:29.721Z",
+      "last_active": "2026-01-25T21:36:07.128Z",
       "messages": [
-        {
-          "text": "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)",
-          "fromMe": false,
-          "timestamp": 1769047934973,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "⚠️ Opción no válida.\nEscribe el número o nombre de la opción.",
-          "fromMe": true,
-          "timestamp": 1769047935160,
-          "stepId": "BIENVENIDA"
-        },
         {
           "text": "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)",
           "fromMe": false,
@@ -417,6 +405,18 @@
           "text": "Hola",
           "fromMe": false,
           "timestamp": 1769190989721,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "<img src=x onerror=alert('Hacked')>",
+          "fromMe": true,
+          "timestamp": 1769376966828,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.",
+          "fromMe": false,
+          "timestamp": 1769376967128,
           "stepId": "DIRECCIÓN"
         }
       ],
@@ -14079,6 +14079,46 @@
       "bot_enabled": true,
       "last_synced": "2026-01-23T01:20:31.347Z",
       "added_at": "2026-01-23T01:20:31.347Z"
+    },
+    {
+      "phone": "5218995068980",
+      "jid": "5218995068980@s.whatsapp.net",
+      "name": "Alejandra Sánchez López",
+      "bot_enabled": true,
+      "last_synced": "2026-01-25T21:34:39.279Z",
+      "added_at": "2026-01-25T21:34:39.279Z"
+    },
+    {
+      "phone": "5218992292184",
+      "jid": "5218992292184@s.whatsapp.net",
+      "name": "Beatriz Hernández Cliente",
+      "bot_enabled": true,
+      "last_synced": "2026-01-25T21:34:39.279Z",
+      "added_at": "2026-01-25T21:34:39.279Z"
+    },
+    {
+      "phone": "5218995460200",
+      "jid": "5218995460200@s.whatsapp.net",
+      "name": "Jacqueline Vazquez Hernández",
+      "bot_enabled": true,
+      "last_synced": "2026-01-25T21:34:39.279Z",
+      "added_at": "2026-01-25T21:34:39.279Z"
+    },
+    {
+      "phone": "5218994268635",
+      "jid": "5218994268635@s.whatsapp.net",
+      "name": "Jesús Ricardo Barragán Guajardo",
+      "bot_enabled": true,
+      "last_synced": "2026-01-25T21:34:39.279Z",
+      "added_at": "2026-01-25T21:34:39.279Z"
+    },
+    {
+      "phone": "5218992534208",
+      "jid": "5218992534208@s.whatsapp.net",
+      "name": "Belén Eunice Santiago Vázquez",
+      "bot_enabled": true,
+      "last_synced": "2026-01-25T21:34:39.279Z",
+      "added_at": "2026-01-25T21:34:39.279Z"
     }
   ],
   "settings": {
@@ -14145,6 +14185,14 @@
       "keys": {
         "p256dh": "BPlMwGAAQnud8ibkyWi7cpvXlES6xFDSjiGPH0PBGG8rXAy8F4iW9raJjTsSlWx9RwVV4SFrtXm8g5da_R8m3xs",
         "auth": "6-kK3QW5EgxaEdyNvJ7_Ag"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/cRY9plqmFJw:APA91bH4DV7jRsdAsD9fAkQjL4LphYXNBcBn2ThNy2QT85B2ed8WqNJAy1I3I_AEPeow4S8H0DqrRVtavGzf8NT0DM5qliMJftWue6cW_2U_95UfhRGa8PYAjFwwXI-jRiflTIW8QMCO",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BN0NP66w83nNGX1x2MhWs27mwFVFpj0Gn3qMNqYt8z5U1d5_FGeeLznT5QLgKVft8iy5Y5Oo-Z70sGKyouC26cY",
+        "auth": "SKIzNDJKLLfXjx1EmRBuBA"
       }
     }
   ],

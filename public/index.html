@@ -797,10 +797,13 @@
     const API_BASE = '';
     let flow = {}, users = [];
     let pollingInterval = null, deferredPrompt;
+    let apptToDelete = null;
+    let allContactsCache = [];
     let currentRefDate = new Date();
     let currentChatPhone = null;
     let pendingJumpStep = null;
     let pendingCrmAction = null;
+    let currentFilter = 'all';
     
     // --- VARIABLES DE SELECCIÓN NUEVAS ---
     let isSelectionMode = false;
@@ -808,7 +811,7 @@
     let longPressTimer;
     let ignoreClick = false;
     let currentSearchQuery = '';
-    
+
     // --- SOCKET.IO ---
     const socket = io({ reconnection: true });
     socket.on('connect', () => { updateConnStatus(true); loadActivity(); });
@@ -1378,7 +1381,23 @@
             timeStr = `${h}:${m}`;
         }
 
-        box.innerHTML += `<div class="wa-bubble ${isMe ? 'out' : 'in'} ${canClick ? 'clickable' : ''}" ${canClick ? `onclick="askJump('${stepId}')"` : ''} title="${canClick ? 'Click para restaurar este paso' : ''}">${text}<span class="wa-time">${timeStr}</span></div>`;
+        const safeText = text
+            ? text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;")
+            : '';
+
+        const safeStepId = stepId ? String(stepId).replace(/'/g, "\\'") : '';
+
+
+        const html = `
+            <div class="wa-bubble ${isMe ? 'out' : 'in'} ${canClick ? 'clickable' : ''}" 
+                 ${canClick ? `onclick="askJump('${safeStepId}')"` : ''} 
+                 title="${canClick ? 'Click para restaurar este paso' : ''}">
+                 ${safeText}
+                 <span class="wa-time">${timeStr}</span>
+            </div>`;
+
+        box.insertAdjacentHTML('beforeend', html);
+    
         box.scrollTop = box.scrollHeight;
     }
 
@@ -2370,6 +2389,35 @@
             document.getElementById('moveUserModal').classList.remove('active');
             loadActivity();
         } catch (e) { alert("Error al mover"); }
+    }
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return str.replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")
+                  .replace(/>/g, "&gt;")
+                  .replace(/"/g, "&quot;")
+                  .replace(/'/g, "&#039;");
+    }
+
+    // Lógica para PWA
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const btn = document.getElementById('installAppBtn');
+        if(btn) btn.style.display = 'flex';
+    });
+
+    function installPWA() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('Usuario aceptó instalar');
+                document.getElementById('installAppBtn').style.display = 'none';
+            }
+            deferredPrompt = null;
+        });
     }
 
     window.addEventListener('hashchange', () => {
