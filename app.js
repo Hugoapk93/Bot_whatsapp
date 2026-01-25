@@ -15,7 +15,7 @@ const { getKeywords, saveKeyword, deleteKeyword } = require('./src/database');
 const { findKeywordMatch } = require('./src/keywords');
 const { handleMessage, sendStepMessage } = require('./src/flow');
 
-// 🔥 NUEVO IMPORT: SCHEDULER 🔥
+// 🔥 IMPORT: SCHEDULER (Agenda Automática) 🔥
 const { initScheduler } = require('./src/flow/scheduler'); 
 
 const {
@@ -230,7 +230,6 @@ async function connectToWhatsApp() {
             if (global.io) global.io.emit('status', { status: 'connected' });
             
             // 🔥 INICIAR CRON DE AGENDA 🔥
-            // Esto activa el revisor de citas automático
             initScheduler(sock);
         }
     });
@@ -261,13 +260,21 @@ async function connectToWhatsApp() {
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
             const isMe = msg.key.fromMe;
 
-            // --- 1. AUTO-REGISTRO ---
+            // --- 1. AUTO-REGISTRO Y NOTIFICACIÓN DE NUEVO CLIENTE ---
             let contactConfig = allContacts.find(c => c.phone === incomingPhoneRaw);
+            
             if (!contactConfig && !isMe) {
                 console.log(`✨ Nuevo contacto detectado: ${incomingPhoneRaw}`);
                 addManualContact(incomingPhoneRaw, incomingPhoneRaw, true);
                 contactConfig = { phone: incomingPhoneRaw, name: incomingPhoneRaw, bot_enabled: true };
                 
+                // 🔥 NOTIFICACIÓN SOLO CUANDO ES NUEVO 🔥
+                global.sendPushNotification(
+                    "🆕 Nuevo Cliente", 
+                    `El número ${incomingPhoneRaw} ha iniciado una conversación.`, 
+                    "/#activity"
+                );
+
                 if (global.io) global.io.emit('new_user', {
                     phone: incomingPhoneRaw,
                     name: incomingPhoneRaw,
@@ -408,19 +415,14 @@ app.post('/api/send-message', async (req, res) => {
     if (!globalSock || !phone || !text) return res.status(400).json({ error: "Datos faltantes o bot offline" });
 
     try {
-        // 1. Buscamos al usuario en la BD para ver su JID real
-        // Esto es clave para LIDs: recuperamos el ID exacto que WhatsApp nos dio cuando el cliente escribió.
         const cleanPhone = phone.toString().replace(/\D/g, ''); 
         const user = getUser(cleanPhone);
         
         let targetJid;
 
         if (user && user.jid) {
-            // ✅ CASO 1: Usuario conocido (LID o Normal) -> Usamos su JID exacto
             targetJid = user.jid;
         } else {
-            // ⚠️ CASO 2: Usuario nuevo o sin JID guardado -> Construcción manual
-            // Respetamos tu decisión: NO normalizamos 52/521, solo pegamos el dominio.
             if (phone.includes('@')) {
                 targetJid = phone;
             } else {
@@ -428,10 +430,8 @@ app.post('/api/send-message', async (req, res) => {
             }
         }
 
-        // 2. Enviar mensaje
         await globalSock.sendMessage(targetJid, { text: text });
         
-        // 3. Guardar en historial local
         if (user) {
             if(!user.messages) user.messages = [];
             user.messages.push({
@@ -465,12 +465,10 @@ app.post('/api/simulate/text', async (req, res) => {
         message: { conversation: text },
         pushName: 'Usuario Simulador'
     };
-    console.log(`🤖 Simulador: ${text}`);
     try {
         await handleMessage(globalSock || {}, fakeMsg);
         res.json({ success: true });
     } catch (e) {
-        console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
@@ -515,7 +513,6 @@ app.post('/api/auth/init', (req, res) => {
 });
 app.post('/api/logout', async (req, res) => {
     try {
-        console.log("🛑 Solicitud de REINICIO recibida.");
         connectionStatus = 'rebooting';
         reportToTower();
         globalQR = null;
@@ -533,7 +530,6 @@ app.post('/api/logout', async (req, res) => {
         connectToWhatsApp();
         res.json({ success: true, message: 'Reinicio completado.' });
     } catch (e) {
-        console.error(e);
         connectionStatus = 'disconnected';
         reportToTower();
         res.status(500).json({ error: 'Error al reiniciar' });
@@ -557,7 +553,6 @@ app.post('/api/crm/execute', async (req, res) => {
     try {
         await updateUser(phone, { current_step: stepId });
         
-        // Si es simulador
         if (phone === 'TEST_SIMULADOR' || phone === '5218991234567') {
             await sendStepMessage(globalSock || {}, phone, stepId, getUser(phone));
             return res.json({ success: true });
@@ -568,7 +563,6 @@ app.post('/api/crm/execute', async (req, res) => {
         const user = getUser(phone);
         let targetJid = user?.jid;
         
-        // Si no tenemos JID guardado, lo construimos
         if (!targetJid) {
             let clean = phone.replace(/[^0-9]/g, '');
             if (clean.startsWith('52') && clean.length === 12) clean = '521' + clean.slice(2);
