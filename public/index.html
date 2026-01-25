@@ -824,59 +824,41 @@
             const msgFromKey = String(data.from || '').replace(/\D/g, '');  // Quien envía
             const msgToKey   = String(data.to || '').replace(/\D/g, '');    // A quien va
 
-            // A) INTENTO 1: Coincidencia Directa (Para bots o chats normales)
+            // A) INTENTO 1: Coincidencia Directa
             let isMatch = (currentKey === msgFromKey || currentKey === msgToKey);
 
             // B) INTENTO 2: Búsqueda Cruzada (Para LIDs)
-            // Si no hubo coincidencia directa, buscamos si el msgFromKey pertenece al usuario abierto
             if (!isMatch && users.length > 0) {
-                // Buscamos el usuario dueño del mensaje entrante
                 const senderUser = users.find(u => {
                     const uPhone = String(u.phone).replace(/\D/g, '');
                     const uDbPhone = u.realDbPhone ? String(u.realDbPhone).replace(/\D/g, '') : '';
-                    // ¿El mensaje viene de este usuario? (Comparando con su Phone o ID real)
                     return uPhone === msgFromKey || uDbPhone === msgFromKey;
                 });
 
-                // Si encontramos al remitente, ¿es el mismo que tenemos abierto?
                 if (senderUser) {
                     const senderKey = String(senderUser.phone).replace(/\D/g, '');
                     if (senderKey === currentKey) {
-                        isMatch = true; // ¡Es el mismo! Autorizamos pintar.
+                        isMatch = true; 
                     }
                 }
             }
 
-            // C) SI ES EL CHAT CORRECTO -> PINTAMOS
+            // C) SI ES EL CHAT CORRECTO -> PINTAMOS (Solo agregamos la burbuja)
             if (isMatch) {
                  let realText = data.text || data.body || data.caption || data.message || '';
                  
-                 // Soporte extra para mensajes complejos
+                 // Soporte extra
                  if(!realText && data.extendedTextMessage) realText = data.extendedTextMessage.text;
                  if(!realText && data.conversation) realText = data.conversation;
                  if(!realText && data.imageMessage) realText = data.imageMessage.caption || '📷 Foto';
                  if(!realText && data.videoMessage) realText = data.videoMessage.caption || '🎥 Video';
                  
                  if(realText) {
+                     // Solo dibujamos, NO recargamos la base de datos
                      addBubble(realText, data.fromMe, null, new Date().toISOString());
-                     // Scroll al fondo
-                     const box = document.getElementById('waMsgContainer');
-                     if(box) setTimeout(() => box.scrollTop = box.scrollHeight, 50);
                  }
             }
         }
-
-        // 3. 🔄 SINCRONIZACIÓN ASEGURADA 🔄
-        // Esperamos 500ms para asegurar que la DB ya guardó el mensaje antes de recargar
-        setTimeout(() => {
-            loadActivity().then(() => {
-                // Solo refrescamos visualmente si NO pintamos el mensaje ya (para evitar duplicados visuales raros)
-                // O forzamos el refresco para traer botones/opciones nuevas
-                if (currentChatPhone) {
-                    openWaChat(currentChatPhone, true); 
-                }
-            });
-        }, 500); 
     });
 
     socket.on('user_update', (data) => {
@@ -1021,8 +1003,8 @@
         try {
             // 🔥 CORRECCIÓN: Agregamos ?t=Date.now() para evitar que el navegador use caché vieja
             const [usersData, contactsData] = await Promise.all([
-                (await fetch(`${API_BASE}/api/users?t=${Date.now()}`)).json(),
-                (await fetch(`${API_BASE}/api/contacts?t=${Date.now()}`)).json()
+                (await fetch(`${API_BASE}/api/users`)).json(),
+                (await fetch(`${API_BASE}/api/contacts`)).json()
             ]);
 
             allContactsCache = contactsData;
