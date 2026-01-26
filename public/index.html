@@ -984,7 +984,10 @@
     }, { once: true });
 
     async function loadAll() {
+        // Cargar el Flujo
         try { flow = await (await fetch(`${API_BASE}/api/flow`)).json(); renderFlowList(); } catch(e){}
+        
+        // Cargar Ajustes (Horario)
         try { 
             const s = await (await fetch(`${API_BASE}/api/settings`)).json(); 
             if(s.schedule) { 
@@ -992,6 +995,8 @@
                 const start = document.getElementById('schedStart'); if(start) start.value = s.schedule.start;
                 const end = document.getElementById('schedEnd'); if(end) end.value = s.schedule.end;
                 const msg = document.getElementById('schedMsg'); if(msg) msg.value = s.schedule.offline_message; 
+
+                if(typeof toggleSettingsUI === 'function') toggleSettingsUI();
             } 
         } catch(e){}
     }
@@ -2348,15 +2353,51 @@
         location.reload();
     }
 
+    function toggleSettingsUI() {
+        const isActive = document.getElementById('schedActive').checked;
+        const configDiv = document.getElementById('settingsConfig');
+        const statusText = document.getElementById('settingsStatusText');
+
+        if (isActive) {
+            configDiv.style.display = 'block';
+            statusText.innerText = 'Activado · El bot responderá fuera de horario';
+            statusText.style.color = 'var(--success)';
+        } else {
+            configDiv.style.display = 'none';
+            statusText.innerText = 'Respuesta automática apagada';
+            statusText.style.color = 'var(--text-muted)';
+        }
+    }
+
     async function saveSettings() {
+        const active = document.getElementById('schedActive').checked;
+        const start = document.getElementById('schedStart').value;
+        const end = document.getElementById('schedEnd').value;
+        const msg = document.getElementById('schedMsg').value;
+
+        // Validación básica (solo si está activo)
+        if (active && (!start || !end || !msg)) {
+            // No guardamos si faltan datos críticos al activarlo
+            return;
+        }
+
         const s = { 
-            active: document.getElementById('schedActive').checked, 
-            start: document.getElementById('schedStart').value, 
-            end: document.getElementById('schedEnd').value, 
-            offline_message: document.getElementById('schedMsg').value 
+            active: active, 
+            start: start, 
+            end: end, 
+            offline_message: msg 
         };
-        await fetch(`${API_BASE}/api/settings`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s})});
-        showToast('Guardado');
+
+        try {
+            await fetch(`${API_BASE}/api/settings`, {
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body:JSON.stringify({schedule:s})
+            });
+            showToast('💾 Horario guardado');
+        } catch(e) {
+            showToast('Error al guardar');
+        }
     }
 
     function showToast(m) { 
