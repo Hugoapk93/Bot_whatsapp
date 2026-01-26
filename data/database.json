@@ -14126,16 +14126,7 @@
       "active": true,
       "start": "09:00",
       "end": "19:00",
-      "offline_message": "Hola {{nombre}} 😊\nEn este momento estoy fuera de la sucursal,\npero mañana temprano reviso tu solicitud y te confirmo.",
-      "days": [
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6
-      ]
+      "offline_message": "Hola {{nombre}} 😊\nEn este momento estoy fuera de la sucursal,\npero mañana temprano reviso tu solicitud y te confirmo."
     }
   },
   "subscriptions": [
@@ -14193,6 +14184,14 @@
       "keys": {
         "p256dh": "BN0NP66w83nNGX1x2MhWs27mwFVFpj0Gn3qMNqYt8z5U1d5_FGeeLznT5QLgKVft8iy5Y5Oo-Z70sGKyouC26cY",
         "auth": "SKIzNDJKLLfXjx1EmRBuBA"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/cGA9blBR4Xo:APA91bGCHSEk6kODp-lnVsYHmn_5lk2SvMRK9fVMukuLbX23i888CfX0hbvOKYChJJ83eAnhyciAfgQgU2jPjEaeHy_NY4-sEkAIeeKnwJr-6m9u8jiB249xT8FkoL-2fTfOvd1EB782",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BJDmDB6Bm6EFKSswB2AMRFiqS4r7SV3EMTbJTqeRT1w8xT-kaJG9cRxXnC2L8M7WSUA5QqYTSDp0ROgDEKGb_c8",
+        "auth": "4ct4AdYiKY3KcP5mUz_Eag"
       }
     }
   ],

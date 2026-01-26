@@ -603,19 +603,51 @@
             </div>
 
             <div id="view-settings" class="view view-padding">
-                <div class="card">
-                    <h3>Horario de Atención</h3>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:10px; background:var(--bg-input); border-radius:8px;">
-                        <span>Respuesta Automática</span>
-                        <label class="switch"><input type="checkbox" id="schedActive"><span class="slider"></span></label>
+                <div class="card" style="border-left: 4px solid #a855f7; transition: all 0.3s ease;">
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="background:rgba(168, 85, 247, 0.1); width:35px; height:35px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                                <i class="fas fa-clock" style="color:#a855f7;"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin:0; font-size:0.95rem;">Horario de Atención</h4>
+                                <p id="settingsStatusText" style="margin:0; font-size:0.75rem; color:var(--text-muted);">Respuesta automática apagada</p>
+                            </div>
+                        </div>
+                        
+                        <label class="switch">
+                            <input type="checkbox" id="schedActive" onchange="toggleSettingsUI(); saveSettings()">
+                            <span class="slider"></span>
+                        </label>
                     </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div><label>Apertura</label><input type="time" id="schedStart"></div>
-                        <div><label>Cierre</label><input type="time" id="schedEnd"></div>
+
+                    <div id="settingsConfig" style="margin-top:15px; padding-top:15px; border-top:1px solid var(--border); display:none; animation:fadeIn 0.3s;">
+                        
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;">
+                            <div style="background:var(--bg-input); border-radius:8px; padding:5px 10px; border:1px solid var(--border);">
+                                <label style="font-size:0.7rem; color:var(--text-muted); display:block;">Apertura</label>
+                                <input type="time" id="schedStart" onchange="saveSettings()" 
+                                       style="border:none; background:transparent; padding:0; height:25px; font-weight:600; width:100%;">
+                            </div>
+                            <div style="background:var(--bg-input); border-radius:8px; padding:5px 10px; border:1px solid var(--border);">
+                                <label style="font-size:0.7rem; color:var(--text-muted); display:block;">Cierre</label>
+                                <input type="time" id="schedEnd" onchange="saveSettings()" 
+                                       style="border:none; background:transparent; padding:0; height:25px; font-weight:600; width:100%;">
+                            </div>
+                        </div>
+
+                        <div style="background:var(--bg-input); border-radius:8px; padding:10px; border:1px solid var(--border);">
+                            <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:5px;">Mensaje de Ausencia (Fuera de Horario)</label>
+                            <textarea id="schedMsg" rows="3" onchange="saveSettings()" 
+                                      placeholder="Hola, por el momento estamos cerrados..." 
+                                      style="border:none; background:transparent; padding:0; width:100%; resize:none; font-family:inherit;"></textarea>
+                        </div>
+
+                        <p style="margin:10px 0 0 0; font-size:0.75rem; color:var(--text-muted); text-align:center;">
+                            <i class="fas fa-info-circle"></i> Los cambios se guardan automáticamente.
+                        </p>
                     </div>
-                    <label style="margin-top:10px; display:block;">Mensaje de Ausencia</label>
-                    <textarea id="schedMsg" rows="3" placeholder="No estamos disponibles..."></textarea>
-                    <button class="btn-primary" onclick="saveSettings()" style="margin-top:15px;">Guardar</button>
                 </div>
             </div>
         </div>
