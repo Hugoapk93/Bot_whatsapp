@@ -550,6 +550,47 @@
             </div>
 
             <div id="view-agenda" class="view view-padding">
+                <div class="card" style="border-left: 4px solid var(--primary); transition: all 0.3s ease;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="background:rgba(59, 130, 246, 0.1); width:35px; height:35px; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+                                <i class="fas fa-robot" style="color:var(--primary);"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin:0; font-size:0.95rem;">Recordatorio Automático</h4>
+                                <p id="schedStatusText" style="margin:0; font-size:0.75rem; color:var(--text-muted);">Desactivado</p>
+                            </div>
+                        </div>
+                        
+                        <label class="switch">
+                            <input type="checkbox" id="schActive" onchange="toggleSchedulerUI(); saveSchedulerConfig()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div id="schedulerConfig" style="margin-top:15px; padding-top:15px; border-top:1px solid var(--border); display:none; animation:fadeIn 0.3s;">
+                        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:10px; align-items:center;">
+                            
+                            <div style="background:var(--bg-input); border-radius:8px; padding:5px 10px; border:1px solid var(--border);">
+                                <label style="font-size:0.7rem; color:var(--text-muted); display:block;">Hora</label>
+                                <input type="time" id="schTime" onchange="saveSchedulerConfig()" 
+                                       style="border:none; background:transparent; padding:0; height:25px; font-weight:600; font-size:1rem;">
+                            </div>
+
+                            <div style="background:var(--bg-input); border-radius:8px; padding:5px 10px; border:1px solid var(--border);">
+                                <label style="font-size:0.7rem; color:var(--text-muted); display:block;">Mover cliente a:</label>
+                                <select id="schStepSelect" onchange="saveSchedulerConfig()" 
+                                        style="border:none; background:transparent; padding:0; height:25px; width:100%; font-weight:500;">
+                                    <option value="">-- Seleccionar --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p style="margin:10px 0 0 0; font-size:0.75rem; color:var(--text-muted); text-align:center;">
+                            <i class="fas fa-info-circle"></i> Los cambios se guardan automáticamente.
+                        </p>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="calendar-header">
                         <button class="calendar-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
@@ -558,42 +599,6 @@
                     </div>
                     <div class="calendar-grid"><div class="weekday">DOM</div><div class="weekday">LUN</div><div class="weekday">MAR</div><div class="weekday">MIÉ</div><div class="weekday">JUE</div><div class="weekday">VIE</div><div class="weekday">SÁB</div></div>
                     <div id="calendarDays" class="calendar-grid"></div>
-                </div>
-
-                <div class="card" style="border-left: 4px solid var(--primary);">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <h3 style="margin:0; display:flex; align-items:center; gap:10px;">
-                                <i class="fas fa-robot" style="color:var(--primary);"></i> Recordatorios Automáticos
-                            </h3>
-                            <p style="margin:5px 0 0 0; color:var(--text-muted); font-size:0.85rem;">
-                                
-                            </p>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" id="schActive">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; margin-top:20px;">
-                        <div>
-                            <label style="font-size:0.85rem; color:var(--text-muted);">Hora</label>
-                            <input type="time" id="schTime">
-                        </div>
-                        <div>
-                            <label style="font-size:0.85rem; color:var(--text-muted);">Mover a</label>
-                            <select id="schStepSelect">
-                                <option value="">-- Selecciona un paso --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div style="text-align:right; margin-top:10px;">
-                        <button onclick="saveSchedulerConfig()" class="btn-primary" style="width:auto; padding:8px 20px;">
-                            <i class="fas fa-save"></i> Guardar
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -2002,14 +2007,29 @@
         renderCalendar();
     }
 
-    // 1. Cargar configuración al abrir Agenda
+    function toggleSchedulerUI() {
+        const isActive = document.getElementById('schActive').checked;
+        const configDiv = document.getElementById('schedulerConfig');
+        const statusText = document.getElementById('schedStatusText');
+
+        if (isActive) {
+            configDiv.style.display = 'block';
+            statusText.innerText = 'Activado · Se ejecutará diariamente';
+            statusText.style.color = 'var(--success)';
+        } else {
+            configDiv.style.display = 'none';
+            statusText.innerText = 'Desactivado';
+            statusText.style.color = 'var(--text-muted)';
+        }
+    }
+
     async function loadSchedulerConfig() {
         try {
-            // Llenar el Select con los pasos existentes en 'flow'
             const select = document.getElementById('schStepSelect');
-            select.innerHTML = '<option value="">-- Selecciona un paso --</option>';
+            // Guardamos el valor actual por si ya estaba seleccionado algo y no queremos perderlo al repintar
+            const currentVal = select.value; 
             
-            // Ordenamos los pasos alfabéticamente
+            select.innerHTML = '<option value="">-- Selecciona un paso --</option>';
             Object.keys(flow).sort().forEach(stepKey => {
                 const opt = document.createElement('option');
                 opt.value = stepKey;
@@ -2017,19 +2037,57 @@
                 select.appendChild(opt);
             });
 
-            // Obtener configuración del servidor
             const settings = await (await fetch(`${API_BASE}/api/settings`)).json();
             
             if (settings.scheduler) {
                 document.getElementById('schActive').checked = settings.scheduler.active || false;
-                document.getElementById('schTime').value = settings.scheduler.time || "06:00";
-                
+                document.getElementById('schTime').value = settings.scheduler.time || "09:00";
                 if (settings.scheduler.target_step) {
                     select.value = settings.scheduler.target_step;
                 }
             }
+            
+            // 🔥 IMPORTANTE: Actualizamos la UI inicial
+            toggleSchedulerUI();
+
         } catch (e) {
-            console.error("Error cargando scheduler config", e);
+            console.error("Error scheduler config", e);
+        }
+    }
+
+    // C) MODIFICA saveSchedulerConfig (Para guardar silenciosamente)
+    async function saveSchedulerConfig() {
+        const active = document.getElementById('schActive').checked;
+        const time = document.getElementById('schTime').value;
+        const targetStep = document.getElementById('schStepSelect').value;
+
+        // Si lo activamos pero faltan datos, no guardamos "active:true" aún, o avisamos
+        if (active && (!time || !targetStep)) {
+            // Opcional: Podrías mostrar un toast diciendo "Completa los datos"
+            // Pero dejaremos que el usuario termine de llenar
+            return; 
+        }
+
+        const payload = {
+            scheduler: {
+                active: active,
+                time: time,
+                target_step: targetStep,
+                last_run: "" // Opcional
+            }
+        };
+
+        try {
+            await fetch(`${API_BASE}/api/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            // Feedback sutil
+            showToast("💾 Configuración guardada");
+        } catch (e) {
+            showToast("Error al guardar");
         }
     }
 
