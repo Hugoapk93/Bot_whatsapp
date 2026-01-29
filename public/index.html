@@ -24,35 +24,19 @@
             --primary: #3b82f6; --success: #10b981; --danger: #ef4444;
             --radius: 12px;
             /* Variables WA Dark Mode */
-            --wa-bg-list: #111b21;
-            --wa-bg-chat: #0b141a;
-            --wa-header: #202c33;
-            --wa-border: #2a3942;
-            --wa-incoming: #202c33;
-            --wa-outgoing: #005c4b;
+            --wa-bg-list: #111b21; --wa-bg-chat: #0b141a; --wa-header: #202c33;
+            --wa-border: #2a3942; --wa-incoming: #202c33; --wa-outgoing: #005c4b;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { font-family: 'Inter', sans-serif; margin: 0; height: 100dvh; background: var(--bg-body); color: var(--text-main); overflow: hidden; font-size: 14px; }
 
+        /* --- LAYOUT & PANTALLA DE CARGA --- */
         #setupWizard {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            height: 100dvh;
-            background: var(--bg-body);
-            z-index: 5000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            margin: 0;
-            padding: 0;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100dvh;
+            background: var(--bg-body); z-index: 5000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-
-        /* Layout */
         #mainApp { display: flex; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
         #mainApp.visible { opacity: 1; pointer-events: all; }
 
@@ -66,8 +50,6 @@
         .menu-item:hover { background: var(--border); color: var(--text-main); }
         .menu-item.active { background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-weight: 600; }
 
-        #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: #34d399; margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
-
         .content { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
         .mobile-header { display: none; background: var(--bg-sidebar); height: 60px; padding: 0 20px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 
@@ -76,15 +58,105 @@
         .view-padding { padding: 30px; overflow-y: auto; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* UI Elements */
+        /* --- UI ELEMENTS (Inputs, Botones, Tarjetas Genéricas) --- */
         .card { background: var(--bg-card); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 20px; }
-        
         .btn-primary { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; font-size: 1rem;}
         .admin-btn { padding: 6px 12px; border: 1px solid var(--border); background: transparent; border-radius: 6px; cursor: pointer; color: var(--text-main); margin-right: 5px; font-size: 0.8rem; }
-
         input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 16px; }
+        #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: #34d399; margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
 
-        /* Calendario */
+        /* --- TARJETAS DEL FLUJO (FLOW CARDS) - DISEÑO FINAL --- */
+        .flow-step-card { 
+            background: var(--bg-card); 
+            border: 1px solid var(--border); 
+            border-radius: var(--radius); 
+            padding: 0; /* El padding lo manejan los hijos */
+            margin-bottom: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+            cursor: default;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .flow-step-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border-color: var(--primary);
+        }
+
+        /* 1. Cabecera (Icono, Título, Editar) */
+        .card-header {
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer;
+        }
+        .card-header:hover { background: rgba(255, 255, 255, 0.06); }
+
+        /* 2. Cuerpo (Texto del mensaje) */
+        .card-body {
+            padding: 15px;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        /* 3. Pie (Botones de navegación / Chips) */
+        .card-footer {
+            padding: 0 15px 15px 15px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+
+        /* Chips (Botones de Siguiente Paso) */
+        .flow-chip {
+            width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 15px;
+            background: var(--bg-input); 
+            border: 1px solid var(--border); 
+            color: var(--text-muted); 
+            border-radius: 8px; 
+            font-size: 0.9rem; 
+            cursor: pointer; 
+            transition: 0.2s;
+        }
+        .flow-chip:hover { 
+            background: rgba(59, 130, 246, 0.1); 
+            color: var(--primary); border-color: var(--primary); 
+        }
+
+        /* Bordes de colores por tipo */
+        .type-menu { border-left: 5px solid #a855f7 !important; }
+        .type-input { border-left: 5px solid #f59e0b !important; }
+        .type-message { border-left: 5px solid #3b82f6 !important; }
+        .type-filtro { border-left: 5px solid #ef4444 !important; }
+        .type-cita { border-left: 5px solid #10b981 !important; }
+        .type-fin { border-left: 5px solid #64748b !important; }
+        
+        /* Miniaturas de imágenes */
+        .thumb-row { display: flex; gap: 5px; margin-top: 8px; }
+        .thumb-img { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border); }
+
+        /* Barra de Navegación (Breadcrumbs) */
+        .flow-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; scrollbar-width: thin; flex-wrap: nowrap; }
+        .flow-nav::-webkit-scrollbar { height: 4px; }
+        .flow-nav::-webkit-scrollbar-track { background: transparent; }
+        .flow-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        .flow-nav span, .flow-nav i { flex-shrink: 0; }
+        .flow-nav span { color: var(--text-muted); cursor: pointer; font-weight: 500; }
+        .flow-nav span:hover { color: var(--primary); text-decoration: underline; }
+        
+        #breadcrumbNav button.admin-btn {
+            flex-shrink: 0 !important; min-width: 30px !important; width: 30px !important; height: 30px !important;
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        /* --- CALENDARIO --- */
         .calendar-header { display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 15px; flex-shrink: 0; }
         .calendar-nav-btn { background: var(--bg-body); border: 1px solid var(--border); color: var(--primary); width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -94,197 +166,58 @@
         .day.today { color: var(--primary); font-weight: 700; background: rgba(59, 130, 246, 0.1); }
         .day-indicator { position: absolute; bottom: 5px; right: 5px; background: var(--primary); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
 
-        /* Flow Cards */
-        .flow-step-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .fab { position: fixed; bottom: 25px; right: 25px; background: var(--primary); color: white; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 24px; }
-
-        /* --- VISTA ACTIVIDAD (Monitor - Estilo WhatsApp Android) --- */
-        #view-activity.active {
-            padding: 0 !important;
-            flex-direction: row;
-            background: #111b21;
-            overflow: hidden;
-        }
-
-        /* Columna Izquierda: Lista de Chats */
+        /* --- VISTA CHAT (MONITOR) --- */
+        #view-activity.active { padding: 0 !important; flex-direction: row; background: #111b21; overflow: hidden; }
         .wa-list-col { width: 350px; border-right: 1px solid #2f3b43; display: flex; flex-direction: column; background: #111b21; flex-shrink: 0; }
-
-        .wa-selection-header {
-            height: 60px; background: #202c33; color: #e9edef; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #2f3b43; animation: fadeIn 0.2s;
-        }
-
-        .wa-chat-item.selected { background: #2a3942 !important; }
-        .wa-chat-item { user-select: none; -webkit-user-select: none; }
-
-        .wa-search-bar { padding: 10px; border-bottom: 1px solid #2f3b43; }
-        .wa-search-input { width: 100%; background: #202c33; border: none; padding: 8px 15px; border-radius: 8px; color: #e9edef; font-size: 14px; }
-        .wa-chat-item { display: flex; padding: 12px 15px; border-bottom: 1px solid #2f3b43; cursor: pointer; align-items: center; transition: 0.2s; }
+        .wa-selection-header { height: 60px; background: #202c33; color: #e9edef; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #2f3b43; animation: fadeIn 0.2s; }
+        .wa-chat-item { display: flex; padding: 12px 15px; border-bottom: 1px solid #2f3b43; cursor: pointer; align-items: center; transition: 0.2s; user-select: none; }
         .wa-chat-item:hover { background: #202c33; }
         .wa-chat-item.active { background: #2a3942; }
+        .wa-chat-item.selected { background: #2a3942 !important; }
+        .wa-search-bar { padding: 10px; border-bottom: 1px solid #2f3b43; }
+        .wa-search-input { width: 100%; background: #202c33; border: none; padding: 8px 15px; border-radius: 8px; color: #e9edef; font-size: 14px; }
         .wa-avatar { width: 45px; height: 45px; background: #6a7175; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 12px; flex-shrink: 0; color: #fff; overflow:hidden;}
-        .wa-chat-info { flex: 1; overflow: hidden; }
-        /* --- AJUSTES LISTA DE CHATS (Estilo WhatsApp) --- */
+        
+        .wa-chat-info { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+        .wa-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+        .wa-name { font-weight: 500; color: #e9edef; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }
+        .wa-time-meta { font-size: 0.75rem; color: #8696a0; white-space: nowrap; margin-left: 10px; font-weight: 400; }
+        .wa-msg-preview { display: flex; align-items: center; font-size: 0.85rem; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .wa-chat-info { 
-            flex: 1; 
-            overflow: hidden; 
-            display: flex;           /* Flexbox vertical */
-            flex-direction: column;  /* Uno debajo del otro */
-            justify-content: center;
-        }
-
-        /* Fila superior: Nombre (Izquierda) --- Hora (Derecha) */
-        .wa-row-top {
-            display: flex;
-            justify-content: space-between; /* LA CLAVE: Separa los extremos */
-            align-items: center;
-            margin-bottom: 3px;
-        }
-
-        .wa-name {
-            font-weight: 500;
-            color: #e9edef;
-            font-size: 1rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin: 0;
-        }
-
-        .wa-time-meta {
-            font-size: 0.75rem;
-            color: #8696a0; /* Gris más claro */
-            white-space: nowrap;
-            margin-left: 10px;
-            font-weight: 400;
-        }
-
-        /* Fila inferior: Último mensaje */
-        .wa-row-bottom {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .wa-meta {
-            font-size: 0.85rem;
-            color: #8696a0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 90%;
-        }
-
-        /* Columna Derecha: Chat Area */
         .wa-chat-col { flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative; }
         .wa-chat-header { height: 60px; background: #202c33; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0; z-index: 10; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-
-        .wa-msgs-area {
-            flex: 1; overflow-y: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px;
-            background-color: #0b141a;
-            background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-            background-repeat: repeat; opacity: 1;
-        }
-
-        .wa-bubble {
-            max-width: 75%; width: fit-content; padding: 5px 9px; border-radius: 10px; font-size: 14.5px; line-height: 1.3; position: relative;
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); word-wrap: break-word; white-space: pre-wrap; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; flex-direction: column;
-        }
+        .wa-msgs-area { flex: 1; overflow-y: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; background-color: #0b141a; background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); background-repeat: repeat; opacity: 1; }
+        
+        .wa-bubble { max-width: 75%; width: fit-content; padding: 5px 9px; border-radius: 10px; font-size: 14.5px; line-height: 1.3; position: relative; box-shadow: 0 1px 0.5px rgba(0,0,0,0.13); word-wrap: break-word; white-space: pre-wrap; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; display: flex; flex-direction: column; }
         .wa-bubble.in { background-color: #202c33 !important; color: #e9edef; align-self: flex-start !important; border-top-left-radius: 0; }
         .wa-bubble.out { background-color: #005c4b !important; color: #e9edef; align-self: flex-end !important; border-top-right-radius: 0; }
         .wa-time { font-size: 11px; color: rgba(255, 255, 255, 0.6); align-self: flex-end; margin: 0 0 0 8px; display: flex; align-items: center; gap: 3px; line-height: 1; padding-top: 2px; }
 
         .wa-input-area { min-height: 60px; background: #202c33; padding: 5px 10px; display: flex; align-items: flex-end; gap: 8px; z-index: 10; }
-        /* La píldora que contiene input + iconos */
-        .wa-input-pill {
-            flex: 1;
-            background: #2a3942;
-            border-radius: 25px;
-            padding: 8px 12px 8px 15px; /* Padding ajustado */
-            display: flex;
-            align-items: center;
-            position: relative;
-            transition: all 0.3s ease;
-            min-height: 45px;
-        }
+        .wa-input-pill { flex: 1; background: #2a3942; border-radius: 25px; padding: 8px 12px 8px 15px; display: flex; align-items: center; position: relative; transition: all 0.3s ease; min-height: 45px; }
+        #waInput { flex: 1; background: transparent; border: none; padding: 0; color: #fff; font-size: 16px; margin: 0; width: 100%; }
+        .wa-input-icons { display: flex; align-items: center; gap: 15px; margin-left: 10px; overflow: hidden; max-width: 150px; opacity: 1; transform: translateX(0); transition: max-width 0.3s ease, opacity 0.2s ease, transform 0.3s ease; }
+        .wa-input-icons i { color: #8696a0; font-size: 1.3rem; cursor: pointer; flex-shrink: 0; }
+        .wa-input-pill.typing .wa-input-icons { max-width: 0px; opacity: 0; transform: translateX(20px); pointer-events: none; margin-left: 0; }
 
-        /* El Input transparente */
-        #waInput {
-            flex: 1;
-            background: transparent;
-            border: none;
-            padding: 0;
-            color: #fff;
-            font-size: 16px;
-            margin: 0;
-            width: 100%;
-        }
-
-        /* Contenedor de iconos internos (Clip, Cámara, Rayo) */
-        .wa-input-icons {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-left: 10px;
-            overflow: hidden;
-            /* Transición suave para ocultar */
-            max-width: 150px; 
-            opacity: 1;
-            transform: translateX(0);
-            transition: max-width 0.3s ease, opacity 0.2s ease, transform 0.3s ease;
-        }
-
-        .wa-input-icons i {
-            color: #8696a0;
-            font-size: 1.3rem;
-            cursor: pointer;
-            flex-shrink: 0; /* Evita que se aplasten */
-        }
-
-        /* --- ESTADO: ESCRIBIENDO (Typing) --- */
-        /* Cuando agregamos la clase .typing vía JS */
-        .wa-input-pill.typing .wa-input-icons {
-            max-width: 0px;  /* Se reduce a 0 ancho */
-            opacity: 0;      /* Se hace invisible */
-            transform: translateX(20px); /* Se mueve un poco a la derecha */
-            pointer-events: none; /* Ya no se pueden clickear */
-            margin-left: 0;
-        }
-
-        /* Botón de Micrófono / Enviar */
-        .wa-mic-btn {
-            width: 48px;
-            height: 48px;
-            background: #00a884;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.2rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            cursor: pointer;
-            border: none;
-            transition: transform 0.2s, background 0.2s;
-            flex-shrink: 0;
-            margin-bottom: 2px; /* Alineación visual */
-        }
-
-        /* Animación al cambiar de icono */
-        .wa-mic-btn i {
-            transition: transform 0.2s;
-        }
-
-        /* Cambio de color cuando es "Enviar" */
-        .wa-mic-btn.is-send {
-            background: #008f6f; /* Un poco más oscuro o igual */
-        }
+        .wa-mic-btn { width: 48px; height: 48px; background: #00a884; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.3); cursor: pointer; border: none; transition: transform 0.2s, background 0.2s; flex-shrink: 0; margin-bottom: 2px; }
+        .wa-mic-btn i { transition: transform 0.2s; }
+        .wa-mic-btn.is-send { background: #008f6f; }
         #waQuickReplies { background: transparent; padding: 8px 15px; display: flex; gap: 8px; overflow-x: auto; justify-content: center; display: none; }
         .quick-btn { background-color: #202c33; border: 1px solid #37404a; color: #00a884; padding: 6px 16px; border-radius: 18px; font-size: 13px; font-weight: 500; cursor: pointer; flex-shrink: 0; }
         .quick-btn:hover { background-color: #2a3942; }
-
         .wa-back-btn { display: none; font-size: 1.2rem; margin-right: 15px; color: var(--text-main); cursor: pointer; }
 
+        /* --- VISOR DE FLUJO VERTICAL (DRAWER) --- */
+        #waFlowDrawer { position: absolute; bottom: 60px; left: 0; width: 100%; max-height: 0; background: var(--bg-sidebar); transition: max-height 0.3s ease; overflow-y: auto; border-top: 1px solid var(--border); z-index: 40; display: flex; flex-direction: column; padding: 0; }
+        #waFlowDrawer.open { max-height: 250px; padding: 10px 0; }
+        .flow-item-row { padding: 8px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid transparent; color: var(--text-muted); }
+        .flow-item-row:hover { background: rgba(255,255,255,0.05); }
+        .flow-item-row.past { opacity: 0.6; }
+        .flow-item-row.current { background: rgba(59, 130, 246, 0.15); color: var(--primary); border-left-color: var(--primary); font-weight: bold; }
+        .flow-item-row.future { color: var(--text-main); }
+
+        /* --- RESPONSIVE & UTILS --- */
         @media(max-width: 768px) {
             #mainApp { flex-direction: column; }
             .mobile-header { display: flex; position: relative; z-index: 50; }
@@ -298,52 +231,6 @@
             .wa-back-btn { display: block; }
         }
 
-        /* --- VISOR DE FLUJO VERTICAL (CMD MODE) --- */
-        #waFlowDrawer {
-            position: absolute;
-            bottom: 60px; /* Justo encima del input */
-            left: 0;
-            width: 100%;
-            max-height: 0; /* Oculto por defecto */
-            background: var(--bg-sidebar);
-            transition: max-height 0.3s ease;
-            overflow-y: auto;
-            border-top: 1px solid var(--border);
-            z-index: 40;
-            display: flex;
-            flex-direction: column;
-            padding: 0;
-        }
-
-        #waFlowDrawer.open {
-            max-height: 250px; /* Altura cuando se abre */
-            padding: 10px 0;
-        }
-
-        .flow-item-row {
-            padding: 8px 20px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-left: 3px solid transparent;
-            color: var(--text-muted);
-        }
-
-        .flow-item-row:hover {
-            background: rgba(255,255,255,0.05);
-        }
-
-        .flow-item-row.past { opacity: 0.6; }
-        .flow-item-row.current {
-            background: rgba(59, 130, 246, 0.15);
-            color: var(--primary);
-            border-left-color: var(--primary);
-            font-weight: bold;
-        }
-        .flow-item-row.future { color: var(--text-main); }
-
-        /* Utils & Modals */
         .step-hidden { display: none !important; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -352,9 +239,9 @@
         input:checked + .slider { background-color: var(--success); border-color: var(--success); }
         input:checked + .slider:before { transform: translateX(20px); }
 
+        .fab { position: fixed; bottom: 25px; right: 25px; background: var(--primary); color: white; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); z-index: 100; font-size: 24px; }
         #inAppNotify { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px); background: #333; color: white; padding: 12px 20px; border-radius: 50px; display: flex; align-items: center; gap: 10px; z-index: 9999; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); max-width: 90%; width: max-content; }
         #inAppNotify.show { transform: translateX(-50%) translateY(0); }
-
         #toast-container { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
         .toast { background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border); padding: 10px 20px; border-radius: 20px; color: white; animation: fadeIn 0.3s; backdrop-filter: blur(4px); }
 
@@ -365,20 +252,8 @@
         @media(min-width: 769px) { .sheet { border-radius: 16px; border: 1px solid var(--border); animation: fadeIn 0.2s; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .flow-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; scrollbar-width: thin; }
-        .flow-nav::-webkit-scrollbar { height: 4px; }
-        .flow-nav::-webkit-scrollbar-track { background: transparent; }
-        .flow-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-        .flow-nav span, .flow-nav i { flex-shrink: 0; }
-        .flow-nav span { color: var(--text-muted); cursor: pointer; font-weight: 500; }
-        .flow-nav span:hover { color: var(--primary); text-decoration: underline; }
-        .flow-nav span:last-child { color: var(--text-main); cursor: default; font-weight: 700; text-decoration: none; }
-        #deleteApptModal, 
-        #deleteConfirmModal, 
-        #jumpModal, 
-        #actionConfirmModal {
-            z-index: 4000 !important; /* Más alto que el 3000 estándar */
-        }
+        /* Z-INDEX CORRECTIONS */
+        #deleteApptModal, #deleteConfirmModal, #jumpModal, #actionConfirmModal { z-index: 4000 !important; }
     </style>
 </head>
 <body>
@@ -1575,86 +1450,103 @@
         if(!c) return;
         c.innerHTML = '';
 
+        // --- NAVEGACIÓN (BREADCRUMBS) ---
+        // Esto crea la barra superior: Inicio > BIENVENIDA > EFECTIVO...
         if (flowPath.length > 0) {
             let navHtml = `<div class="flow-nav" id="breadcrumbNav">`;
-            navHtml += `<button onclick="jumpToStep(${flowPath.length - 2})" class="admin-btn" style="margin-right:10px; border-radius:50%; width:30px; height:30px; padding:0; display:flex; align-items:center; justify-content:center;"><i class="fas fa-arrow-left"></i></button>`;
+            // Botón atrás circular
+            navHtml += `<button onclick="jumpToStep(${flowPath.length - 2})" class="admin-btn" style="border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;"><i class="fas fa-arrow-left"></i></button>`;
+            
             navHtml += `<span onclick="resetFlowNav()">Inicio</span>`;
             flowPath.forEach((step, index) => {
-                if(index === flowPath.length - 1) {
-                    navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.5;"></i> <span>${step}</span>`;
-                } else {
-                    navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.5;"></i> <span onclick="jumpToStep(${index})">${step}</span>`;
-                }
+                const isLast = index === flowPath.length - 1;
+                // Si es el último, lo ponemos en negrita, si no, es un link
+                navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.5;"></i> 
+                             <span onclick="${isLast ? '' : `jumpToStep(${index})`}" style="${isLast ? 'font-weight:bold; color:var(--text-main)' : ''}">${step}</span>`;
             });
             navHtml += `</div>`;
             c.innerHTML += navHtml;
         }
 
+        // --- LÓGICA CORREGIDA: QUÉ TARJETAS MOSTRAR ---
         let stepsToShow = [];
+        
         if (flowPath.length === 0) {
-            stepsToShow = findFlowRoots();
+            // Si no he navegado a nada, muestra las raíces (ej. BIENVENIDA)
+            stepsToShow = findFlowRoots(); 
+            // Fallback por si no encuentra raíces
             if(stepsToShow.length === 0 && Object.keys(flow).length > 0) {
                 stepsToShow = [Object.keys(flow).sort()[0]];
             }
         } else {
-            const parentId = flowPath[flowPath.length - 1];
-            stepsToShow = getChildrenSteps(parentId);
+            // 🔥 LA CORRECCIÓN CLAVE:
+            // Antes mostrábamos los hijos (getChildrenSteps).
+            // Ahora mostramos EL PASO ACTUAL en el que estamos parados.
+            const currentStep = flowPath[flowPath.length - 1];
+            stepsToShow = [currentStep];
         }
 
-        if(stepsToShow.length === 0 && flowPath.length > 0) {
-            c.innerHTML += `<div style="text-align:center; padding:20px; color:var(--text-muted);">
-                <p>Este paso no tiene salidas configuradas.</p>
-                <button class="admin-btn" style="margin-top:10px; border-color:var(--primary); color:var(--primary);" onclick="edit('${flowPath[flowPath.length-1]}')">
-                    <i class="fas fa-pen"></i> Editar "${flowPath[flowPath.length-1]}"
-                </button>
-            </div>`;
-        }
-
+        // --- RENDERIZADO DE TARJETAS ---
         stepsToShow.forEach(k => {
             const step = flow[k];
             if(!step) return;
 
-            let isInc = false;
-            if (step.type !== 'fin_bot' && !step.next_step && (!step.options || step.options.length === 0)) {
-                isInc = true;
+            let typeClass = 'type-message';
+            let icon = '<i class="fas fa-comment-alt"></i>';
+            if(step.type === 'menu') { typeClass = 'type-menu'; icon = '<i class="fas fa-list-ul"></i>'; }
+            else if(step.type === 'input') { typeClass = 'type-input'; icon = '<i class="fas fa-pen-alt"></i>'; }
+            else if(step.type === 'filtro') { typeClass = 'type-filtro'; icon = '<i class="fas fa-user-shield"></i>'; }
+            else if(step.type === 'cita') { typeClass = 'type-cita'; icon = '<i class="far fa-calendar-check"></i>'; }
+            else if(step.type === 'fin_bot') { typeClass = 'type-fin'; icon = '<i class="fas fa-flag-checkered"></i>'; }
+
+            const userCount = users.filter(u => u.current_step === k).length;
+            const badgeHtml = userCount > 0 ? `<div class="user-badge"><i class="fas fa-user"></i> ${userCount}</div>` : '';
+
+            // BOTONES DE NAVEGACIÓN (CHIPS)
+            // Estos son los botones que aparecen AL FINAL de la tarjeta para avanzar
+            let chipsHtml = '';
+            
+            if(step.options && step.options.length > 0) {
+                // Si es un menú con varias opciones
+                step.options.forEach(opt => {
+                    chipsHtml += `<div class="flow-chip" onclick="event.stopPropagation(); enterStep('${opt.next_step}')">
+                        <span>${opt.label}</span> <i class="fas fa-arrow-right"></i>
+                    </div>`;
+                });
+            }
+            else if (step.next_step) {
+                // Si es un paso lineal (ej. input o mensaje simple)
+                chipsHtml = `<div class="flow-chip" onclick="event.stopPropagation(); enterStep('${step.next_step}')">
+                    <span>Ir a: ${step.next_step}</span> <i class="fas fa-arrow-right"></i>
+                </div>`;
+            } else {
+                 // Si no tiene salida (Fin del flujo)
+                 chipsHtml = `<div style="text-align:center; padding:10px; opacity:0.5; font-size:0.8rem;">🏁 Fin del flujo</div>`;
             }
 
-            let typeIcon = '<i class="fas fa-cube"></i>';
-            let typeColor = '#94a3b8';
+            // LIMPIEZA DE TEXTO (Para que no se vea desalineado)
+            // Usamos .trim() y nos aseguramos de no dejar espacios en el template literal
+            const cleanText = (step.message || '').trim() || '<span style="font-style:italic; opacity:0.5">(Sin texto)</span>';
 
-            if(step.type === 'menu') { typeIcon = '<i class="fas fa-list-ul"></i>'; typeColor = '#a855f7'; }
-            else if(step.type === 'message') { typeIcon = '<i class="fas fa-comment-alt"></i>'; typeColor = '#3b82f6'; }
-            else if(step.type === 'input') { typeIcon = '<i class="fas fa-pen-alt"></i>'; typeColor = '#f59e0b'; }
-            else if(step.type === 'cita') { typeIcon = '<i class="far fa-calendar-check"></i>'; typeColor = '#10b981'; }
-            else if(step.type === 'filtro') { typeIcon = '<i class="fas fa-user-shield"></i>'; typeColor = '#ef4444'; }
-
-            const hasMedia = (step.media && step.media.length > 0)
-                ? `<span style="font-size:0.75rem; background:#334155; padding:2px 6px; border-radius:4px; margin-left:8px;"><i class="fas fa-paperclip"></i> ${step.media.length}</span>`
-                : '';
-
+            // HTML ESTRUCTURADO
             c.innerHTML += `
-            <div class="flow-step-card ${isInc ? 'card-incomplete' : ''}"
-                 onclick="enterStep('${k}')"
-                 style="position:relative; display:block; padding-right:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="color:${typeColor}; font-size:1.1rem;">${typeIcon}</span>
+            <div class="flow-step-card ${typeClass}">
+                
+                <div class="card-header" onclick="edit('${k}')">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.1rem; opacity:0.7;">${icon}</span>
                         <strong style="font-size:1rem;">${k}</strong>
-                        ${hasMedia}
-                        ${isInc ? '<i class="fas fa-exclamation-circle warning-icon" title="Paso incompleto"></i>' : ''}
+                        ${badgeHtml}
                     </div>
-                    <button onclick="event.stopPropagation(); edit('${k}')"
-                            style="background:var(--bg-input); border:1px solid var(--border); color:var(--text-muted); width:32px; height:32px; border-radius:6px; cursor:pointer;">
-                        <i class="fas fa-pen" style="font-size:12px;"></i>
-                    </button>
+                    <i class="fas fa-pen" style="font-size:0.8rem; opacity:0.5;"></i>
                 </div>
-                ${step.message
-                    ? `<div style="background:rgba(0,0,0,0.2); border-left:3px solid ${typeColor}; padding:8px 10px; border-radius:4px; font-size:0.9rem; color:#e2e8f0; white-space:pre-wrap; line-height:1.4;">${step.message}</div>`
-                    : '<div style="font-size:0.8rem; color:#64748b; font-style:italic;">(Sin mensaje de texto)</div>'
-                }
-                <div style="text-align:right; margin-top:8px; opacity:0.5; font-size:0.8rem;">
-                    <i class="fas fa-chevron-right"></i> Ver opciones
+
+                <div class="card-body" onclick="edit('${k}')">${cleanText}${step.media && step.media.length > 0 ? `<div class="thumb-row">${step.media.map(u=>`<div style="background-image:url('${u}');" class="thumb-img"></div>`).join('')}</div>` : ''}</div>
+
+                <div class="card-footer">
+                    ${chipsHtml}
                 </div>
+
             </div>`;
         });
     }
@@ -1819,18 +1711,11 @@
         currentMediaList.forEach((u,i) => c.innerHTML += `<div style="min-width:60px; height:60px; background:url(${u}) center/cover; border-radius:5px; position:relative;"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:red; border-radius:50%; width:18px; height:18px; border:none; color:white; font-size:10px;">x</button></div>`);
     }
 
-    async function uploadImages(inp) {
-        if(!inp.files.length) return; 
-        const fd = new FormData(); 
-        for(let f of inp.files) fd.append('images', f);
-        const res = await (await fetch(`${API_BASE}/api/upload`, {method:'POST', body:fd})).json();
-        if(res.urls) { currentMediaList.push(...res.urls); renderGallery(); }
-    }
-
-    const getSelectOptions = (selected) => {
-        let opts = '<option value="">-- Elegir --</option>';
+    // Helper para Datalist (Autocompletado)
+    const getDatalistOptions = () => {
+        let opts = '';
         Object.keys(flow).sort().forEach(k => {
-            opts += `<option value="${k}" ${k===selected?'selected':''}>${k}</option>`;
+            opts += `<option value="${k}">`;
         });
         return opts;
     };
@@ -1841,43 +1726,120 @@
         const d = flow[id] || {};
         const c = document.getElementById('dynFields');
         const wrapMsg = document.getElementById('wrapper-msg'), wrapMedia = document.getElementById('wrapper-media');
+        
         wrapMsg.style.display = type==='cita'?'none':'block'; 
         wrapMedia.style.display = type==='cita'?'none':'block';
 
-        let html = '';
+        // Generamos la lista de pasos existentes para sugerencias
+        const dataListHtml = `<datalist id="stepsList">${getDatalistOptions()}</datalist>`;
+        
+        let html = dataListHtml; // Lo agregamos al HTML
+
         if(type === 'menu' || type === 'filtro') {
-            html += `<label>Opciones</label><div id="optsList">`;
-            (d.options||[]).forEach(o => html += `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" value="${o.label}"><select class="o-nxt">${getSelectOptions(o.next_step)}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`);
+            html += `<label>Opciones (Botones)</label><div id="optsList">`;
+            (d.options||[]).forEach(o => {
+                // Input inteligente para "Siguiente Paso"
+                html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <input class="o-lbl" value="${o.label}" placeholder="Texto Botón">
+                    <input class="o-nxt" list="stepsList" value="${o.next_step||''}" placeholder="Destino (Escribe para crear)" style="font-weight:bold; color:var(--primary);">
+                    <button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button>
+                </div>`;
+            });
             html += `</div><button class="admin-btn" onclick="addOptRow()">+ Opción</button>`;
             if(type==='menu') html += `<label style="margin-top:10px">Keywords</label><input id="stKw" value="${(d.keywords||[]).join(', ')}">`;
             if(type==='filtro') html += `<label style="margin-top:10px">Admin Tel</label><input id="stAdm" value="${d.admin_number||''}">`;
+
         } else if (type === 'input') {
-            html += `<label>Variable a Guardar</label><input id="stVar" value="${d.save_var||''}"><label>Siguiente</label><select id="stNext">${getSelectOptions(d.next_step)}</select>`;
+            html += `<label>Variable a Guardar</label><input id="stVar" value="${d.save_var||''}">`;
+            html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Escribe para crear nuevo...">`;
         } else {
-            html += `<label>Siguiente</label><select id="stNext">${getSelectOptions(d.next_step)}</select>`;
+            html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Escribe para crear nuevo...">`;
         }
         c.innerHTML = html;
     }
 
-    function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><select class="o-nxt">${getSelectOptions('')}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`); }
+    function addOptRow() { 
+        // Esta versión usa el INPUT con DATALIST en lugar del SELECT antiguo
+        document.getElementById('optsList').insertAdjacentHTML('beforeend', 
+            `<div style="display:flex; gap:5px; margin-bottom:5px;">
+                <input class="o-lbl" placeholder="Botón">
+                <input class="o-nxt" list="stepsList" placeholder="Destino (Nuevo)">
+                <button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button>
+            </div>`
+        ); 
+    }
 
     async function saveStep() {
-        const id = document.getElementById('stId').value, type = document.getElementById('stType').value;
+        const id = document.getElementById('stId').value;
+        const type = document.getElementById('stType').value;
+        
+        // Objeto base
         const data = { type, message: document.getElementById('stMsg').value, media: currentMediaList };
-        if(document.getElementById('stNext')) data.next_step = document.getElementById('stNext').value;
-        if(document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value;
-        if(document.getElementById('stKw')) data.keywords = document.getElementById('stKw').value.split(',').map(s=>s.trim());
-        if(document.getElementById('stAdm')) data.admin_number = document.getElementById('stAdm').value;
+        
+        // Array para rastrear qué pasos nuevos debemos crear
+        let stepsToCreate = [];
+
+        // 1. Recolectar Next Step (Input/Mensaje)
+        if(document.getElementById('stNext')) {
+            const val = document.getElementById('stNext').value.trim().toUpperCase(); // Forzamos mayúsculas
+            if(val) {
+                data.next_step = val;
+                if(!flow[val]) stepsToCreate.push(val);
+            }
+        }
+
+        // 2. Recolectar Opciones (Menu)
         if(document.getElementById('optsList')) {
             data.options = [];
             document.querySelectorAll('#optsList div').forEach(row => {
-                const l = row.querySelector('.o-lbl').value, n = row.querySelector('.o-nxt').value;
-                if(l && n) data.options.push({label:l, trigger:l, next_step:n});
+                const l = row.querySelector('.o-lbl').value;
+                const n = row.querySelector('.o-nxt').value.trim().toUpperCase(); // Forzamos mayúsculas
+                if(l && n) {
+                    data.options.push({label:l, trigger:l, next_step:n});
+                    if(!flow[n]) stepsToCreate.push(n);
+                }
             });
         }
+        
+        // 3. Otros campos
+        if(document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value;
+        if(document.getElementById('stKw')) data.keywords = document.getElementById('stKw').value.split(',').map(s=>s.trim());
+        if(document.getElementById('stAdm')) data.admin_number = document.getElementById('stAdm').value;
+
+        // --- MAGIA: CREACIÓN AUTOMÁTICA DE PASOS ---
+        // Si detectamos pasos destino que NO existen, los creamos en el servidor
+        if(stepsToCreate.length > 0) {
+            // Filtramos duplicados
+            stepsToCreate = [...new Set(stepsToCreate)];
+            
+            for (const newStepName of stepsToCreate) {
+                // Solo si realmente no existe en memoria
+                if(!flow[newStepName]) {
+                    console.log("✨ Creando paso automático:", newStepName);
+                    const placeholderData = { type: 'message', message: '🚧 Paso creado automáticamente. Edítame.' };
+                    // Guardar en servidor
+                    await fetch('/api/flow/step', { 
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/json'}, 
+                        body: JSON.stringify({ stepId: newStepName, stepData: placeholderData }) 
+                    });
+                    // Actualizar memoria local
+                    flow[newStepName] = placeholderData;
+                }
+            }
+            showToast(`✨ ${stepsToCreate.length} pasos nuevos creados`);
+        }
+
+        // --- GUARDADO FINAL DEL PASO ACTUAL ---
         await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
-        flow[id] = data; renderFlowList(); document.getElementById('editorModal').classList.remove('active');
+        
+        flow[id] = data; 
+        renderFlowList(); 
+        document.getElementById('editorModal').classList.remove('active');
+        showToast("✅ Paso guardado");
     }
+
+    function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><select class="o-nxt">${getSelectOptions('')}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`); }
 
     function createNewStepPrompt() {
         document.getElementById('newStepNameInput').value = '';
