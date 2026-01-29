@@ -1839,8 +1839,6 @@
         showToast("✅ Paso guardado");
     }
 
-    function addOptRow() { document.getElementById('optsList').insertAdjacentHTML('beforeend', `<div style="display:flex; gap:5px; margin-bottom:5px;"><input class="o-lbl" placeholder="Botón"><select class="o-nxt">${getSelectOptions('')}</select><button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button></div>`); }
-
     function createNewStepPrompt() {
         document.getElementById('newStepNameInput').value = '';
         document.getElementById('stepNameModal').classList.add('active');
