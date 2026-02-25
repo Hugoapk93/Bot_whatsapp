@@ -10,12 +10,10 @@ const cors = require('cors');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
 
-// --- IMPORTS LOCALES ---
 const { getKeywords, saveKeyword, deleteKeyword } = require('./src/database');
 const { findKeywordMatch } = require('./src/keywords');
 const { handleMessage, sendStepMessage } = require('./src/flow');
 
-// 🔥 IMPORT: SCHEDULER (Agenda Automática) 🔥
 const { initScheduler } = require('./src/flow/scheduler'); 
 
 const {
@@ -35,15 +33,11 @@ const {
 } = require('./src/database');
 const { syncContacts, getAllContacts, toggleContactBot, addManualContact } = require('./src/contacts');
 
-// CONFIGURACIÓN EXPRESS
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// ==========================================
-// CONFIGURACIÓN WEB PUSH (VAPID)
-// ==========================================
 const publicVapidKey = 'BKdzNrgEPTOnZF14GlVWIQDQBO5e1fZqq0DqU3tcM_8dsCiVqjHslSYgNQVccHlhjyyebi3cpMTtpOHppN6i5RE';
 const privateVapidKey = 'J_4mSjwet7y8i_xmiBsS9aG_BQXJjjfVXWO6qtcDeaA';
 
@@ -53,7 +47,6 @@ webpush.setVapidDetails(
     privateVapidKey
 );
 
-// --- NOTIFICACIONES PUSH GLOBALES ---
 global.sendPushNotification = (title, body, url) => {
     const targetUrl = url || '/index.html#activity';
     const payload = JSON.stringify({ title, body, url: targetUrl });
@@ -69,9 +62,6 @@ global.sendPushNotification = (title, body, url) => {
     });
 };
 
-// =================================================================
-// 🛡️ ESCUDO ANTI-CAÍDAS
-// =================================================================
 process.on('uncaughtException', (err) => {
     console.error('🔥 CRITICAL ERROR (No Apagando):', err);
 });
@@ -79,9 +69,6 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('⚠️ PROMISE ERROR (Sin Manejar):', reason);
 });
 
-// =================================================================
-// SERVIDOR HTTP & SOCKET.IO
-// =================================================================
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
@@ -92,9 +79,6 @@ io.on('connection', (socket) => {
     console.log('🔌 Simulador/Monitor conectado:', socket.id);
 });
 
-// =================================================================
-// PUERTO Y TORRE DE CONTROL
-// =================================================================
 const args = process.argv.slice(2);
 const portArgIndex = args.indexOf('--port');
 const PORT = portArgIndex !== -1 ? parseInt(args[portArgIndex + 1]) : 3000;
@@ -102,7 +86,6 @@ const PORT = portArgIndex !== -1 ? parseInt(args[portArgIndex + 1]) : 3000;
 const TOWER_URL = 'http://localhost:8888/api/instances/report';
 const INSTANCE_ID = 'bot_' + PORT;
 
-// --- CARPETAS ---
 const uploadDir = path.join(__dirname, 'public/uploads');
 const dataDir = path.join(__dirname, 'data');
 const authDir = 'auth_info_baileys';
@@ -110,12 +93,13 @@ const authDir = 'auth_info_baileys';
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// --- VARIABLES GLOBALES ---
 let globalSock;
 let globalQR = null;
 let connectionStatus = 'disconnected';
 
-// --- REPORTE DE ESTADO ---
+const userMessageBuffers = new Map();
+const userMessageTimers = new Map();
+
 async function reportToTower() {
     try {
         await fetch(TOWER_URL, {
@@ -129,10 +113,9 @@ async function reportToTower() {
                 version: '2.2.0'
             })
         });
-    } catch (e) { /* Silencioso */ }
+    } catch (e) {}
 }
 
-// --- HELPER JSON ---
 function safeReadJSON(filePath, defaultVal) {
     if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, JSON.stringify(defaultVal, null, 2));
@@ -148,12 +131,10 @@ function safeReadJSON(filePath, defaultVal) {
     }
 }
 
-// --- AGENDA ---
 const agendaPath = path.join(dataDir, 'agenda.json');
 function getAgenda() { return safeReadJSON(agendaPath, {}); }
 function saveAgenda(data) { fs.writeFileSync(agendaPath, JSON.stringify(data, null, 2)); }
 
-// --- MULTER (SUBIDA DE ARCHIVOS) ---
 const storage = multer.diskStorage({
     destination: function (req, file, cb) { cb(null, 'public/uploads/') },
     filename: function (req, file, cb) {
@@ -163,12 +144,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// INICIALIZAR DB
 initializeDB();
 
-// =================================================================
-// CONEXIÓN WHATSAPP
-// =================================================================
 async function connectToWhatsApp() {
     if (connectionStatus === 'connecting' || connectionStatus === 'rebooting' || connectionStatus === 'connected') {
         return;
@@ -229,21 +206,16 @@ async function connectToWhatsApp() {
             reportToTower();
             if (global.io) global.io.emit('status', { status: 'connected' });
             
-            // 🔥 INICIAR CRON DE AGENDA 🔥
             initScheduler(sock);
         }
     });
 
     sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
 
-    // ==========================================================
-    // >>> LÓGICA DE MENSAJES PRINCIPAL <<<
-    // ==========================================================
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         const isFromMe = messages[0]?.key?.fromMe;
         if (type !== 'notify' && !isFromMe) return;
 
-        // 1. REVISAR LICENCIA
         const settings = getSettings();
         if (settings.license && settings.license.end) {
             const today = new Date().toISOString().split('T')[0];
@@ -260,7 +232,6 @@ async function connectToWhatsApp() {
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
             const isMe = msg.key.fromMe;
 
-            // --- 1. AUTO-REGISTRO Y NOTIFICACIÓN DE NUEVO CLIENTE ---
             let contactConfig = allContacts.find(c => c.phone === incomingPhoneRaw);
             
             if (!contactConfig && !isMe) {
@@ -268,7 +239,6 @@ async function connectToWhatsApp() {
                 addManualContact(incomingPhoneRaw, incomingPhoneRaw, true);
                 contactConfig = { phone: incomingPhoneRaw, name: incomingPhoneRaw, bot_enabled: true };
                 
-                // 🔥 NOTIFICACIÓN SOLO CUANDO ES NUEVO 🔥
                 global.sendPushNotification(
                     "🆕 Nuevo Cliente", 
                     `El número ${incomingPhoneRaw} ha iniciado una conversación.`, 
@@ -283,7 +253,6 @@ async function connectToWhatsApp() {
                 });
             }
 
-            // --- 2. GUARDAR MENSAJE ---
             const msgText = msg.message?.conversation ||
                             msg.message?.extendedTextMessage?.text ||
                             msg.message?.imageMessage?.caption ||
@@ -327,66 +296,76 @@ async function connectToWhatsApp() {
                 });
             }
 
-            if (isMe) continue; // Si soy yo, termino aquí
+            if (isMe) continue; 
 
-            // --- 3. VERIFICAR BOT ENCENDIDO ---
             if (contactConfig && contactConfig.bot_enabled === false) {
                 continue;
             }
 
-            // ==========================================================
-            // 🔥 INTERCEPTOR (RESPUESTAS RÁPIDAS) 🔥
-            // ==========================================================
-            const keywordMatch = findKeywordMatch(msgText);
-            if (keywordMatch) {
-                console.log(`🧠 Interceptor activado: "${keywordMatch.keywords}"`);
+            if (!userMessageBuffers.has(incomingPhoneRaw)) {
+                userMessageBuffers.set(incomingPhoneRaw, []);
+            }
+            
+            userMessageBuffers.get(incomingPhoneRaw).push(msgText);
+
+            if (userMessageTimers.has(incomingPhoneRaw)) {
+                clearTimeout(userMessageTimers.get(incomingPhoneRaw));
+            }
+
+            userMessageTimers.set(incomingPhoneRaw, setTimeout(async () => {
                 
-                // Enviar respuesta
-                await globalSock.sendMessage(remoteJid, { text: keywordMatch.answer });
+                const joinedText = userMessageBuffers.get(incomingPhoneRaw).join(' ');
+                
+                userMessageBuffers.delete(incomingPhoneRaw);
+                userMessageTimers.delete(incomingPhoneRaw);
 
-                // Retomar hilo visualmente
-                const userState = getUser(incomingPhoneRaw);
-                const currentStep = userState.current_step || 'INICIO';
-                setTimeout(async () => {
-                    await sendStepMessage(globalSock, remoteJid, currentStep, userState);
-                }, 1000);
+                console.log(`📦 Mensaje agrupado de ${incomingPhoneRaw}: "${joinedText}"`);
 
-                continue; // ⛔ CORTAR FLUJO AQUÍ
-            }
-            // ==========================================================
-
-            // --- 4. FLUJO NORMAL DEL BOT ---
-            try {
-                await handleMessage(sock, msg);
-
-                // Auto-actualización de nombre
-                const postFlowUser = getUser(incomingPhoneRaw);
-                if (postFlowUser && postFlowUser.history) {
-                    const capturedName = postFlowUser.history.nombre ||
-                                         postFlowUser.history.name ||
-                                         postFlowUser.history.cliente ||
-                                         postFlowUser.history.usuario;
-
-                    if (capturedName && contactConfig.name !== capturedName) {
-                        console.log(`📝 Auto-actualizando nombre: ${contactConfig.name} -> ${capturedName}`);
-                        addManualContact(incomingPhoneRaw, capturedName, contactConfig.bot_enabled);
-                        await updateUser(incomingPhoneRaw, { name: capturedName });
-                        if (global.io) global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
-                        contactConfig.name = capturedName;
-                    }
+                const finalMsg = msg; 
+                if (finalMsg.message.extendedTextMessage) {
+                    finalMsg.message.extendedTextMessage.text = joinedText;
+                } else if (finalMsg.message.conversation) {
+                    finalMsg.message.conversation = joinedText;
+                } else {
+                    finalMsg.message = { conversation: joinedText };
                 }
-            } catch (err) {
-                console.error("Error procesando mensaje:", err);
-            }
+
+                const keywordMatch = findKeywordMatch(joinedText);
+                if (keywordMatch) {
+                    console.log(`🧠 Interceptor activado: "${keywordMatch.keywords}"`);
+                    await sock.sendMessage(remoteJid, { text: keywordMatch.answer });
+                    const userState = getUser(incomingPhoneRaw);
+                    setTimeout(async () => {
+                        await sendStepMessage(sock, remoteJid, userState.current_step || 'INICIO', userState);
+                    }, 1000);
+                    return; 
+                }
+
+                try {
+                    await handleMessage(sock, finalMsg);
+
+                    const postFlowUser = getUser(incomingPhoneRaw);
+                    if (postFlowUser && postFlowUser.history) {
+                        const capturedName = postFlowUser.history.nombre ||
+                                             postFlowUser.history.cliente ||
+                                             postFlowUser.history.usuario;
+
+                        if (capturedName && contactConfig.name !== capturedName) {
+                            addManualContact(incomingPhoneRaw, capturedName, contactConfig.bot_enabled);
+                            await updateUser(incomingPhoneRaw, { name: capturedName });
+                            if (global.io) global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
+                            contactConfig.name = capturedName;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error procesando mensaje:", err);
+                }
+
+            }, 4500));
         }
     });
 }
 
-// ==========================================
-//              RUTAS API
-// ==========================================
-
-// --- CONTACTOS ---
 app.post('/api/contacts/update', async (req, res) => {
     const { phone, name, enable } = req.body;
     await updateUser(phone, { name, bot_enabled: enable });
@@ -451,7 +430,6 @@ app.post('/api/send-message', async (req, res) => {
     }
 });
 
-// --- SIMULADOR ---
 app.post('/api/simulate/text', async (req, res) => {
     const { phone, text } = req.body;
     if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
@@ -473,7 +451,6 @@ app.post('/api/simulate/text', async (req, res) => {
     }
 });
 
-// --- KEYWORDS ---
 app.get('/api/keywords', (req, res) => res.json(getKeywords()));
 app.post('/api/keywords', (req, res) => {
     const rule = req.body;
@@ -486,7 +463,6 @@ app.delete('/api/keywords/:id', (req, res) => {
     res.json({ success: true });
 });
 
-// --- VARIOS ---
 app.post('/api/subscribe', (req, res) => {
     saveSubscription(req.body);
     res.status(201).json({});
@@ -546,7 +522,6 @@ app.post('/api/flow/step', async (req, res) => { await saveFlowStep(req.body.ste
 app.delete('/api/flow/step/:id', async (req, res) => { await deleteFlowStep(req.params.id); res.json({ success: true }); });
 app.get('/api/users', (req, res) => res.json(getAllUsers()));
 
-// --- CRM EXECUTE ---
 app.post('/api/crm/execute', async (req, res) => {
     const { phone, stepId } = req.body;
     if (!stepId) return res.status(400).json({ error: "Sin destino." });
@@ -610,9 +585,6 @@ app.post('/api/settings', async (req, res) => {
     res.json({ success: true });
 });
 
-// =================================================================
-// 🔌 CIERRE ELEGANTE
-// =================================================================
 const gracefulShutdown = () => {
     console.log('🛑 Cerrando bot (Signal recibida)...');
     reportToTower().then(() => {
@@ -625,7 +597,6 @@ const gracefulShutdown = () => {
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
 
-// ARRANCAR EL BOT
 server.listen(PORT, () => {
     console.log(`🚀 Torre de Control Local + Sockets en puerto: ${PORT}`);
     connectToWhatsApp();

@@ -4,18 +4,15 @@ const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
 const { isValidName, isValidBirthDate } = require('./validators');
 
-// 🔥 HELPER: Limpieza básica (Quitar acentos y mayúsculas)
 const basicClean = (str) => {
     if (!str) return "";
     return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 };
 
-// --- MANEJADOR DE MENÚS (CORREGIDO "SI/NO") ---
 async function handleMenuStep(stepConfig, text, remoteJid, sock) {
     const userText = basicClean(text);
     const isNumber = /^[0-9]+$/.test(userText);
     
-    // 1. Prioridad: Coincidencia por NÚMERO
     if (isNumber) {
         const index = parseInt(userText) - 1;
         if (stepConfig.options && stepConfig.options[index]) {
@@ -23,36 +20,25 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
         }
     }
 
-    // 2. Coincidencia por PALABRAS CLAVE
     if (stepConfig.options && Array.isArray(stepConfig.options)) {
-        
-        // 🔥 CORRECCIÓN AQUÍ: Cambiamos > 2 por > 1 para aceptar "Si", "No", "TV", etc.
-        // Solo filtramos letras sueltas como "y", "o", "a".
         const userWords = userText.split(' ').filter(w => w.length > 1); 
         
         if (userWords.length > 0) {
-            // Filtramos: ¿Qué opciones contienen TODAS las palabras que escribió el usuario?
             const matches = stepConfig.options.filter(opt => {
                 const optLabel = basicClean(opt.label);
                 const optTrigger = basicClean(opt.trigger || "");
-                
-                // Revisa en la etiqueta O en el trigger oculto
                 return userWords.every(word => optLabel.includes(word) || optTrigger.includes(word));
             });
 
-            // --- TOMA DE DECISIÓN ---
-
             if (matches.length === 1) {
-                // ✅ CASO PERFECTO: Solo hay una coincidencia
                 return matches[0].next_step;
             }
 
             if (matches.length > 1) {
-                // ⚠️ AMBIGÜEDAD
                 const suggestions = matches.map(m => `"${m.label}"`).join(' o ');
                 const txt = `⚠️ Varias opciones con esa palabra.\n\nCual quieres elegir:\n ${suggestions}`;
 
-                if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+                if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
                 else await sock.sendMessage(remoteJid, { text: txt });
                 
                 return null; 
@@ -60,30 +46,26 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
         }
     }
 
-    // ❌ CASO ERROR
     const txt = `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`;
-    if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+    if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
     else await sock.sendMessage(remoteJid, { text: txt });
     
     return null;
 }
 
-// --- MANEJADOR DE INPUTS (DATOS) ---
 async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const varName = stepConfig.save_var || 'temp';
 
-    // 1. Validación de NOMBRE
     if (varName === 'nombre' && !isValidName(text)) {
         const txt = "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.";
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
         else await sock.sendMessage(remoteJid, { text: txt });
         return null;
     }
 
-    // 2. Validación de FECHA DE NACIMIENTO 
     if (varName === 'fecha_nacimiento' && !isValidBirthDate(text)) {
         const txt = "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)";
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
         else await sock.sendMessage(remoteJid, { text: txt });
         return null; 
     }
@@ -96,7 +78,6 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     return stepConfig.next_step;
 }
 
-// --- MANEJADOR DE CITAS ---
 async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, msg) {
     console.log(`🧠 Analizando Cita: "${text}"`);
     const analysis = analyzeNaturalLanguage(text);
@@ -107,41 +88,69 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
         user.history['fecha'] = analysis.date;
         if (!analysis.time) delete user.history['hora'];
     }
+
     if (analysis.time) user.history['hora'] = analysis.time;
 
     await updateUser(dbKey, { history: user.history });
-    const fechaMemoria = user.history['fecha'];
-    const horaMemoria = user.history['hora'];
+
+    let fechaMemoria = user.history['fecha'];
+    let horaMemoria = user.history['hora'];
+
+    if (fechaMemoria) {
+        const formatter = new Intl.DateTimeFormat("en-CA", { 
+            timeZone: "America/Matamoros", year: 'numeric', month: '2-digit', day: '2-digit' 
+        });
+        const hoyStr = formatter.format(new Date());
+
+        if (fechaMemoria < hoyStr) {
+            console.log(`⚠️ Fecha vieja detectada (${fechaMemoria}). Limpiando memoria...`);
+            delete user.history['fecha'];
+            delete user.history['hora'];
+            await updateUser(dbKey, { history: user.history });
+            fechaMemoria = null; 
+            horaMemoria = null;
+        }
+    }
 
     if (!fechaMemoria) {
         const txt = "📅 ¿Para qué día te gustaría agendar?";
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
+        else await sock.sendMessage(remoteJid, { text: txt });
         return null;
     }
+
     if (!horaMemoria) {
         const txt = `Perfecto, para el *${friendlyDate(fechaMemoria)}*.\n¿A qué hora puedes venir?`;
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
+        else await sock.sendMessage(remoteJid, { text: txt });
         return null;
     }
+
     if (isDateInPast(fechaMemoria, horaMemoria)) {
         const txt = "⚠️ Fecha pasada. \nIndica una futura.";
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-        delete user.history['hora']; await updateUser(dbKey, { history: user.history });
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
+        else await sock.sendMessage(remoteJid, { text: txt });
+        delete user.history['hora'];
+        await updateUser(dbKey, { history: user.history });
         return null;
     }
 
     const rules = validateBusinessRules(horaMemoria);
     if (!rules.valid) {
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, rules.reason); else await sock.sendMessage(remoteJid, { text: rules.reason });
-        delete user.history['hora']; await updateUser(dbKey, { history: user.history });
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, rules.reason);
+        else await sock.sendMessage(remoteJid, { text: rules.reason });
+        delete user.history['hora'];
+        await updateUser(dbKey, { history: user.history });
         return null;
     }
 
     const isAvailable = await checkAvailability(fechaMemoria, horaMemoria);
     if (!isAvailable) {
         const txt = `❌ Horario ocupado.`;
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
-        delete user.history['hora']; await updateUser(dbKey, { history: user.history });
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
+        else await sock.sendMessage(remoteJid, { text: txt });
+        delete user.history['hora'];
+        await updateUser(dbKey, { history: user.history });
         return null;
     }
 
@@ -156,7 +165,8 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
         return stepConfig.next_step; 
     } else {
         const txt = `✅ Cita confirmada: ${friendlyDate(fechaMemoria)} a las ${horaMemoria}`;
-        if(esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); else await sock.sendMessage(remoteJid, { text: txt });
+        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
+        else await sock.sendMessage(remoteJid, { text: txt });
         return null;
     }
 }

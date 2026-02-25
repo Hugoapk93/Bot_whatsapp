@@ -6,14 +6,12 @@ const { isBusinessClosed } = require('./agenda');
 
 const SIMULATOR_PHONE = '5218991234567';
 const INITIAL_STEP = 'BIENVENIDA';
-// Resolvemos la ruta absoluta para evitar ambigüedades
 const publicFolder = path.resolve(__dirname, '../../public');
 
 const esSimulador = (jid) => jid.includes(SIMULATOR_PHONE);
 
 const enviarAlFrontend = (jid, contenido, type = 'text') => {
     if (global.io) {
-        // Normalizamos el contenido para que el frontend lo entienda siempre
         const textPayload = (typeof contenido === 'string' ? contenido : (contenido.caption || ''))
                            .replace(/\n/g, '<br>');
         
@@ -29,7 +27,6 @@ const enviarAlFrontend = (jid, contenido, type = 'text') => {
 
 const typing = async (sock, jid, length) => {
     if (esSimulador(jid)) return;
-    // Ajuste dinámico: mínimo 500ms, máximo 2s para que se sienta natural
     const ms = Math.min(Math.max(length * 40, 500), 2000); 
     try {
         await sock.sendPresenceUpdate('composing', jid);
@@ -38,11 +35,9 @@ const typing = async (sock, jid, length) => {
     } catch(e) { /* Ignorar error de presencia */ }
 };
 
-// --- FUNCIÓN PRINCIPAL DE ENVÍO ---
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId}`);
     
-    // Protección contra Loops Infinitos
     if (userData._lastStep === stepId && userData._recursionCount > 2) {
         console.warn(`⚠️ Bucle detectado en paso ${stepId}. Deteniendo.`);
         return false;
@@ -50,7 +45,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     let step = getFlowStep(stepId);
     
-    // Auto-reparación si el paso inicial no existe
     if (!step && stepId === INITIAL_STEP) {
         step = { type: 'menu', message: '¡Hola! Bienvenido.', options: [] };
         await saveFlowStep(INITIAL_STEP, step);
@@ -60,7 +54,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         return false;
     }
 
-    // Guardar contacto automáticamente al finalizar
     if (step.type === 'fin_bot') {
         const cleanPhone = jid.replace('@s.whatsapp.net', '').replace('@c.us', '');
         const contactName = userData.history?.nombre || userData.history?.cliente || userData.pushName || 'Cliente Nuevo';
@@ -68,10 +61,14 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
 
     let messageText = step.message || "";
+
+    if (step.type === 'cita' && !messageText) {
+        messageText = "📅 ¿Para qué día te gustaría agendar tu visita?";
+    }
+
     const cleanClientPhone = jid.replace(/[^0-9]/g, '');
     let isClosed = false; 
 
-    // LÓGICA DE FILTRO
     if (step.type === 'filtro') {
         if (isBusinessClosed()) {
             console.log("🌙 Paso Filtro: Negocio Cerrado.");
@@ -103,7 +100,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // Saludo Inteligente
     const mxDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
     const hour = mxDate.getHours();
     let saludo = 'Hola';
@@ -114,16 +110,27 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     if (messageText) {
         messageText = messageText.replace(/{{saludo}}/gi, saludo);
 
-        // Variables Dinámicas
         if (userData.history) {
             Object.keys(userData.history).forEach(key => {
-                const val = userData.history[key] || '';
+                let val = userData.history[key] || '';
+                
+                // ==========================================================
+                // 🔥 TRADUCTOR DE FECHAS AMIGABLES 🔥
+                // Convierte "2026-02-25" a "Miércoles 25/02/2026"
+                // ==========================================================
+                if (key === 'fecha' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                    const [y, m, d] = val.split('-');
+                    const dateObj = new Date(y, m - 1, d);
+                    const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+                    val = `${dias[dateObj.getDay()]} ${d}/${m}/${y}`;
+                }
+                // ==========================================================
+
                 messageText = messageText.replace(new RegExp(`{{${key}}}`, 'gi'), val);
                 messageText = messageText.replace(new RegExp(`{{${key}_primer}}`, 'gi'), val.split(' ')[0]);
             });
         }
         
-        // Menú con Emojis
         if (step.type === 'menu' && step.options && step.options.length > 0) {
             messageText += '\n';
             const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
@@ -138,7 +145,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // Enviar Multimedia
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
     if (step.type === 'filtro' && isClosed) mediaList = [];
 
@@ -175,7 +181,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // Enviar Texto
     if (!sentImage && messageText) {
         await typing(sock, jid, messageText.length);
         try {
@@ -187,7 +192,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // Auto-Avance
     if (step.type === 'filtro' && isClosed) return isSuccess;
 
     if (step.type === 'message' && step.next_step) {

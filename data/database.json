@@ -1,431 +1,6 @@
 {
   "users": [
     {
-      "phone": "65356567699524",
-      "current_step": "AGENDA_CONFIRMADA",
-      "history": {
-        "nombre": "Hugo Alberto Martinez García",
-        "nacimiento": "27/12/1993",
-        "dirección": "Hacienda del sol",
-        "fecha": "2026-02-12",
-        "hora": "18:00"
-      },
-      "jid": "65356567699524@lid",
-      "last_active": "2026-02-25T13:04:31.150Z",
-      "messages": [
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769100834318,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1769100837449,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1769100842291,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1769100844486,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hugo Alberto Martinez García",
-          "fromMe": false,
-          "timestamp": 1769100848032,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1769100850121,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "27/12/1993",
-          "fromMe": false,
-          "timestamp": 1769100859186,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1769100861399,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hacienda del sol #100",
-          "fromMe": false,
-          "timestamp": 1769100867988,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol #100*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
-          "fromMe": true,
-          "timestamp": 1769100870194,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1769100872605,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "Muy bien Hugo\nEstamos validando su información.",
-          "fromMe": true,
-          "timestamp": 1769100874838,
-          "stepId": "FILTRO"
-        },
-        {
-          "text": "¡Perfecto, Hugo! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?\n\n👉 Sí, si sé dónde está.\n👉 No, no sé.",
-          "fromMe": true,
-          "timestamp": 1769100885701,
-          "stepId": "APROBAR"
-        },
-        {
-          "text": "Hola",
-          "fromMe": true,
-          "timestamp": 1769102093819,
-          "stepId": "APROBAR"
-        },
-        {
-          "text": "Hola",
-          "fromMe": true,
-          "timestamp": 1769102093942,
-          "stepId": "APROBAR"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769131299760,
-          "stepId": "APROBAR"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1769131302191,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1769131307699,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1769131309887,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hugo Alberto Martinez García",
-          "fromMe": false,
-          "timestamp": 1769131312643,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1769131314720,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "27/12/1993",
-          "fromMe": false,
-          "timestamp": 1769131320015,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1769131322222,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hacienda del sol #100",
-          "fromMe": false,
-          "timestamp": 1769131326050,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol #100*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
-          "fromMe": true,
-          "timestamp": 1769131328245,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1769131331155,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "Hola Hugo Alberto Martinez García 😊\nEn este momento estoy fuera de la sucursal,\npero mañana temprano reviso tu solicitud y te confirmo.",
-          "fromMe": true,
-          "timestamp": 1769131333422,
-          "stepId": "FILTRO"
-        },
-        {
-          "text": "Hola Hugo.\nPor el momento tu solicitud no fue aprobada.\nPara más información, puedes acudir a cualquier sucursal Elektra.",
-          "fromMe": true,
-          "timestamp": 1769131356375,
-          "stepId": "RECHAZAR"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769190900788,
-          "stepId": "RECHAZAR"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1769190903302,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1769190905912,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1769190908138,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hugo Alberto Martinez García",
-          "fromMe": false,
-          "timestamp": 1769190911636,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1769190913758,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "27/12/1993",
-          "fromMe": false,
-          "timestamp": 1769190941878,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1769190944160,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1769190989721,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "<img src=x onerror=alert('Hacked')>",
-          "fromMe": true,
-          "timestamp": 1769376966828,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.",
-          "fromMe": false,
-          "timestamp": 1769376967128,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hola",
-          "fromMe": true,
-          "timestamp": 1770912494887,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hola",
-          "fromMe": false,
-          "timestamp": 1770912507960,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "fromMe": true,
-          "timestamp": 1770912510618,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1770912515132,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
-          "fromMe": true,
-          "timestamp": 1770912517332,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Hugo Alberto Martinez García",
-          "fromMe": false,
-          "timestamp": 1770912521364,
-          "stepId": "EFECTIVO"
-        },
-        {
-          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
-          "fromMe": true,
-          "timestamp": 1770912523456,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "27/12/1993",
-          "fromMe": false,
-          "timestamp": 1770912528053,
-          "stepId": "FECHA_DE_NACIMIENTO"
-        },
-        {
-          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
-          "fromMe": true,
-          "timestamp": 1770912530260,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hacienda del sol",
-          "fromMe": false,
-          "timestamp": 1770912542456,
-          "stepId": "DIRECCIÓN"
-        },
-        {
-          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
-          "fromMe": true,
-          "timestamp": 1770912544663,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1770912547080,
-          "stepId": "CONFIRMAR"
-        },
-        {
-          "text": "Muy bien Hugo\nEstamos validando su información.",
-          "fromMe": true,
-          "timestamp": 1770912549167,
-          "stepId": "FILTRO"
-        },
-        {
-          "text": "¡Perfecto, Hugo! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?\n\n👉 Sí, si se dónde está.\n👉 No, no sé dónde está.",
-          "fromMe": true,
-          "timestamp": 1770912596115,
-          "stepId": "CITAR"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1770912606050,
-          "stepId": "CITAR"
-        },
-        {
-          "text": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 Para tu solicitud tendrías que venir a la sucursal a tramitar.\n\n¿Te interesa?\n\n👉 Si\n👉 No",
-          "fromMe": true,
-          "timestamp": 1770912608263,
-          "stepId": "SI_CITAR"
-        },
-        {
-          "text": "1",
-          "fromMe": false,
-          "timestamp": 1770912612359,
-          "stepId": "SI_CITAR"
-        },
-        {
-          "text": "Perfecto 💪\n\n¿Para qué día deseas que te agende la visita?",
-          "fromMe": true,
-          "timestamp": 1770912614577,
-          "stepId": "SUCURSAL"
-        },
-        {
-          "text": "Hoy",
-          "fromMe": false,
-          "timestamp": 1770912621869,
-          "stepId": "SUCURSAL"
-        },
-        {
-          "text": "Hoy",
-          "fromMe": false,
-          "timestamp": 1770914510038,
-          "stepId": "FILTRO_DIA"
-        },
-        {
-          "text": "Perfecto, para el *Jueves 12/2/2026*.\n¿A qué hora puedes venir?",
-          "fromMe": true,
-          "timestamp": 1770914510515,
-          "stepId": "FILTRO_DIA"
-        },
-        {
-          "text": "A las 5",
-          "fromMe": false,
-          "timestamp": 1770914525421,
-          "stepId": "FILTRO_DIA"
-        },
-        {
-          "text": "Excelente 👍 ¿Qué hora te Agendo?",
-          "fromMe": true,
-          "timestamp": 1770914526997,
-          "stepId": "HORA"
-        },
-        {
-          "text": "A las 5pm",
-          "fromMe": false,
-          "timestamp": 1770914538570,
-          "stepId": "HORA"
-        },
-        {
-          "text": "5 pm",
-          "fromMe": false,
-          "timestamp": 1770914551233,
-          "stepId": "AGENDA_FILTRO"
-        },
-        {
-          "text": "❌ Horario ocupado.",
-          "fromMe": true,
-          "timestamp": 1770914551461,
-          "stepId": "AGENDA_FILTRO"
-        },
-        {
-          "text": "6 pm",
-          "fromMe": false,
-          "timestamp": 1770914556459,
-          "stepId": "AGENDA_FILTRO"
-        },
-        {
-          "text": "✅ Cita confirmada: Jueves 12/2/2026 a las 18:00",
-          "fromMe": true,
-          "timestamp": 1770914556664,
-          "stepId": "AGENDA_FILTRO"
-        },
-        {
-          "text": "Listo, Hugo.\n\nTe agendé para el 2026-02-12 a las 18:00.\nAl llegar, solo pregunta por Hugo Martínez.\n\n🚗 Si vienes en vehículo, menciona en la caseta que vienes a Elektra Motos para que no te cobren estacionamiento.",
-          "fromMe": true,
-          "timestamp": 1772024671150,
-          "stepId": "AGENDA_CONFIRMADA"
-        }
-      ],
-      "name": "Hugo Alberto Martinez García",
-      "bot_enabled": true
-    },
-    {
       "phone": "5218148232063",
       "messages": [
         {
@@ -514,6 +89,382 @@
         }
       ],
       "last_active": "2026-01-28T21:43:21.977Z"
+    },
+    {
+      "phone": "65356567699524",
+      "messages": [
+        {
+          "text": "Hugo",
+          "fromMe": false,
+          "timestamp": 1772046770215,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
+          "fromMe": true,
+          "timestamp": 1772046776837,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "27/12/1993",
+          "fromMe": false,
+          "timestamp": 1772046778029,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+          "fromMe": true,
+          "timestamp": 1772046784750,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hacienda del sol",
+          "fromMe": false,
+          "timestamp": 1772046791854,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
+          "fromMe": true,
+          "timestamp": 1772046798580,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772046802355,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "Muy bien Hugo\nEstamos validando su información.",
+          "fromMe": true,
+          "timestamp": 1772046808975,
+          "stepId": "FILTRO"
+        },
+        {
+          "text": "¡Perfecto, Hugo! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?\n\n👉 Sí, si se dónde está.\n👉 No, no sé dónde está.",
+          "fromMe": true,
+          "timestamp": 1772046826181,
+          "stepId": "CITAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772046832423,
+          "stepId": "CITAR"
+        },
+        {
+          "text": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 Para tu solicitud tendrías que venir a la sucursal a tramitar.\n\n¿Te interesa?\n\n1️⃣ Si\n2️⃣ No",
+          "fromMe": true,
+          "timestamp": 1772046839166,
+          "stepId": "SI_CITAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772046841503,
+          "stepId": "SI_CITAR"
+        },
+        {
+          "text": "📅 ¿Para qué día te gustaría agendar tu visita?",
+          "fromMe": true,
+          "timestamp": 1772046848089,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Hoy",
+          "fromMe": false,
+          "timestamp": 1772046853908,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Perfecto, para el *Miércoles 25/2/2026*.\n¿A qué hora puedes venir?",
+          "fromMe": true,
+          "timestamp": 1772046858610,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "A las 4",
+          "fromMe": false,
+          "timestamp": 1772046868618,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Listo, Hugo.\n\nTe agendé para el 2026-02-25 a las 16:00.\nAl llegar, solo pregunta por Hugo Martínez.\n\n🚗 Si vienes en vehículo, menciona en la caseta que vienes a Elektra Motos para que no te cobren estacionamiento.",
+          "fromMe": true,
+          "timestamp": 1772046875354,
+          "stepId": "AGENDA_CONFIRMADA"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1772047728375,
+          "stepId": "AGENDA_CONFIRMADA"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1772047735759,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772047743185,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+          "fromMe": true,
+          "timestamp": 1772047749903,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hugo",
+          "fromMe": false,
+          "timestamp": 1772047752949,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
+          "fromMe": true,
+          "timestamp": 1772047759575,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "27/12/1993",
+          "fromMe": false,
+          "timestamp": 1772047764608,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+          "fromMe": true,
+          "timestamp": 1772047771329,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hacienda del sol",
+          "fromMe": false,
+          "timestamp": 1772047775390,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
+          "fromMe": true,
+          "timestamp": 1772047782118,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772047784345,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "Muy bien Hugo\nEstamos validando su información.",
+          "fromMe": true,
+          "timestamp": 1772047790965,
+          "stepId": "FILTRO"
+        },
+        {
+          "text": "¡Perfecto, Hugo! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?\n\n👉 Sí, si se dónde está.\n👉 No, no sé dónde está.",
+          "fromMe": true,
+          "timestamp": 1772047803205,
+          "stepId": "CITAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772047805716,
+          "stepId": "CITAR"
+        },
+        {
+          "text": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 Para tu solicitud tendrías que venir a la sucursal a tramitar.\n\n¿Te interesa?\n\n1️⃣ Si\n2️⃣ No",
+          "fromMe": true,
+          "timestamp": 1772047812429,
+          "stepId": "SI_CITAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772047815077,
+          "stepId": "SI_CITAR"
+        },
+        {
+          "text": "📅 ¿Para qué día te gustaría agendar tu visita?",
+          "fromMe": true,
+          "timestamp": 1772047821698,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Mañana",
+          "fromMe": false,
+          "timestamp": 1772047826470,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Perfecto, para el *Jueves 26/2/2026*.\n¿A qué hora puedes venir?",
+          "fromMe": true,
+          "timestamp": 1772047831182,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "A las 2",
+          "fromMe": false,
+          "timestamp": 1772047838605,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Listo, Hugo.\n\nTe agendé para el Jueves 26/02/2026 a las 14:00.\nAl llegar, solo pregunta por Hugo Martínez.\n\n🚗 Si vienes en vehículo, menciona en la caseta que vienes a Elektra Motos para que no te cobren estacionamiento.",
+          "fromMe": true,
+          "timestamp": 1772047845360,
+          "stepId": "AGENDA_CONFIRMADA"
+        },
+        {
+          "text": "Hola",
+          "fromMe": false,
+          "timestamp": 1772049045518,
+          "stepId": "AGENDA_CONFIRMADA"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "fromMe": true,
+          "timestamp": 1772049052549,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Prestamo",
+          "fromMe": false,
+          "timestamp": 1772049060257,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Efectivo",
+          "fromMe": false,
+          "timestamp": 1772049062589,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+          "fromMe": true,
+          "timestamp": 1772049069287,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Hugo Alberto Martinez García",
+          "fromMe": false,
+          "timestamp": 1772049074127,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Muy bien Hugo ahora su:\n\n• Fecha de nacimiento.",
+          "fromMe": true,
+          "timestamp": 1772049080754,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "27/12/1993",
+          "fromMe": false,
+          "timestamp": 1772049088389,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "Y por último:\n\n• Dirección.\n  (Calle, número, colonia).",
+          "fromMe": true,
+          "timestamp": 1772049095111,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hacienda del sol",
+          "fromMe": false,
+          "timestamp": 1772049096231,
+          "stepId": "DIRECCIÓN"
+        },
+        {
+          "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
+          "fromMe": true,
+          "timestamp": 1772049102943,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772049107565,
+          "stepId": "CONFIRMAR"
+        },
+        {
+          "text": "Muy bien Hugo\nEstamos validando su información.",
+          "fromMe": true,
+          "timestamp": 1772049114204,
+          "stepId": "FILTRO"
+        },
+        {
+          "text": "¡Perfecto, Hugo! 🎉\nSí podemos tramitar tu crédito.\nSolo necesitas traer:\n🪪 INE vigente\n🏠 Comprobante de domicilio (no mayor a 3 meses)\n📱 Dos referencias telefónicas\n\n👉 ¿Sabes dónde está Bodega Aurrerá del Blvd. Hidalgo?\n\n👉 Sí, si se dónde está.\n👉 No, no sé dónde está.",
+          "fromMe": true,
+          "timestamp": 1772049133538,
+          "stepId": "CITAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772049138685,
+          "stepId": "CITAR"
+        },
+        {
+          "text": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 Para tu solicitud tendrías que venir a la sucursal a tramitar.\n\n¿Te interesa?\n\n1️⃣ Si\n2️⃣ No",
+          "fromMe": true,
+          "timestamp": 1772049145416,
+          "stepId": "SI_CITAR"
+        },
+        {
+          "text": "1",
+          "fromMe": false,
+          "timestamp": 1772049147699,
+          "stepId": "SI_CITAR"
+        },
+        {
+          "text": "📅 ¿Para qué día te gustaría agendar tu visita?",
+          "fromMe": true,
+          "timestamp": 1772049154289,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Para el viernes",
+          "fromMe": false,
+          "timestamp": 1772049170915,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Perfecto, para el *Viernes 27/2/2026*.\n¿A qué hora puedes venir?",
+          "fromMe": true,
+          "timestamp": 1772049175619,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "10 am",
+          "fromMe": false,
+          "timestamp": 1772049184874,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "Listo, Hugo.\n\nTe agendé para el Viernes 27/02/2026 a las 10:00.\nAl llegar, solo pregunta por Hugo Martínez.\n\n🚗 Si vienes en vehículo, menciona en la caseta que vienes a Elektra Motos para que no te cobren estacionamiento.",
+          "fromMe": true,
+          "timestamp": 1772049191632,
+          "stepId": "AGENDA_CONFIRMADA"
+        }
+      ],
+      "last_active": "2026-02-25T19:53:11.632Z",
+      "jid": "65356567699524@lid",
+      "current_step": "AGENDA_CONFIRMADA",
+      "history": {
+        "nombre": "Hugo Alberto Martinez García",
+        "nacimiento": "27/12/1993",
+        "dirección": "Hacienda del sol",
+        "fecha": "2026-02-27",
+        "hora": "10:00"
+      },
+      "name": "Hugo Alberto Martinez García"
     }
   ],
   "contacts": [
@@ -14054,14 +14005,6 @@
       "added_at": "2026-01-15T17:20:32.589Z"
     },
     {
-      "phone": "65356567699524",
-      "jid": "65356567699524@s.whatsapp.net",
-      "name": "Hugo Alberto Martinez García",
-      "bot_enabled": true,
-      "last_synced": "2026-01-21T17:04:43.272Z",
-      "added_at": "2026-01-15T22:06:26.075Z"
-    },
-    {
       "phone": "5218995465865",
       "jid": "5218995465865@s.whatsapp.net",
       "name": "Ivan Daniel Santiago",
@@ -14348,6 +14291,14 @@
       "bot_enabled": true,
       "last_synced": "2026-02-25T02:56:58.666Z",
       "added_at": "2026-02-25T02:56:58.666Z"
+    },
+    {
+      "phone": "65356567699524",
+      "jid": "65356567699524@s.whatsapp.net",
+      "name": "Hugo Alberto Martinez García",
+      "bot_enabled": true,
+      "last_synced": "2026-02-25T19:51:20.621Z",
+      "added_at": "2026-02-25T18:21:38.098Z"
     }
   ],
   "settings": {
@@ -14366,11 +14317,11 @@
   },
   "subscriptions": [
     {
-      "endpoint": "https://fcm.googleapis.com/fcm/send/fH70_cA4EAk:APA91bFyjroBlwa92FKNtLRYrQHTEYdQnW7g2aprSpLy6DB1rmRfVoW61cC0xot-xLnPaO89eI89ka9I7vDJA0dMmKf4ZUHaiRIbEa1s6WsJbhM5mlDG_iPqFDN0Bu3oHhvhjnS2NxHW",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/ep1o6mD3DWc:APA91bHiPkXt1pKs-syWN1s78Lm5Xs31kClBfUkWvsTdx4xAKCN8DT5FjS3Ys0hV_H8y4a6rlvTh6i7PoRRZT28rM_tP5AsE7k4DD5JNnNhdghWS7yVsqzJJa3dk5DMIWzrjXmPOjdH6",
       "expirationTime": null,
       "keys": {
-        "p256dh": "BBObM3XigOdsgrRvNhmA_oS_J5iwwMtl6RPRqsHg8EC6yzDwFPRxOzKsHqNvdASnP08M9G0t3H6Iy06xQ5T38k4",
-        "auth": "ucjC-G8Tla8LfJrmtFXhVA"
+        "p256dh": "BCrAslYKa993gltT7PtCsrnfxR5G2P0-seJsojlrZRHOdw-r9NmGXVpz6UJNZ96f8mHrHG1sdpNTDR9fcnc-FZU",
+        "auth": "OGgF5GPbDmBALcrnWBN_oQ"
       }
     }
   ],
@@ -14689,8 +14640,9 @@
     },
     "FILTRO_DIA": {
       "type": "cita",
-      "next_step": "HORA",
-      "options": []
+      "message": "",
+      "media": [],
+      "next_step": "AGENDA_CONFIRMADA"
     },
     "MOTO": {
       "type": "menu",
@@ -15183,22 +15135,24 @@
     },
     "SI_CITAR": {
       "type": "menu",
-      "keywords": [],
       "message": "Excelente 👍\n\nNos encontramos afuera de Bodega Aurrerá, justo a un lado de Burger King, en Elektra Motos.\n\n👉 Para tu solicitud tendrías que venir a la sucursal a tramitar.\n\n¿Te interesa?",
       "media": [
         "/uploads/1764716991454-40054991.jpg"
       ],
       "options": [
         {
-          "trigger": "1️⃣",
           "label": "Si",
-          "next_step": "SUCURSAL"
+          "trigger": "Si",
+          "next_step": "FILTRO_DIA"
         },
         {
-          "trigger": "2️⃣",
           "label": "No",
+          "trigger": "No",
           "next_step": "NO_CITAR"
         }
+      ],
+      "keywords": [
+        ""
       ]
     },
     "NO_CITAR": {
