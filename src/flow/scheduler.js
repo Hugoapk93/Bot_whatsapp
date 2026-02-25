@@ -1,130 +1,127 @@
 const fs = require('fs');
 const path = require('path');
 const { getSettings, saveSettings, updateUser, getUser } = require('../database');
-// 🔥 IMPORTANTE: Importamos toggleContactBot para mover el interruptor maestro
 const { toggleContactBot } = require('../contacts'); 
 const { sendStepMessage } = require('./sender');
 
-// 🔥 RUTA EXACTA: Como estamos en src/flow, salimos 2 niveles para ir a data
+// RUTA EXACTA a la agenda
 const AGENDA_PATH = path.resolve(__dirname, '../../data/agenda.json');
 
 const checkScheduler = async (sock) => {
     try {
         const settings = getSettings();
         
-        // Validaciones: Que exista configuración y esté activa
+        // Validaciones
         if (!settings.scheduler || !settings.scheduler.active) return;
         const config = settings.scheduler;
         if (!config.time || !config.target_step) return;
 
-        // 1. Obtener hora actual en REYNOSA (Zona Horaria Fija)
-        const now = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
-        
-        // Formato HH:MM (Ej: "06:00")
-        const currentHour = now.getHours().toString().padStart(2, '0');
-        const currentMinute = now.getMinutes().toString().padStart(2, '0');
-        const currentTime = `${currentHour}:${currentMinute}`;
-        
-        // Formato Fecha YYYY-MM-DD
-        const year = now.getFullYear();
-        const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        const day = now.getDate().toString().padStart(2, '0');
-        const todayStr = `${year}-${month}-${day}`;
+        // Horario Matamoros (Frontera) para evitar bugs de cambio de horario
+        const formatter = new Intl.DateTimeFormat("en-CA", { 
+            timeZone: "America/Matamoros", year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
 
-        // 2. CANDADO: ¿Ya corrió hoy? Si sí, no hacemos nada.
+        const mxParts = formatter.formatToParts(new Date());
+        const vals = {};
+        mxParts.forEach(p => vals[p.type] = p.value);
+
+        const todayStr = `${vals.year}-${vals.month}-${vals.day}`;
+        const hourStr = vals.hour === '24' ? '00' : vals.hour;
+        const currentTime = `${hourStr}:${vals.minute}`;
+
+        // 1. CANDADO DIARIO
         if (config.last_run === todayStr) return;
 
-        // 3. VERIFICAR HORA
-        if (currentTime === config.time) {
-            console.log(`⏰ [Scheduler] Hora ${currentTime} detectada. Iniciando revisión de agenda...`);
+        // 2. REVISIÓN DE LA HORA
+        if (currentTime >= config.time) {
+            console.log(`⏰ [Scheduler] Hora configurada alcanzada (${currentTime}). Iniciando revisión...`);
             
-            if (!fs.existsSync(AGENDA_PATH)) {
-                console.error("❌ No se encontró agenda.json en:", AGENDA_PATH);
-                return;
-            }
+            if (!fs.existsSync(AGENDA_PATH)) return;
 
             const fileContent = fs.readFileSync(AGENDA_PATH, 'utf-8');
             if(!fileContent) return;
             
             const agendaData = JSON.parse(fileContent);
-            const todayAppts = agendaData[todayStr] || []; // Citas de HOY
+            const todayAppts = agendaData[todayStr] || [];
 
             if (todayAppts.length === 0) {
                 console.log("📅 Hoy no hay citas agendadas.");
-            } else {
-                console.log(`🔍 Analizando ${todayAppts.length} citas para hoy...`);
-                
-                let movedCount = 0;
+                settings.scheduler.last_run = todayStr; // Cerramos el día
+                await saveSettings(settings);
+                return;
+            }
+            
+            console.log(`🔍 Analizando ${todayAppts.length} citas para hoy...`);
+            let movedCount = 0;
+            let allSuccess = true; 
 
-                for (const appt of todayAppts) {
-                    // --- FILTRO INTELIGENTE ---
-                    if (appt.created_at) {
-                        const createdDate = new Date(appt.created_at).toLocaleString("en-US", {timeZone: "America/Mexico_City"});
-                        const createdDateStr = new Date(createdDate).toISOString().split('T')[0]; 
-                        if (createdDateStr === todayStr) {
-                            console.log(`⏩ Saltando a ${appt.name} (Agendó hoy).`);
-                            continue;
-                        }
-                    }
+            for (let i = 0; i < todayAppts.length; i++) {
+                const appt = todayAppts[i];
 
-                    // Limpieza del teléfono
-                    const rawPhone = appt.phone || "";
-                    const dbPhone = rawPhone.replace(/\D/g, ''); 
+                if (appt.recordatorio_enviado) continue;
 
-                    if (dbPhone) {
-                        console.log(`🚀 Reactivando y moviendo a ${appt.name}...`);
-
-                        // PASO A: ENCENDER INTERRUPTOR MAESTRO (Memoria)
-                        // Esto asegura que el sistema sepa que el bot está activo para este número
-                        toggleContactBot(dbPhone, true);
-
-                        // PASO B: MOVER DE PASO (Base de Datos)
-                        await updateUser(dbPhone, { 
-                            current_step: config.target_step,
-                            bot_enabled: true 
-                        });
-
-                        // ⏳ PASO C: PAUSA DE SEGURIDAD (500ms)
-                        // Damos tiempo a que la DB guarde y el estado se propague
-                        await new Promise(r => setTimeout(r, 500));
-
-                        // PASO D: OBTENER DATOS Y ENVIAR
-                        const userData = getUser(dbPhone) || { phone: dbPhone };
-                        
-                        // Forzamos el flag en el objeto local por si getUser leyó caché vieja
-                        userData.bot_enabled = true; 
-
-                        // Construir JID
-                        let targetJid = userData.jid; 
-                        if (!targetJid) {
-                            targetJid = dbPhone.length > 15 ? `${dbPhone}@lid` : `${dbPhone}@s.whatsapp.net`;
-                        }
-
-                        // Enviar Mensaje
-                        await sendStepMessage(sock, targetJid, config.target_step, userData);
-                        
-                        movedCount++;
-                        // Pausa de 2 segundos entre clientes
-                        await new Promise(r => setTimeout(r, 2000));
+                if (appt.created_at) {
+                    const createdFormatter = new Intl.DateTimeFormat("en-CA", {
+                        timeZone: "America/Matamoros", year: 'numeric', month: '2-digit', day: '2-digit'
+                    });
+                    if (createdFormatter.format(new Date(appt.created_at)) === todayStr) {
+                        console.log(`⏩ Saltando a ${appt.name} (Agendó hoy mismo).`);
+                        appt.recordatorio_enviado = true; 
+                        continue;
                     }
                 }
-                console.log(`✅ Proceso completado. ${movedCount} mensajes enviados.`);
+
+                const dbPhone = (appt.phone || "").replace(/\D/g, ''); 
+
+                if (dbPhone) {
+                    console.log(`🚀 Reactivando y moviendo a ${appt.name} al paso: ${config.target_step}`);
+
+                    toggleContactBot(dbPhone, true);
+                    await updateUser(dbPhone, { current_step: config.target_step, bot_enabled: true });
+                    await new Promise(r => setTimeout(r, 500));
+
+                    const userData = getUser(dbPhone) || { phone: dbPhone };
+                    userData.bot_enabled = true; 
+                    const targetJid = userData.jid || (dbPhone.length > 15 ? `${dbPhone}@lid` : `${dbPhone}@s.whatsapp.net`);
+
+                    // Enviamos mensaje y capturamos resultado
+                    const sendResult = await sendStepMessage(sock, targetJid, config.target_step, userData);
+                    
+                    if (sendResult === false) {
+                        console.log(`⚠️ Falló el envío a ${appt.name}. Se reintentará en el próximo ciclo (1 minuto).`);
+                        allSuccess = false; 
+                        continue; 
+                    }
+
+                    appt.recordatorio_enviado = true;
+                    movedCount++;
+                    
+                    await new Promise(r => setTimeout(r, 2000));
+                }
             }
 
-            // 4. ACTUALIZAR LAST_RUN
-            settings.scheduler.last_run = todayStr;
-            await saveSettings(settings);
-        }
+            // GUARDAMOS LA AGENDA CON MARCAS DE ENVIADO
+            fs.writeFileSync(AGENDA_PATH, JSON.stringify(agendaData, null, 2));
 
+            console.log(`✅ Ciclo completado. ${movedCount} mensajes de seguimiento enviados.`);
+
+            // SOLO SI TODOS SE ENVIARON BIEN, CERRAMOS EL DÍA
+            if (allSuccess) {
+                settings.scheduler.last_run = todayStr;
+                await saveSettings(settings);
+                console.log(`🔒 Día cerrado correctamente en el scheduler.`);
+            }
+        }
     } catch (e) {
         console.error("🔥 Error en Scheduler:", e);
     }
 };
 
+// 👇 ESTO ERA LO QUE FALTABA 👇
 const initScheduler = (sock) => {
     console.log("🕰️ Módulo Scheduler (Recordatorios) -> INICIADO");
-    // Revisa el reloj cada 60 segundos
-    setInterval(() => checkScheduler(sock), 60000);
+    setInterval(() => checkScheduler(sock), 60000); // Revisa cada minuto
 };
 
 module.exports = { initScheduler };

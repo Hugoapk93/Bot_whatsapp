@@ -19,7 +19,7 @@ const enviarAlFrontend = (jid, contenido, type = 'text') => {
         
         global.io.emit('message', {
             to: jid,
-            message: contenido, // Objeto completo o string
+            message: contenido,
             text: textPayload,
             type: (typeof contenido === 'string' && type !== 'image') ? 'text' : 'image',
             fromMe: true
@@ -42,10 +42,10 @@ const typing = async (sock, jid, length) => {
 const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     console.log(`📤 Enviando paso: ${stepId}`);
     
-    // Protección contra Loops Infinitos (Recursividad simple)
+    // Protección contra Loops Infinitos
     if (userData._lastStep === stepId && userData._recursionCount > 2) {
         console.warn(`⚠️ Bucle detectado en paso ${stepId}. Deteniendo.`);
-        return;
+        return false;
     }
 
     let step = getFlowStep(stepId);
@@ -57,7 +57,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     }
     if (!step) {
         console.error(`❌ El paso "${stepId}" no existe en la BD.`);
-        return;
+        return false;
     }
 
     // Guardar contacto automáticamente al finalizar
@@ -71,23 +71,17 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     const cleanClientPhone = jid.replace(/[^0-9]/g, '');
     let isClosed = false; 
 
-    // ==========================================================
-    // 👮 LÓGICA DE FILTRO (SOLO MONITOR)
-    // ==========================================================
+    // LÓGICA DE FILTRO
     if (step.type === 'filtro') {
-        
-        // 1. VERIFICAR SI ESTÁ CERRADO
         if (isBusinessClosed()) {
             console.log("🌙 Paso Filtro: Negocio Cerrado.");
             isClosed = true;
             const settings = getSettings();
-            messageText = settings.schedule?.offline_message || "⛔ Nuestro horario de atención ha terminado. Te contactaremos mañana.";
+            messageText = settings.schedule?.offline_message || "⛔ Nuestro horario de atención ha terminado.";
         }
 
-        // 2. ENVIAR NOTIFICACIÓN PUSH
         if (global.sendPushNotification) {
              const hist = userData.history || {};
-             
              let variablesResumen = "";
              Object.keys(hist).forEach(key => {
                  const val = hist[key];
@@ -95,7 +89,6 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                  variablesResumen += `\n📝 ${label}: ${val}`;
              });
 
-             // 🔥 CORRECCIÓN: TÍTULO ÚNICO PARA QUE SE ACUMULEN 🔥
              const tituloPush = isClosed 
                 ? `⚠️ Solicitud Cerrada (${cleanClientPhone})` 
                 : `⚠️ Solicitud: ${cleanClientPhone}`;
@@ -104,13 +97,13 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
              global.sendPushNotification(
                  tituloPush,
-                 `${variablesResumen || 'Ver detalles en Monitor...'}`, 
+                 `${variablesResumen || 'Ver detalles en Monitor...'}\nEnviado a las: ${new Date().toLocaleTimeString('es-MX', {timeZone: 'America/Matamoros'})}`, 
                  targetUrl
              );
         }
     }
 
-    // 1. Saludo Inteligente
+    // Saludo Inteligente
     const mxDate = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mexico_City"}));
     const hour = mxDate.getHours();
     let saludo = 'Hola';
@@ -121,7 +114,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
     if (messageText) {
         messageText = messageText.replace(/{{saludo}}/gi, saludo);
 
-        // 2. Variables Dinámicas
+        // Variables Dinámicas
         if (userData.history) {
             Object.keys(userData.history).forEach(key => {
                 const val = userData.history[key] || '';
@@ -130,7 +123,7 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             });
         }
         
-        // 3. Menú con Emojis
+        // Menú con Emojis
         if (step.type === 'menu' && step.options && step.options.length > 0) {
             messageText += '\n';
             const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
@@ -145,12 +138,12 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
         }
     }
 
-    // 4. Enviar Multimedia (Imágenes/Videos)
+    // Enviar Multimedia
     let mediaList = Array.isArray(step.media) ? step.media : (step.media ? [step.media] : []);
-    
     if (step.type === 'filtro' && isClosed) mediaList = [];
 
     let sentImage = false;
+    let isSuccess = true;
 
     if (mediaList.length > 0) {
         for (let i = 0; i < mediaList.length; i++) {
@@ -175,30 +168,32 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
                     }
                     if(mediaList.length > 1) await new Promise(r => setTimeout(r, 800));
                 } catch (e) {
-                    console.error("Error enviando imagen:", e.message);
+                    console.error("❌ Error enviando imagen:", e.message);
+                    isSuccess = false;
                 }
             }
         }
     }
 
-    // 5. Enviar Texto
+    // Enviar Texto
     if (!sentImage && messageText) {
         await typing(sock, jid, messageText.length);
         try {
             if (esSimulador(jid)) enviarAlFrontend(jid, messageText);
             else await sock.sendMessage(jid, { text: messageText });
         } catch (e) {
-            console.error("Error enviando texto:", e.message);
+            console.error("❌ Error enviando texto:", e.message);
+            isSuccess = false;
         }
     }
 
-    // 6. Auto-Avance
-    if (step.type === 'filtro' && isClosed) return;
+    // Auto-Avance
+    if (step.type === 'filtro' && isClosed) return isSuccess;
 
     if (step.type === 'message' && step.next_step) {
         if (step.next_step === stepId) {
             console.error(`⚠️ ERROR CONFIG: El paso ${stepId} se llama a sí mismo. Deteniendo.`);
-            return;
+            return isSuccess;
         }
         setTimeout(async () => {
              const checkUser = getUser(userData.phone);
@@ -208,6 +203,8 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
              }
         }, 1500);
     }
+    
+    return isSuccess;
 };
 
 module.exports = { sendStepMessage, esSimulador, enviarAlFrontend };
