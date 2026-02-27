@@ -94,12 +94,6 @@
       "phone": "65356567699524",
       "messages": [
         {
-          "text": "Hacienda del sol",
-          "fromMe": false,
-          "timestamp": 1772049096231,
-          "stepId": "DIRECCIÓN"
-        },
-        {
           "text": "Hugo confirma tus datos.\n\nNombre completo:\n*Hugo Alberto Martinez García*\nFecha de nacimiento:\n*27/12/1993*\nY su dirección:\n*Hacienda del sol*\n\n\n👉 Sí, es correcto.\n👉 No, es incorrecto.",
           "fromMe": true,
           "timestamp": 1772049102943,
@@ -458,9 +452,21 @@
           "fromMe": true,
           "timestamp": 1772148329266,
           "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "📷 Foto enviada",
+          "fromMe": true,
+          "timestamp": 1772208293190,
+          "stepId": "FILTRO_DIA"
+        },
+        {
+          "text": "📷 (Media)",
+          "fromMe": true,
+          "timestamp": 1772208293322,
+          "stepId": "FILTRO_DIA"
         }
       ],
-      "last_active": "2026-02-26T23:25:29.266Z",
+      "last_active": "2026-02-27T16:04:53.322Z",
       "jid": "65356567699524@lid",
       "current_step": "FILTRO_DIA",
       "history": {
@@ -14319,7 +14325,7 @@
       "active": true,
       "time": "07:04",
       "target_step": "AGENDA_CONFIRMADA",
-      "last_run": "2026-02-26"
+      "last_run": "2026-02-27"
     }
   },
   "subscriptions": [
@@ -14353,6 +14359,14 @@
       "keys": {
         "p256dh": "BFMHgpAbEpawxP8TrJnMyA27-2ORMPAchjEtfTPubXbSsdplZTQxPrOhxvxfgPvGJdqV2HBM-kr-elecn2oY0sM",
         "auth": "6_tbNej_YDF0OTUXh7eDgw"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/dE9zwPSmXds:APA91bGsb5gG7kke5SgfiYM7k-Vw4tF4UyXih5ozLiDNWcn5F2vXLU9Sgy6HeFlFRr5txo0wXhRPOw-LfhFyDhT38ByOFkdccsiqQZRC79HrXtq6NmJYnxq_OdhmBmN9NPAs9sYIsUEs",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BNPoCFLdlxY1kPeG27oQpd32NWG7eXwjxlarsWBA30-Tmcyu1LMYR_CA6tEMSGtmQRDLJTaL8A7-TTbSh8EJl5g",
+        "auth": "SzlkyXeNMqM87zatOVDeqA"
       }
     }
   ],

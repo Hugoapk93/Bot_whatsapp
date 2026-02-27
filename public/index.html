@@ -2470,14 +2470,54 @@
         }
     }
 
-    // --- 2. SUBIDA DE IMÁGENES (CHAT EN VIVO) ---
     async function uploadChatMedia(input) {
         if (!input.files || input.files.length === 0) return;
-        
-        // Por ahora, el endpoint manual de tu app.js solo soporta texto. 
-        // Lanzamos un aviso amigable hasta que le agreguemos soporte multimedia al servidor.
-        showToast("⚠️ El envío de imágenes manual por chat requiere una actualización en el servidor. (Próximamente)");
-        input.value = ''; 
+        if (!currentChatPhone) {
+            showToast("⚠️ Selecciona un chat primero");
+            input.value = '';
+            return;
+        }
+
+        const captionText = document.getElementById('waInput').value.trim();
+
+        const formData = new FormData();
+        formData.append('images', input.files[0]); // Solo mandamos 1 foto a la vez en el chat
+
+        showToast("⏳ Enviando imagen...");
+
+        try {
+            // 1. Subimos la foto al servidor usando tu ruta existente
+            const resUpload = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
+            const dataUpload = await resUpload.json();
+
+            if (dataUpload.urls && dataUpload.urls.length > 0) {
+                const imageUrl = dataUpload.urls[0];
+                
+                // 2. Le decimos al servidor que la envíe por WhatsApp
+                await fetch(`${API_BASE}/api/send-message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        phone: currentChatPhone, 
+                        text: captionText, 
+                        mediaUrl: imageUrl 
+                    })
+                });
+
+                // Limpiamos la caja de texto y mostramos la burbuja
+                document.getElementById('waInput').value = '';
+                addBubble(`📷 Imagen enviada ${captionText ? '- ' + captionText : ''}`, true);
+                showToast("✅ Imagen enviada");
+                
+                // Reseteamos los iconos del input
+                handleInputTyping();
+            }
+        } catch (e) {
+            console.error("Error al enviar multimedia:", e);
+            showToast("❌ Error al enviar la imagen");
+        } finally {
+            input.value = ''; 
+        }
     }
 
     function escapeHTML(str) {

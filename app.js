@@ -226,8 +226,17 @@ async function connectToWhatsApp() {
 
         for (const msg of messages) {
             if (!msg.message) continue;
+            
             const remoteJid = msg.key.remoteJid;
-            if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') continue;
+            
+            // =================================================================
+            // 🛡️ ESCUDO ANTI-FANTASMAS: Ignorar Grupos, Estados y Canales
+            // =================================================================
+            if (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('@newsletter')) {
+                console.log(`🚫 Ignorando mensaje de canal/grupo/estado: ${remoteJid}`);
+                continue; 
+            }
+            // =================================================================
 
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
             const isMe = msg.key.fromMe;
@@ -390,8 +399,13 @@ app.post('/api/contacts/delete', async (req, res) => {
 });
 
 app.post('/api/send-message', async (req, res) => {
-    const { phone, text } = req.body;
-    if (!globalSock || !phone || !text) return res.status(400).json({ error: "Datos faltantes o bot offline" });
+    // =================================================================
+    // 📸 SOPORTE PARA MULTIMEDIA DESDE EL CHAT MANUAL
+    // =================================================================
+    const { phone, text, mediaUrl } = req.body;
+    
+    // Ya no requerimos estrictamente el texto si viene una imagen
+    if (!globalSock || !phone) return res.status(400).json({ error: "Datos faltantes o bot offline" });
 
     try {
         const cleanPhone = phone.toString().replace(/\D/g, ''); 
@@ -409,12 +423,28 @@ app.post('/api/send-message', async (req, res) => {
             }
         }
 
-        await globalSock.sendMessage(targetJid, { text: text });
+        if (mediaUrl) {
+            // Convierte la ruta de la web en una ruta física en tu PC/Servidor
+            const relativePath = mediaUrl.startsWith('/') ? mediaUrl.slice(1) : mediaUrl;
+            const absolutePath = path.join(__dirname, 'public', relativePath);
+
+            await globalSock.sendMessage(targetJid, { 
+                image: { url: absolutePath }, 
+                caption: text || '' 
+            });
+        } else {
+            // Mensaje de texto normal
+            await globalSock.sendMessage(targetJid, { text: text || '' });
+        }
         
         if (user) {
             if(!user.messages) user.messages = [];
+            
+            // Creamos un texto descriptivo para que se vea bonito en tu base de datos
+            const logText = mediaUrl ? `📷 Foto enviada${text ? ' - ' + text : ''}` : text;
+            
             user.messages.push({
-                text: text,
+                text: logText,
                 fromMe: true,
                 timestamp: Date.now(),
                 stepId: user.current_step || 'MANUAL'
