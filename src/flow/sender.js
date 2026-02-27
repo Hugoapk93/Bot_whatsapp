@@ -62,8 +62,9 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     let messageText = step.message || "";
 
+    // 🔥 AQUI CAMBIAMOS EL MENSAJE AUTOMÁTICO DE CITAS 🔥
     if (step.type === 'cita' && !messageText) {
-        messageText = "📅 ¿Para qué día te gustaría agendar tu visita?";
+        messageText = "Perfecto {{nombre_primer}}💪.\n\n¿Para qué día deseas que te agende la visita?";
     }
 
     const cleanClientPhone = jid.replace(/[^0-9]/g, '');
@@ -114,17 +115,12 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
             Object.keys(userData.history).forEach(key => {
                 let val = userData.history[key] || '';
                 
-                // ==========================================================
-                // 🔥 TRADUCTOR DE FECHAS AMIGABLES 🔥
-                // Convierte "2026-02-25" a "Miércoles 25/02/2026"
-                // ==========================================================
                 if (key === 'fecha' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
                     const [y, m, d] = val.split('-');
                     const dateObj = new Date(y, m - 1, d);
                     const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
                     val = `${dias[dateObj.getDay()]} ${d}/${m}/${y}`;
                 }
-                // ==========================================================
 
                 messageText = messageText.replace(new RegExp(`{{${key}}}`, 'gi'), val);
                 messageText = messageText.replace(new RegExp(`{{${key}_primer}}`, 'gi'), val.split(' ')[0]);

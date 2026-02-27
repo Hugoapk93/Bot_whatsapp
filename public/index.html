@@ -319,12 +319,12 @@
 
                 <div id="waMainChat" class="wa-chat-col">
                     <div class="wa-chat-header">
-                        <div style="display:flex; align-items:center;">
-                            <i class="fas fa-arrow-left wa-back-btn" onclick="closeWaChat()" style="margin-right:10px; color:#e9edef;"></i>
+                        <div style="display:flex; align-items:center; flex: 1; min-width: 0; padding-right: 10px;">
+                            <i class="fas fa-arrow-left wa-back-btn" onclick="closeWaChat()" style="margin-right:10px; color:#e9edef; flex-shrink: 0;"></i>
 
-                            <div class="wa-avatar" id="waHeaderAvatar" style="width:40px; height:40px; margin-right:10px; font-size:1rem;">?</div>
+                            <div class="wa-avatar" id="waHeaderAvatar" style="width:40px; height:40px; margin-right:10px; font-size:1rem; flex-shrink: 0;">?</div>
 
-                            <div style="display:flex; flex-direction:column; justify-content:center;">
+                            <div style="display:flex; flex-direction:column; justify-content:center; flex: 1; min-width: 0;">
             
                                 <div style="display:flex; align-items:center; gap:8px;">
                                     <div id="waHeaderName" class="wa-name" style="font-size:1rem; font-weight:600; line-height:1.2;">
@@ -332,23 +332,24 @@
                                     </div>
                 
                                     <button onclick="editCurrentContactManual()" 
-                                            style="background:none; border:none; color:#8696a0; cursor:pointer; padding:0; display:flex; align-items:center;" 
+                                            style="background:none; border:none; color:#8696a0; cursor:pointer; padding:0; display:flex; align-items:center; flex-shrink: 0;" 
                                             title="Editar nombre manualmente">
                                         <i class="fas fa-pen" style="font-size:0.8rem;"></i>
                                     </button>
                                 </div>
 
-                                <div id="waHeaderPhone" class="wa-meta" style="font-size:0.8rem;">toca para ver info</div>
+                                <div id="waHeaderPhone" class="wa-meta" style="font-size:0.8rem; color:#8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">toca para ver info</div>
                             </div>
                         </div>
 
-                        <div style="display:flex; align-items:center; gap:20px; color:#e9edef; padding-right:5px;">
+                        <div style="display:flex; align-items:center; gap:20px; color:#e9edef; flex-shrink: 0;">
                             <label class="switch" style="transform:scale(0.7); margin-left:10px;">
                                 <input type="checkbox" id="waBotSwitch" onchange="toggleCurrentBot(this.checked)">
                                 <span class="slider"></span>
                             </label>
                         </div>
                     </div>
+
 
                     <div id="waMsgContainer" class="wa-msgs-area">
                         <div style="text-align:center; color:var(--text-muted); margin-top:50px;">
@@ -370,7 +371,9 @@
                                    onkeyup="if(event.key==='Enter') sendWaMsg()">
         
                             <div class="wa-input-icons">
-                                <i class="fas fa-paperclip" title="Adjuntar archivo" onclick="document.getElementById('imgUpload').click()"></i>
+                                <i class="fas fa-paperclip" title="Adjuntar archivo" onclick="document.getElementById('chatImgUpload').click()"></i>
+                                <input type="file" id="chatImgUpload" accept="image/*" style="display:none" onchange="uploadChatMedia(this)">
+    
                                 <i class="fas fa-camera" title="Cámara"></i>
                                 <i class="fas fa-bolt" onclick="toggleFlowDrawer()" title="Respuestas Rápidas"></i>
                             </div>
@@ -1272,9 +1275,15 @@
 
         const html = `<div class="wa-bubble ${isMe ? 'out' : 'in'} ${canClick ? 'clickable' : ''}" ${canClick ? `onclick="askJump('${safeStepId}')"` : ''} title="${canClick ? 'Click para restaurar' : ''}">${safeText}<span class="wa-time">${timeStr}</span></div>`;
 
+        // --- LÓGICA DE AUTO-SCROLL INTELIGENTE ---
+        const isNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 150;
+
+        // 2. Inyectamos el nuevo mensaje
         box.insertAdjacentHTML('beforeend', html);
 
-        box.scrollTop = box.scrollHeight;
+        if (isNearBottom || isMe) {
+            box.scrollTop = box.scrollHeight;
+        }
     }
 
     function closeWaChat() {
@@ -1417,7 +1426,9 @@
     function renderFlowList() {
         const c = document.getElementById('flowListContainer');
         if(!c) return;
-        c.innerHTML = '';
+
+        // 🚀 EL LIENZO INVISIBLE (BUFFER)
+        let htmlBuffer = '';
 
         // --- NAVEGACIÓN (BREADCRUMBS) ---
         // Esto crea la barra superior: Inicio > BIENVENIDA > EFECTIVO...
@@ -1434,7 +1445,9 @@
                              <span onclick="${isLast ? '' : `jumpToStep(${index})`}" style="${isLast ? 'font-weight:bold; color:var(--text-main)' : ''}">${step}</span>`;
             });
             navHtml += `</div>`;
-            c.innerHTML += navHtml;
+            
+            // Lo guardamos en el buffer en vez de imprimirlo
+            htmlBuffer += navHtml; 
         }
 
         // --- LÓGICA CORREGIDA: QUÉ TARJETAS MOSTRAR ---
@@ -1497,8 +1510,8 @@
             // Usamos .trim() y nos aseguramos de no dejar espacios en el template literal
             const cleanText = (step.message || '').trim() || '<span style="font-style:italic; opacity:0.5">(Sin texto)</span>';
 
-            // HTML ESTRUCTURADO
-            c.innerHTML += `
+            // HTML ESTRUCTURADO AL BUFFER
+            htmlBuffer += `
             <div class="flow-step-card ${typeClass}">
                 
                 <div class="card-header" onclick="edit('${k}')">
@@ -1518,6 +1531,9 @@
 
             </div>`;
         });
+
+        // 🚀 PINTAMOS TODO DE UN SOLO GOLPE EN LA INTERFAZ
+        c.innerHTML = htmlBuffer;
     }
 
     function enterStep(stepId) { flowPath.push(stepId); renderFlowList(); }
@@ -1908,24 +1924,30 @@
         } catch(e) { console.error(e); }
     }
 
-    // --- AGENDA Y EVENTOS ---
     async function renderCalendar() {
         const now = currentRefDate, m = now.getMonth(), y = now.getFullYear();
         document.getElementById('monthDisplay').innerText = `${["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"][m]} ${y}`;
-        const g = document.getElementById('calendarDays'); g.innerHTML = '';
+        const g = document.getElementById('calendarDays'); 
 
         let appts = {};
         try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
 
         const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m+1, 0).getDate();
-        for(let i=0; i<firstDay; i++) g.innerHTML += `<div></div>`;
+        
+        // 🚀 EL LIENZO INVISIBLE (BUFFER)
+        let htmlBuffer = ''; 
+        
+        for(let i=0; i<firstDay; i++) htmlBuffer += `<div></div>`;
 
         for(let i=1; i<=daysInMonth; i++) {
             const k = `${y}-${(m+1).toString().padStart(2,'0')}-${i.toString().padStart(2,'0')}`;
             const count = (appts[k]||[]).length;
             const isToday = new Date().toDateString() === new Date(y,m,i).toDateString();
-            g.innerHTML += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}')">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`;
+            htmlBuffer += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}')">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`;
         }
+        
+        // 🚀 PINTAMOS TODO DE UN SOLO GOLPE
+        g.innerHTML = htmlBuffer; 
     }
 
     function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
@@ -1938,11 +1960,12 @@
         const all = await (await fetch(`${API_BASE}/api/agenda`)).json();
         const appts = all[date] || [];
 
-        list.innerHTML = appts.length ? '' : '<div style="text-align:center; padding:20px; color:#666;">Sin citas</div>';
+        // 🚀 BUFFER
+        let htmlBuffer = appts.length ? '' : '<div style="text-align:center; padding:20px; color:#666;">Sin citas</div>';
 
         appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
             const safeName = (c.name || '').replace(/'/g, "\\'");
-            list.innerHTML += `
+            htmlBuffer += `
             <div style="background:var(--bg-input); padding:10px; margin-bottom:5px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <b>${c.time}</b> ${c.name} <br>
@@ -1954,6 +1977,9 @@
                 </button>
             </div>`;
         });
+        
+        // 🚀 PINTAMOS UNA VEZ
+        list.innerHTML = htmlBuffer;
 
         document.getElementById('evtOldTime').dataset.date = date;
         document.getElementById('dayModal').classList.add('active');
@@ -2220,17 +2246,26 @@
         if (isNaN(date.getTime())) return ''; // Valida que sea una fecha real
 
         const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-    
+        // Normalizamos las fechas eliminando las horas para hacer una resta exacta de días
         const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        // Calculamos la diferencia en días
+        const diffTime = today.getTime() - msgDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
 
-        if (msgDate.getTime() === today.getTime()) {
+        if (diffDays === 0) {
+            // Es hoy: mostrar solo la hora (ej: 14:30)
             return date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-        } else if (msgDate.getTime() === yesterday.getTime()) {
+        } else if (diffDays === 1) {
+            // Fue ayer
             return 'Ayer';
+        } else if (diffDays > 1 && diffDays < 7) {
+            // Hace menos de una semana: mostrar el día de la semana
+            const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            return dias[date.getDay()];
         } else {
+            // Más antiguo: mostrar fecha corta (ej: 25/02/2026)
             return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
         }
     }
@@ -2399,6 +2434,50 @@
             document.getElementById('moveUserModal').classList.remove('active');
             loadActivity();
         } catch (e) { alert("Error al mover"); }
+    }
+
+    // --- 1. SUBIDA DE IMÁGENES (EDITOR DE FLUJOS) ---
+    async function uploadImages(input) {
+        if (!input.files || input.files.length === 0) return;
+        
+        const formData = new FormData();
+        // Empaquetamos todas las imágenes seleccionadas
+        for (let i = 0; i < input.files.length; i++) {
+            formData.append('images', input.files[i]);
+        }
+
+        showToast("⏳ Subiendo imagen...");
+
+        try {
+            // Mandamos las fotos a tu endpoint backend (/api/upload)
+            const res = await fetch(`${API_BASE}/api/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.urls) {
+                // Guardamos las rutas de las fotos y actualizamos la vista
+                currentMediaList = currentMediaList.concat(data.urls);
+                renderGallery();
+                showToast("✅ Imagen guardada con éxito");
+            }
+        } catch (e) {
+            console.error("Error al subir:", e);
+            showToast("❌ Error al subir la imagen");
+        } finally {
+            input.value = ''; // Limpiamos el botón para que puedas subir más
+        }
+    }
+
+    // --- 2. SUBIDA DE IMÁGENES (CHAT EN VIVO) ---
+    async function uploadChatMedia(input) {
+        if (!input.files || input.files.length === 0) return;
+        
+        // Por ahora, el endpoint manual de tu app.js solo soporta texto. 
+        // Lanzamos un aviso amigable hasta que le agreguemos soporte multimedia al servidor.
+        showToast("⚠️ El envío de imágenes manual por chat requiere una actualización en el servidor. (Próximamente)");
+        input.value = ''; 
     }
 
     function escapeHTML(str) {
