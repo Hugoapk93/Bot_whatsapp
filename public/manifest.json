@@ -1,31 +1,17 @@
 {
-  "name": "Flow Studio CRM",  
-  "short_name": "flowCRM",
-  "start_url": "./index.html",
+  "name": "Whats Bot CRM",
+  "short_name": "Whats Bot",
+  "description": "Monitor y control del bot de WhatsApp",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#1e293b",
-  "orientation": "portrait",
-  "scope": "./",
-  "id": "./", 
+  "background_color": "#050505",
+  "theme_color": "#050505",
   "icons": [
     {
       "src": "logo.svg",
-      "sizes": "any",
+      "sizes": "192x192 512x512",
       "type": "image/svg+xml",
-      "purpose": "monochrome maskable"
-    },
-    {
-      "src": "logo.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "logo.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
