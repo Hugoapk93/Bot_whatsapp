@@ -62,9 +62,9 @@ const sendStepMessage = async (sock, jid, stepId, userData = {}) => {
 
     let messageText = step.message || "";
 
-    // 🔥 AQUI CAMBIAMOS EL MENSAJE AUTOMÁTICO DE CITAS 🔥
-    if (step.type === 'cita' && !messageText) {
-        messageText = "Perfecto {{nombre_primer}}💪.\n\n¿Para qué día deseas que te agende la visita?";
+    // 🔥 MAGIA NUEVA: Leer la pregunta de fecha desde la interfaz 🔥
+    if (step.type === 'cita') {
+        messageText = step.msg_date || "📅 ¿Para qué día te gustaría agendar?";
     }
 
     const cleanClientPhone = jid.replace(/[^0-9]/g, '');

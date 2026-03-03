@@ -982,18 +982,17 @@
         const c = document.getElementById('dynFields');
         const wrapMsg = document.getElementById('wrapper-msg'), wrapMedia = document.getElementById('wrapper-media');
         
-        wrapMsg.style.display = type==='cita'?'none':'block'; 
-        wrapMedia.style.display = type==='cita'?'none':'block';
+        // Ocultamos el mensaje por defecto y la galería si es una Cita
+        wrapMsg.style.display = type === 'cita' ? 'none' : 'block'; 
+        wrapMedia.style.display = type === 'cita' ? 'none' : 'block';
 
         // Generamos la lista de pasos existentes para sugerencias
         const dataListHtml = `<datalist id="stepsList">${getDatalistOptions()}</datalist>`;
-        
-        let html = dataListHtml; // Lo agregamos al HTML
+        let html = dataListHtml; 
 
         if(type === 'menu' || type === 'filtro') {
             html += `<label>Opciones (Botones)</label><div id="optsList">`;
             (d.options||[]).forEach(o => {
-                // Input inteligente para "Siguiente Paso"
                 html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
                     <input class="o-lbl" value="${o.label}" placeholder="Texto Botón">
                     <input class="o-nxt" list="stepsList" value="${o.next_step||''}" placeholder="Destino (Escribe para crear)" style="font-weight:bold; color:var(--primary);">
@@ -1007,6 +1006,29 @@
         } else if (type === 'input') {
             html += `<label>Variable a Guardar</label><input id="stVar" value="${d.save_var||''}">`;
             html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Escribe para crear nuevo...">`;
+
+        } else if (type === 'cita') {
+            html += `
+            <div style="background:var(--bg-input); padding:15px; border-radius:8px; border:1px solid var(--border); margin-bottom:15px;">
+                <h4 style="margin-top:0; margin-bottom:15px; color:var(--text-main);"><i class="far fa-calendar-alt" style="color:var(--primary);"></i> Configuración del Agendador</h4>
+                
+                <label>Pregunta para el Día</label>
+                <input type="text" id="stCitaDate" value="${d.msg_date || '¿Qué día te gustaría agendar?'}" placeholder="Ej: ¿Qué día te esperamos?">
+                
+                <label>Pregunta para la Hora</label>
+                <input type="text" id="stCitaTime" value="${d.msg_time || '¿A qué hora te queda mejor?'}" placeholder="Ej: Perfecto, ¿a qué hora te agendo?">
+                
+                <label>Duración de cada turno</label>
+                <select id="stCitaInterval" style="margin-bottom:0;">
+                    <option value="15" ${d.interval == '15' ? 'selected' : ''}>Cada 15 minutos</option>
+                    <option value="30" ${d.interval == '30' || !d.interval ? 'selected' : ''}>Cada 30 minutos</option>
+                    <option value="60" ${d.interval == '60' ? 'selected' : ''}>Cada 1 hora</option>
+                    <option value="1440" ${d.interval == '1440' ? 'selected' : ''}>1 Cita por Día (Todo el día)</option>
+                </select>
+            </div>
+            <label>Siguiente Paso (Al terminar de agendar)</label>
+            <input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Ej: DESPEDIDA">`;
+
         } else {
             html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Escribe para crear nuevo...">`;
         }
@@ -1014,7 +1036,6 @@
     }
 
     function addOptRow() { 
-        // Esta versión usa el INPUT con DATALIST en lugar del SELECT antiguo
         document.getElementById('optsList').insertAdjacentHTML('beforeend', 
             `<div style="display:flex; gap:5px; margin-bottom:5px;">
                 <input class="o-lbl" placeholder="Botón">
@@ -1034,7 +1055,7 @@
         // Array para rastrear qué pasos nuevos debemos crear
         let stepsToCreate = [];
 
-        // 1. Recolectar Next Step (Input/Mensaje)
+        // 1. Recolectar Next Step (Input/Mensaje/Cita)
         if(document.getElementById('stNext')) {
             const val = document.getElementById('stNext').value.trim().toUpperCase(); // Forzamos mayúsculas
             if(val) {
@@ -1060,6 +1081,14 @@
         if(document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value;
         if(document.getElementById('stKw')) data.keywords = document.getElementById('stKw').value.split(',').map(s=>s.trim());
         if(document.getElementById('stAdm')) data.admin_number = document.getElementById('stAdm').value;
+
+        // 👇 AQUÍ ESTÁ LA RECOLECCIÓN DE LOS NUEVOS DATOS DE LA CITA 👇
+        if (type === 'cita') {
+            data.msg_date = document.getElementById('stCitaDate') ? document.getElementById('stCitaDate').value : '';
+            data.msg_time = document.getElementById('stCitaTime') ? document.getElementById('stCitaTime').value : '';
+            data.interval = document.getElementById('stCitaInterval') ? document.getElementById('stCitaInterval').value : '30';
+        }
+        // 👆 FIN DE LA RECOLECCIÓN DE CITAS 👆
 
         // --- MAGIA: CREACIÓN AUTOMÁTICA DE PASOS ---
         // Si detectamos pasos destino que NO existen, los creamos en el servidor

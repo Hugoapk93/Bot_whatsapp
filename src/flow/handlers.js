@@ -1,8 +1,23 @@
+const fs = require('fs');
+const path = require('path');
 const { updateUser, getUser } = require('../database');
 const { analyzeNaturalLanguage } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
 const { isValidName, isValidBirthDate } = require('./validators');
+
+// Lector directo de la agenda para no depender de otros archivos
+const getAgendaLocal = () => {
+    try {
+        const agendaPath = path.join(__dirname, '../../data/agenda.json');
+        if (fs.existsSync(agendaPath)) {
+            return JSON.parse(fs.readFileSync(agendaPath, 'utf-8'));
+        }
+    } catch (e) {
+        console.error("Error leyendo agenda:", e);
+    }
+    return {};
+};
 
 const basicClean = (str) => {
     if (!str) return "";
@@ -91,6 +106,12 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
 
     if (analysis.time) user.history['hora'] = analysis.time;
 
+    const interval = parseInt(stepConfig.interval) || 30;
+
+    if (user.history['fecha'] && interval === 1440 && !user.history['hora']) {
+        user.history['hora'] = '08:00'; 
+    }
+
     await updateUser(dbKey, { history: user.history });
 
     let fechaMemoria = user.history['fecha'];
@@ -113,17 +134,37 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
     }
 
     if (!fechaMemoria) {
-        const txt = "📅 ¿Para qué día te gustaría agendar?";
+        const txt = stepConfig.msg_date || "📅 ¿Para qué día te gustaría agendar?";
         if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
         else await sock.sendMessage(remoteJid, { text: txt });
         return null;
     }
 
     if (!horaMemoria) {
-        const txt = `Perfecto, para el *${friendlyDate(fechaMemoria)}*.\n¿A qué hora puedes venir?`;
+        let txt = stepConfig.msg_time || `Perfecto, para el *${friendlyDate(fechaMemoria)}*.\n¿A qué hora puedes venir?`;
+        if (txt.includes('{{fecha}}')) {
+            txt = txt.replace('{{fecha}}', friendlyDate(fechaMemoria));
+        }
+
         if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
         else await sock.sendMessage(remoteJid, { text: txt });
         return null;
+    }
+
+    if (interval < 1440) {
+        const [h, m] = horaMemoria.split(':').map(Number);
+        if (m % interval !== 0) {
+            const minText = interval === 60 ? 'horas en punto' : `intervalos de ${interval} minutos`;
+            const ejemplo = interval < 60 ? `ej. ${h}:00, ${h}:${interval.toString().padStart(2, '0')}` : `ej. ${h}:00`;
+            const txt = `⚠️ Por favor, elige una hora en ${minText} (${ejemplo}).`;
+            
+            delete user.history['hora'];
+            await updateUser(dbKey, { history: user.history });
+            
+            if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
+            else await sock.sendMessage(remoteJid, { text: txt });
+            return null;
+        }
     }
 
     if (isDateInPast(fechaMemoria, horaMemoria)) {
@@ -146,9 +187,24 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
 
     const isAvailable = await checkAvailability(fechaMemoria, horaMemoria);
     if (!isAvailable) {
-        const txt = `❌ Horario ocupado.`;
+        // 🔥 Uso directo de getAgendaLocal 🔥
+        const agenda = getAgendaLocal();
+        const citasDelDia = agenda[fechaMemoria] || [];
+        const horasOcupadas = citasDelDia.map(c => c.time).sort();
+        
+        let txt = `❌ Uy, las *${horaMemoria}* ya se nos ocuparon.\n\n`;
+        
+        if (horasOcupadas.length > 0) {
+            txt += `📌 Para el *${friendlyDate(fechaMemoria)}*, estas horas ya están tomadas:\n`;
+            horasOcupadas.forEach(h => txt += `• ${h}\n`);
+            txt += `\n✅ *¡Cualquier otra hora está libre!* ¿A qué otra hora te queda bien?`;
+        } else {
+            txt += `¿Podrías indicarme otra hora diferente, por favor?`;
+        }
+
         if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
         else await sock.sendMessage(remoteJid, { text: txt });
+        
         delete user.history['hora'];
         await updateUser(dbKey, { history: user.history });
         return null;
