@@ -197,7 +197,7 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
         if (horasOcupadas.length > 0) {
             txt += `📌 Para el *${friendlyDate(fechaMemoria)}*, estas horas ya están tomadas:\n`;
             horasOcupadas.forEach(h => txt += `• ${h}\n`);
-            txt += `\n✅ *¡Cualquier otra hora está libre!* ¿A qué otra hora te queda bien?`;
+            txt += `\n✅ *¡Cualquier otra hora está libre!* \n¿A qué otra hora te agendo?`;
         } else {
             txt += `¿Podrías indicarme otra hora diferente, por favor?`;
         }
