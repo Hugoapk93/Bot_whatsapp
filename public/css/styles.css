@@ -25,9 +25,8 @@
     --wa-outgoing: #d9fdd3; 
 }
 
-/* --- MODO OSCURO (NEGRO PROFUNDO Y ROJO ELEGANTE) --- */
+/* --- MODO OSCURO */
 body.dark-mode {
-    /* Fondos súper oscuros (Casi negro puro) */
     --bg-body: #050505; 
     --bg-sidebar: #0a0a0a; 
     --bg-card: #0a0a0a; 
@@ -39,8 +38,8 @@ body.dark-mode {
     --text-muted: #8b8b8b;
     
     /* El Acento Rojo Elegante */
-    --primary: #dc2626; /* Un rojo carmesí vibrante */
-    --success: #10b981; /* Se mantiene verde para evitar confusión en switches */
+    --primary: #dc2626; 
+    --success: #10b981; 
     --danger: #ef4444;
     
     /* Variables del Chat en Negro/Rojo */
@@ -49,14 +48,13 @@ body.dark-mode {
     --wa-header: #0a0a0a;
     --wa-border: #1f1f1f; 
     --wa-incoming: #141414; 
-    --wa-outgoing: #450a0a; /* Burbujas enviadas en un rojo muy oscuro/vino */
+    --wa-outgoing: #450a0a; 
 }
 
-/* Ajustes finos para que resalte el rojo */
-body.dark-mode .wa-input-pill { background: #141414; border-color: #262626; }
+/* Ajustes finos para modo oscuro */
+body.dark-mode .wa-input-pill { background: #1f2c34; border: none; }
 body.dark-mode #waInput { color: #f5f5f5; }
-body.dark-mode .quick-btn { background-color: #0a0a0a; border-color: var(--primary); color: var(--primary); }
-body.dark-mode .quick-btn:hover { background-color: var(--primary); color: white; }
+body.dark-mode .quick-btn { background: rgba(31, 44, 52, 0.85); color: #00a884; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.4); }
 body.dark-mode .wa-chat-item:hover { background: #141414; }
 body.dark-mode .wa-chat-item.active, body.dark-mode .wa-chat-item.selected { background: #1f1f1f !important; }
 body.dark-mode .wa-bubble { color: #f5f5f5; }
@@ -102,67 +100,18 @@ body.dark-mode .wa-chat-col::before { filter: invert(1); opacity: 0.08; }
 input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-main); margin-bottom: 10px; font-size: 16px; }
 #installAppBtn { display: none; background: rgba(16, 185, 129, 0.1); color: var(--success); margin-top: 10px; border: 1px dashed rgba(16, 185, 129, 0.3); }
 
-/* --- TARJETAS DEL FLUJO (FLOW CARDS) - DISEÑO FINAL --- */
+/* --- TARJETAS DEL FLUJO (FLOW CARDS) --- */
 .flow-step-card { 
-    background: var(--bg-card); 
-    border: 1px solid var(--border); 
-    border-radius: var(--radius); 
-    padding: 0;
-    margin-bottom: 15px; 
-    display: flex; 
-    flex-direction: column; 
-    overflow: hidden;
-    cursor: default;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0; margin-bottom: 15px; display: flex; flex-direction: column; overflow: hidden; cursor: default; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
-.flow-step-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border-color: var(--primary);
-}
-
-.card-header {
-    padding: 12px 15px;
-    background: var(--bg-input);
-    border-bottom: 1px solid var(--border);
-    display: flex; justify-content: space-between; align-items: center;
-    cursor: pointer;
-}
+.flow-step-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: var(--primary); }
+.card-header { padding: 12px 15px; background: var(--bg-input); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
 .card-header:hover { background: #e2e8f0; }
+.card-body { padding: 15px; color: var(--text-main); font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; text-align: left; cursor: pointer; }
+.card-footer { padding: 0 15px 15px 15px; display: flex; flex-direction: column; gap: 8px; }
 
-.card-body {
-    padding: 15px;
-    color: var(--text-main);
-    font-size: 0.95rem;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    text-align: left;
-    cursor: pointer;
-}
-
-.card-footer {
-    padding: 0 15px 15px 15px;
-    display: flex; flex-direction: column; gap: 8px;
-}
-
-.flow-chip {
-    width: 100%;
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 15px;
-    background: var(--bg-input); 
-    border: 1px solid var(--border); 
-    color: var(--text-muted); 
-    border-radius: 8px; 
-    font-size: 0.9rem; 
-    cursor: pointer; 
-    transition: 0.2s;
-}
-.flow-chip:hover { 
-    background: rgba(37, 99, 235, 0.05); 
-    color: var(--primary); border-color: var(--primary); 
-}
+.flow-chip { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+.flow-chip:hover { background: rgba(37, 99, 235, 0.05); color: var(--primary); border-color: var(--primary); }
 
 .type-menu { border-left: 5px solid #a855f7 !important; }
 .type-input { border-left: 5px solid #f59e0b !important; }
@@ -182,10 +131,7 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input
 .flow-nav span { color: var(--text-muted); cursor: pointer; font-weight: 500; }
 .flow-nav span:hover { color: var(--primary); text-decoration: underline; }
 
-#breadcrumbNav button.admin-btn {
-    flex-shrink: 0 !important; min-width: 30px !important; width: 30px !important; height: 30px !important;
-    display: flex; align-items: center; justify-content: center;
-}
+#breadcrumbNav button.admin-btn { flex-shrink: 0 !important; min-width: 30px !important; width: 30px !important; height: 30px !important; display: flex; align-items: center; justify-content: center; }
 
 /* --- CALENDARIO --- */
 .calendar-header { display: flex; align-items: center; justify-content: center; gap: 20px; padding-bottom: 15px; flex-shrink: 0; }
@@ -225,20 +171,114 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input
 .wa-bubble.out { background-color: var(--wa-outgoing) !important; align-self: flex-end !important; border-top-right-radius: 0; }
 .wa-time { font-size: 11px; color: #667781; align-self: flex-end; margin: 0 0 0 8px; display: flex; align-items: center; gap: 3px; line-height: 1; padding-top: 2px; }
 
-.wa-input-area { min-height: 62px; background: var(--wa-header); padding: 5px 10px; display: flex; align-items: flex-end; gap: 8px; z-index: 10; }
-.wa-input-pill { flex: 1; background: #ffffff; border-radius: 8px; padding: 9px 12px 9px 15px; display: flex; align-items: center; position: relative; transition: all 0.3s ease; min-height: 42px; border: 1px solid #fff; }
-#waInput { flex: 1; background: transparent; border: none; padding: 0; color: #111b21; font-size: 15px; margin: 0; width: 100%; }
-.wa-input-icons { display: flex; align-items: center; gap: 15px; margin-left: 10px; overflow: hidden; max-width: 150px; opacity: 1; transform: translateX(0); transition: max-width 0.3s ease, opacity 0.2s ease, transform 0.3s ease; }
-.wa-input-icons i { color: #54656f; font-size: 1.3rem; cursor: pointer; flex-shrink: 0; }
-.wa-input-pill.typing .wa-input-icons { max-width: 0px; opacity: 0; transform: translateX(20px); pointer-events: none; margin-left: 0; }
+/* --- BARRA DE CHAT ESTILO WHATSAPP NATIVO --- */
+.wa-input-area { 
+    min-height: 62px; 
+    background: transparent !important; 
+    padding: 8px 10px; 
+    display: flex; 
+    align-items: flex-end; 
+    gap: 8px; 
+    z-index: 10; 
+}
 
-.wa-mic-btn { width: 40px; height: 40px; background: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #54656f; font-size: 1.2rem; cursor: pointer; border: none; transition: transform 0.2s, background 0.2s; flex-shrink: 0; margin-bottom: 5px; }
-.wa-mic-btn i { transition: transform 0.2s; }
-.wa-mic-btn.is-send { color: #00a884; }
-#waQuickReplies { background: transparent; padding: 8px 15px; display: flex; gap: 8px; overflow-x: auto; justify-content: center; display: none; }
-.quick-btn { background-color: #ffffff; border: 1px solid var(--wa-border); color: #008f6f; padding: 6px 16px; border-radius: 18px; font-size: 13px; font-weight: 500; cursor: pointer; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
-.quick-btn:hover { background-color: #f0f2f5; }
-.wa-back-btn { display: none; font-size: 1.2rem; margin-right: 15px; color: var(--text-main); cursor: pointer; }
+/* Caja de texto (Píldora) */
+.wa-input-pill { 
+    flex: 1; 
+    background: #ffffff; /* Blanco en modo normal */
+    border-radius: 24px; 
+    padding: 8px 15px 8px 20px; 
+    display: flex; 
+    align-items: center; 
+    min-height: 44px; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Leve sombra para que no se pierda en lo transparente */
+}
+
+/* Letras de la caja */
+#waInput { 
+    flex: 1; 
+    background: transparent; 
+    border: none; 
+    padding: 0 10px 0 0; 
+    color: #000000; /* Letras negras en modo normal */
+    font-size: 16px; 
+    margin: 0; 
+    width: 100%; 
+    outline: none; 
+}
+
+/* Círculo para enviar / micrófono */
+.wa-main-btn { 
+    width: 44px; 
+    height: 44px; 
+    border-radius: 50%; 
+    background: #000000; /* Círculo negro en modo normal */
+    color: #ffffff; /* Ícono blanco en modo normal */
+    border: none; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    font-size: 1.2rem; 
+    cursor: pointer; 
+    flex-shrink: 0; 
+    transition: transform 0.2s; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+    margin-bottom: 2px; 
+}
+
+/* --- 🔥 REGLAS PARA MODO OSCURO 🔥 --- */
+body.dark-mode .wa-input-pill {
+    background: #000000; /* Caja negra en modo oscuro */
+}
+
+body.dark-mode #waInput {
+    color: #ffffff; /* Letras blancas en modo oscuro */
+}
+
+body.dark-mode .wa-main-btn {
+    background: #ffffff; /* Círculo blanco en modo oscuro */
+    color: #000000; /* Ícono negro en modo oscuro */
+}
+
+.wa-main-btn i, .wa-main-btn svg { transition: transform 0.2s; }
+.wa-main-btn:active { transform: scale(0.9); }
+
+/* --- BOTONES DE ACCIÓN DEL ADMIN --- */
+#waQuickReplies { 
+    position: absolute; 
+    bottom: 70px; 
+    left: 0;
+    width: 100%;
+    background: transparent !important; 
+    border: none !important; 
+    padding: 10px 15px; 
+    display: flex; 
+    gap: 10px; 
+    overflow-x: auto; 
+    justify-content: center; 
+    z-index: 50; /* Asegura que estén por encima de los mensajes */
+    pointer-events: none; /* Hace que el contenedor sea un "fantasma" para que puedas hacer scroll tocando entre los botones */
+}
+
+.quick-btn { 
+    pointer-events: auto; /* Reactiva el toque SOLO para los botones */
+    background: var(--bg-card) !important; 
+    color: var(--primary) !important; 
+    border: 1px solid var(--primary) !important; 
+    border-radius: 20px; 
+    padding: 7px 18px; 
+    font-size: 14px; 
+    font-weight: 500; 
+    cursor: pointer; 
+    flex-shrink: 0; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; /* Sombra un poco más fuerte para que resalten */
+    transition: transform 0.1s, background-color 0.2s; 
+}
+
+.quick-btn:active { 
+    transform: scale(0.95); 
+    background-color: var(--bg-input) !important; 
+}
 
 /* --- VISOR DE FLUJO VERTICAL (DRAWER) --- */
 #waFlowDrawer { position: absolute; bottom: 60px; left: 0; width: 100%; max-height: 0; background: var(--bg-sidebar); transition: max-height 0.3s ease; overflow-y: auto; border-top: 1px solid var(--border); z-index: 40; display: flex; flex-direction: column; padding: 0; box-shadow: 0 -4px 10px rgba(0,0,0,0.05); }

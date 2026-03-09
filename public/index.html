@@ -133,22 +133,22 @@
                             <input type="text" id="waInput" placeholder="Mensaje" 
                                    autocomplete="off"
                                    oninput="handleInputTyping()"
-                                   onkeyup="if(event.key==='Enter') sendWaMsg()">
+                                   onkeypress="if(event.key==='Enter') sendWaMsg()">
         
-                            <div class="wa-input-icons">
-                                <i class="fas fa-paperclip" title="Adjuntar archivo" onclick="document.getElementById('chatImgUpload').click()"></i>
-                                <input type="file" id="chatImgUpload" accept="image/*" style="display:none" onchange="uploadChatMedia(this)">
-    
-                                <i class="fas fa-camera" title="Cámara"></i>
-                                <i class="fas fa-bolt" onclick="toggleFlowDrawer()" title="Respuestas Rápidas"></i>
-                            </div>
+                            <label for="chatImgUpload" style="cursor:pointer; color:#8696a0; margin:0 8px;">
+                                <i class="fas fa-paperclip" title="Adjuntar archivo" style="font-size:1.3rem;"></i>
+                            </label>
+                            <input type="file" id="chatImgUpload" accept="image/*" style="display:none" onchange="uploadChatMedia(this)">
+
+                            <i class="fas fa-camera hide-on-type" title="Cámara" style="color:#8696a0; font-size:1.3rem; margin:0 8px; cursor:pointer;" onclick="document.getElementById('chatImgUpload').click()"></i>
+                            <i class="fas fa-bolt hide-on-type" onclick="toggleFlowDrawer()" title="Respuestas Rápidas" style="color:#8696a0; font-size:1.3rem; margin-left:8px; cursor:pointer;"></i>
                         </div>
 
-                        <button class="wa-mic-btn" id="waMainBtn" onclick="handleMainBtn()">
+                        <button class="wa-main-btn" id="waMainBtn" onclick="handleMainBtn()">
                             <i class="fas fa-microphone" id="waMainIcon"></i>
                         </button>
                     </div>
-                </div>
+                    </div>
             </div>
 
             <div class="modal" id="jumpModal">
@@ -404,7 +404,7 @@
         <div class="sheet" style="height:auto;">
             <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
                 <h3 style="margin:0;">Mover Cliente</h3>
-                <button onclick="document.getElementById('moveUserModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
+                <button onclick="document.getElementById('moveUserModal').classList.remove('active')" style="background:none; border:none; color:var(--text-main); font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
 
             <p style="color:var(--text-muted); margin-bottom:15px;">
@@ -440,7 +440,7 @@
         <div class="sheet">
             <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
                 <h3 style="margin:0;">Editar Paso</h3>
-                <button onclick="document.getElementById('editorModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
+                <button onclick="document.getElementById('editorModal').classList.remove('active')" style="background:none; border:none; color:var(--text-main); font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
             <input type="hidden" id="stId">
             <label>Tipo de Interacción</label>
@@ -474,7 +474,7 @@
         <div class="sheet">
             <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
                 <h3 id="modalDateTitle" style="margin:0;">Eventos</h3>
-                <button onclick="document.getElementById('dayModal').classList.remove('active')" style="background:none; border:none; color:white; font-size:1.5rem;">&times;</button>
+                <button onclick="document.getElementById('dayModal').classList.remove('active')" style="background:none; border:none; color:var(--text-main); font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
             <div id="modalApptList" style="flex:1; overflow-y:auto; margin-bottom:15px;"></div>
             <button onclick="document.getElementById('eventForm').style.display='block'; this.style.display='none'" id="btnAddEvent" class="admin-btn" style="width:100%; padding:15px; border-style:dashed;">+ Agendar Manualmente</button>

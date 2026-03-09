@@ -16,23 +16,53 @@
     let ignoreClick = false;
     let currentSearchQuery = '';
 
+    // --- VARIABLES PARA RESPUESTAS Y MULTIMEDIA ---
+    let currentEditKwId = null;
+    let pendingMediaFile = null;
+
     // --- SOCKET.IO ---
     const socket = io({ reconnection: true });
     socket.on('connect', () => { updateConnStatus(true); loadActivity(); });
     socket.on('disconnect', () => { updateConnStatus(false); });
 
     socket.on('message', (data) => {
-        if (currentChatPhone) {
-            // Limpiamos los IDs para evitar problemas de formato
-            const currentKey = String(currentChatPhone).replace(/\D/g, ''); // Chat abierto
-            const msgFromKey = String(data.from || '').replace(/\D/g, '');  // Quien envía
-            const msgToKey   = String(data.to || '').replace(/\D/g, '');    // A quien va
+        // 1. Extraer el texto real
+        let realText = data.text || data.body || data.caption || data.message || '';
+        
+        // Soporte extra
+        if(!realText && data.extendedTextMessage) realText = data.extendedTextMessage.text;
+        if(!realText && data.conversation) realText = data.conversation;
+        if(!realText && data.imageMessage) realText = data.imageMessage.caption || '';
+        if(!realText && data.videoMessage) realText = data.videoMessage.caption || '🎥 Video';
 
-            // A) INTENTO 1: Coincidencia Directa
+        const targetPhoneKey = String(data.phone || data.from || data.to || '').replace(/\D/g, '');
+        if (targetPhoneKey && typeof users !== 'undefined' && users.length > 0) {
+            const userMem = users.find(u => {
+                const cleanPhone = String(u.phone).replace(/\D/g, '');
+                const cleanDb = u.realDbPhone ? String(u.realDbPhone).replace(/\D/g, '') : '';
+                return cleanPhone === targetPhoneKey || cleanDb === targetPhoneKey;
+            });
+            
+            if (userMem) {
+                if (!userMem.messages) userMem.messages = [];
+                userMem.messages.push({
+                    text: realText,
+                    fromMe: data.fromMe,
+                    stepId: data.stepId || null,
+                    timestamp: new Date().toISOString(),
+                    mediaUrl: data.mediaUrl || null
+                });
+            }
+        }
+
+        if (currentChatPhone) {
+            const currentKey = String(currentChatPhone).replace(/\D/g, ''); 
+            const msgFromKey = String(data.from || data.phone || '').replace(/\D/g, ''); 
+            const msgToKey   = String(data.to || data.phone || '').replace(/\D/g, '');    
+
             let isMatch = (currentKey === msgFromKey || currentKey === msgToKey);
 
-            // B) INTENTO 2: Búsqueda Cruzada (Para LIDs)
-            if (!isMatch && users.length > 0) {
+            if (!isMatch && typeof users !== 'undefined' && users.length > 0) {
                 const senderUser = users.find(u => {
                     const uPhone = String(u.phone).replace(/\D/g, '');
                     const uDbPhone = u.realDbPhone ? String(u.realDbPhone).replace(/\D/g, '') : '';
@@ -47,34 +77,20 @@
                 }
             }
 
-            // C) SI ES EL CHAT CORRECTO -> PINTAMOS (Solo agregamos la burbuja)
             if (isMatch) {
-                 let realText = data.text || data.body || data.caption || data.message || '';
-                 
-                 // Soporte extra
-                 if(!realText && data.extendedTextMessage) realText = data.extendedTextMessage.text;
-                 if(!realText && data.conversation) realText = data.conversation;
-                 if(!realText && data.imageMessage) realText = data.imageMessage.caption || '📷 Foto';
-                 if(!realText && data.videoMessage) realText = data.videoMessage.caption || '🎥 Video';
-                 
-                 if(realText) {
-                     // Solo dibujamos, NO recargamos la base de datos
-                     addBubble(realText, data.fromMe, null, new Date().toISOString());
+                 if(realText || data.mediaUrl) {
+                     addBubble(realText, data.fromMe, null, new Date().toISOString(), data.mediaUrl);
                  }
             }
         }
     });
 
     socket.on('user_update', (data) => {
-        // 1. Actualizar la lista en memoria
         const targetPhone = getCleanPhone(data.phone);
         const userIndex = users.findIndex(u => getCleanPhone(u.phone) === targetPhone);
 
         if (userIndex !== -1) {
-            // Actualizamos los datos locales
             users[userIndex] = { ...users[userIndex], ...data };
-            
-            // Si el backend mandó un nombre nuevo, actualizamos el nombre visual
             if (data.name) {
                 users[userIndex].savedName = data.name;
                 if (!users[userIndex].history) users[userIndex].history = {};
@@ -82,10 +98,8 @@
             }
         }
 
-        // 2. Refrescar la lista izquierda
         renderChatList(users);
 
-        // 3. Si tenemos este chat abierto, actualizamos el encabezado al instante
         if (currentChatPhone && getCleanPhone(currentChatPhone) === targetPhone) {
             if (data.name) {
                 document.getElementById('waHeaderName').innerText = data.name;
@@ -102,7 +116,7 @@
         const exists = users.find(u => getCleanPhone(u.phone) === getCleanPhone(newUser.phone));
         if (!exists) {
             newUser.savedName = newUser.name || newUser.phone;
-            users.unshift(newUser); // Agregamos al principio
+            users.unshift(newUser); 
             renderChatList(users);
             showInAppNotify(`Nuevo cliente: ${newUser.savedName}`);
         }
@@ -125,7 +139,6 @@
     window.onload = () => {
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
-            // Encendemos el switch visualmente si el tema oscuro está activo
             const dmSwitch = document.getElementById('darkModeSwitch');
             if (dmSwitch) dmSwitch.checked = true;
             const dmText = document.getElementById('darkModeStatusText');
@@ -149,17 +162,13 @@
                         nav('agenda'); 
                         history.replaceState(null, null, ' ');
                     }
-                    // --- ACTIVITY (MODIFICADO PARA ABRIR CHAT) ---
                     else if (window.location.hash.startsWith('#activity')) {
                         const hash = window.location.hash;
                         nav('activity');
-                        
-                        // Si la URL trae "?chat=521...", abrimos ese chat específico
                         if (hash.includes('chat=')) {
                             const phone = hash.split('chat=')[1];
                             setTimeout(() => openWaChat(phone), 200);
                         }
-
                         history.replaceState(null, null, ' ');
                     }
 
@@ -224,7 +233,6 @@
 
             users = usersData.map(u => {
                 const uChatKey = getCleanPhone(u.phone);
-                // Buscamos coincidencia en contactos guardados
                 let contactInfo = contactsData.find(c => getCleanPhone(c.phone) === uChatKey);
                 
                 let finalState = true;
@@ -253,14 +261,11 @@
 
             renderChatList(users);
 
-            // Si hay un chat abierto, actualizamos su estado (switch del bot)
             if (currentChatPhone) {
                 const updatedUser = users.find(u => getCleanPhone(u.phone) === getCleanPhone(currentChatPhone));
                 if(updatedUser) {
                     const switchEl = document.getElementById('waBotSwitch');
                     if(switchEl) switchEl.checked = updatedUser.bot_enabled;
-                    
-                    // Actualizar también el nombre en el encabezado si cambió
                     document.getElementById('waHeaderName').innerText = updatedUser.savedName;
                 }
             }
@@ -278,12 +283,9 @@
         list.forEach(u => {
             if(u.phone === 'TEST_SIMULADOR') return;
             
-            // 1. Datos
             const name = u.savedName || u.history?.nombre || u.history?.cliente || u.history?.usuario || u.phone;
-
             const timeDisplay = formatSmartDate(u.last_active);
             
-            // 2. Estados y Clases
             const isSelected = selectedChats.includes(u.phone);
             const activeClass = (currentChatPhone === u.phone) ? 'active' : '';
             const selectedClass = isSelected ? 'selected' : '';
@@ -300,7 +302,6 @@
             div.className = `wa-chat-item ${activeClass} ${selectedClass}`;
             div.oncontextmenu = function(e) { e.preventDefault(); return false; }; 
             
-            // 🔥 CAMBIO: Nueva estructura HTML para separar nombre y hora
             div.innerHTML = `
                 <div class="wa-avatar" style="position:relative; overflow:visible;">
                     ${name[0].toUpperCase()} 
@@ -321,7 +322,6 @@
                 </div>
             `;
 
-            // --- Lógica de Eventos (INTACTA) ---
             const startPress = (e) => {
                 if (e.type === 'mousedown' && e.button !== 0) return;
                 ignoreClick = false;
@@ -335,15 +335,9 @@
             const cancelPress = () => clearTimeout(longPressTimer);
 
             const handleClick = (e) => {
-                if (ignoreClick) {
-                    ignoreClick = false;
-                    return;
-                }
-                if (isSelectionMode) {
-                    toggleSelection(u.phone);
-                } else {
-                    openWaChat(u.phone);
-                }
+                if (ignoreClick) { ignoreClick = false; return; }
+                if (isSelectionMode) { toggleSelection(u.phone); } 
+                else { openWaChat(u.phone); }
             };
 
             div.addEventListener('mousedown', startPress);
@@ -376,8 +370,6 @@
         if (selectedChats.length === 0) {
             exitSelectionMode();
         } else {
-            // 🔥 CORRECCIÓN: Usamos filterChats en vez de renderChatList(users)
-            // Esto obliga a la lista a respetar lo que escribiste en el buscador
             filterChats(currentSearchQuery); 
         }
     }
@@ -387,8 +379,6 @@
         selectedChats = [];
         document.getElementById('waHeaderSearch').style.display = 'block';
         document.getElementById('waHeaderSelection').style.display = 'none';
-        
-        // 🔥 CORRECCIÓN: Al salir, volvemos a mostrar la lista filtrada (o completa si estaba vacía)
         filterChats(currentSearchQuery);
     }
 
@@ -483,7 +473,7 @@
                     Sin historial reciente.
                 </div>`;
             } else {
-                msgs.forEach(m => addBubble(m.text, m.fromMe, m.stepId, m.timestamp));
+                msgs.forEach(m => addBubble(m.text, m.fromMe, m.stepId, m.timestamp, m.mediaUrl));
                 setTimeout(() => box.scrollTop = box.scrollHeight, 50);
             }
             if(window.innerWidth <= 768) {
@@ -495,7 +485,7 @@
             const dbCount = msgs.length;
             if (dbCount > domCount) {
                 const newMsgs = msgs.slice(domCount);
-                newMsgs.forEach(m => addBubble(m.text, m.fromMe, m.stepId, m.timestamp));
+                newMsgs.forEach(m => addBubble(m.text, m.fromMe, m.stepId, m.timestamp, m.mediaUrl));
                 if(box.scrollTop + box.clientHeight >= box.scrollHeight - 100) {
                     box.scrollTop = box.scrollHeight;
                 }
@@ -527,7 +517,125 @@
         renderChatList(users);
     }
 
-    function addBubble(text, isMe, stepId, timestamp) {
+    // --- SUBIDA Y VISTA PREVIA DE IMÁGENES ---
+    async function uploadImages(input) {
+        if (!input.files || input.files.length === 0) return;
+        
+        const formData = new FormData();
+        for (let i = 0; i < input.files.length; i++) {
+            formData.append('images', input.files[i]);
+        }
+        showToast("⏳ Subiendo imagen...");
+
+        try {
+            const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.urls) {
+                currentMediaList = currentMediaList.concat(data.urls);
+                renderGallery();
+                showToast("✅ Imagen guardada con éxito");
+            }
+        } catch (e) {
+            console.error("Error al subir:", e);
+            showToast("❌ Error al subir la imagen");
+        } finally {
+            input.value = ''; 
+        }
+    }
+
+    function uploadChatMedia(input) {
+        if (!input.files || input.files.length === 0) return;
+        if (!currentChatPhone) {
+            showToast("⚠️ Selecciona un chat primero");
+            input.value = '';
+            return;
+        }
+
+        pendingMediaFile = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            showMediaPreviewModal(e.target.result);
+        };
+        reader.readAsDataURL(pendingMediaFile);
+        
+        input.value = ''; 
+    }
+    
+    function showMediaPreviewModal(dataUrl) {
+        let modal = document.getElementById('mediaPreviewModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'mediaPreviewModal';
+            // El fondo de la pantalla de previsualización se mantiene oscuro tipo WhatsApp
+            modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(11,20,26,0.95); z-index:9999; display:none; flex-direction:column; justify-content:center; align-items:center;';
+            modal.innerHTML = `
+                <div style="width:100%; max-width:500px; display:flex; flex-direction:column; height:100vh;">
+                    <div style="padding:15px; display:flex; justify-content:flex-start;">
+                        <button onclick="closeMediaPreview()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div style="flex:1; display:flex; justify-content:center; align-items:center; padding:20px; overflow:hidden;">
+                        <img id="mediaPreviewImg" src="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:10px;">
+                    </div>
+                    
+                    <div class="wa-input-area" style="padding-bottom: 25px;">
+                        <div class="wa-input-pill" style="padding-left: 20px;">
+                            <input type="text" id="mediaPreviewCaption" placeholder="Añade un comentario..." 
+                                   onkeypress="if(event.key==='Enter') sendPendingMedia()" 
+                                   style="flex:1; background:transparent; border:none; outline:none; padding:0 10px 0 0; font-size:16px; width:100%; color:var(--text-main);">
+                        </div>
+                        <button onclick="sendPendingMedia()" class="wa-main-btn">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="transform: translateX(2px);"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                        </button>
+                    </div>
+
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        document.getElementById('mediaPreviewImg').src = dataUrl;
+        document.getElementById('mediaPreviewCaption').value = document.getElementById('waInput').value; 
+        modal.style.display = 'flex'; 
+        setTimeout(() => document.getElementById('mediaPreviewCaption').focus(), 100);
+    }
+
+    function closeMediaPreview() {
+        pendingMediaFile = null;
+        document.getElementById('mediaPreviewModal').style.display = 'none';
+    }
+
+    async function sendPendingMedia() {
+        if (!pendingMediaFile || !currentChatPhone) return;
+        
+        const captionText = document.getElementById('mediaPreviewCaption').value.trim();
+        const formData = new FormData();
+        formData.append('images', pendingMediaFile);
+
+        closeMediaPreview(); 
+        showToast("⏳ Enviando imagen...");
+
+        try {
+            const resUpload = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
+            const dataUpload = await resUpload.json();
+
+            if (dataUpload.urls && dataUpload.urls.length > 0) {
+                const imageUrl = dataUpload.urls[0];
+                
+                await fetch(`${API_BASE}/api/send-message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: currentChatPhone, text: captionText, mediaUrl: imageUrl })
+                });
+
+                document.getElementById('waInput').value = '';
+                handleInputTyping();
+            }
+        } catch (e) {
+            showToast("❌ Error al enviar la imagen");
+        }
+    }
+
+    function addBubble(text, isMe, stepId, timestamp, mediaUrl = null) {
         const box = document.getElementById('waMsgContainer');
         const canClick = (isMe && stepId);
 
@@ -543,12 +651,15 @@
 
         const safeStepId = stepId ? String(stepId).replace(/'/g, "\\'") : '';
 
-        const html = `<div class="wa-bubble ${isMe ? 'out' : 'in'} ${canClick ? 'clickable' : ''}" ${canClick ? `onclick="askJump('${safeStepId}')"` : ''} title="${canClick ? 'Click para restaurar' : ''}">${safeText}<span class="wa-time">${timeStr}</span></div>`;
+        // Renderizar la imagen si existe
+        let mediaHtml = '';
+        if (mediaUrl) {
+            mediaHtml = `<div style="margin-bottom: 5px;"><img src="${mediaUrl}" style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="window.open('${mediaUrl}', '_blank')"></div>`;
+        }
 
-        // --- LÓGICA DE AUTO-SCROLL INTELIGENTE ---
+        const html = `<div class="wa-bubble ${isMe ? 'out' : 'in'} ${canClick ? 'clickable' : ''}" ${canClick ? `onclick="askJump('${safeStepId}')"` : ''} title="${canClick ? 'Click para restaurar' : ''}">${mediaHtml}${safeText}<span class="wa-time">${timeStr}</span></div>`;
+
         const isNearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 150;
-
-        // 2. Inyectamos el nuevo mensaje
         box.insertAdjacentHTML('beforeend', html);
 
         if (isNearBottom || isMe) {
@@ -568,16 +679,12 @@
         const txt = inp.value.trim();
         if(!txt || !currentChatPhone) return;
 
-        // Limpiamos input y reseteamos iconos
         inp.value = '';
         handleInputTyping();
         document.getElementById('waFlowDrawer').classList.remove('open'); 
 
-        // 🔥 COMANDOS (>> PASO)
         if (txt.startsWith('>> ')) {
             const targetStep = txt.replace('>> ', '').trim();
-            
-            // Aquí SÍ usamos addBubble porque es un mensaje interno del sistema (no de WhatsApp)
             addBubble(`🔄 <i>Forzando paso: ${targetStep}</i>`, true);
 
             try {
@@ -606,14 +713,12 @@
     }
 
     function filterChats(q) {
-        currentSearchQuery = q; // 1. Guardamos el texto para no olvidarlo
-        
+        currentSearchQuery = q; 
         if(!q) {
             renderChatList(users);
         } else {
             const term = q.toLowerCase();
             const f = users.filter(u => {
-                // Buscamos en todo el objeto o específicamente en el nombre/teléfono
                 const str = JSON.stringify(u).toLowerCase(); 
                 const savedName = (u.savedName || '').toLowerCase();
                 return str.includes(term) || savedName.includes(term);
@@ -633,21 +738,16 @@
     async function executeJump() {
         if(!pendingJumpStep || !currentChatPhone) return;
 
-        // 1. 🔥 ¡CERRAR AL INSTANTE! 🔥
         document.getElementById('jumpModal').classList.remove('active');
-        
-        // Opcional: Mostrar un toast para que sepa que sí pasó algo
         showToast("🔄 Procesando...");
 
         try {
-            // 2. La petición se hace mientras la ventana ya está cerrada
             await fetch(`${API_BASE}/api/crm/execute`, {
                 method:'POST', 
                 headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({ phone: currentChatPhone, stepId: pendingJumpStep })
             });
 
-            // 3. Cuando el servidor termine, actualizamos el chat
             addBubble(`🔄 Sistema: Usuario movido a ${pendingJumpStep}`, true);
             loadActivity();
         } catch (e) {
@@ -665,9 +765,7 @@
 
     async function executeCrmAction() {
         if(!pendingCrmAction) return;
-
         document.getElementById('actionConfirmModal').classList.remove('active');
-
         showToast("🔄 Procesando acción...");
 
         try {
@@ -679,11 +777,8 @@
                     stepId: pendingCrmAction.step
                 })
             });
-
             pendingCrmAction = null;
-
             setTimeout(loadActivity, 500);
-
         } catch (e) {
             console.error(e);
             showToast("❌ Error al ejecutar acción");
@@ -697,48 +792,33 @@
         const c = document.getElementById('flowListContainer');
         if(!c) return;
 
-        // 🚀 EL LIENZO INVISIBLE (BUFFER)
         let htmlBuffer = '';
 
-        // --- NAVEGACIÓN (BREADCRUMBS) ---
-        // Esto crea la barra superior: Inicio > BIENVENIDA > EFECTIVO...
         if (flowPath.length > 0) {
             let navHtml = `<div class="flow-nav" id="breadcrumbNav">`;
-            // Botón atrás circular
             navHtml += `<button onclick="jumpToStep(${flowPath.length - 2})" class="admin-btn" style="border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;"><i class="fas fa-arrow-left"></i></button>`;
             
             navHtml += `<span onclick="resetFlowNav()">Inicio</span>`;
             flowPath.forEach((step, index) => {
                 const isLast = index === flowPath.length - 1;
-                // Si es el último, lo ponemos en negrita, si no, es un link
                 navHtml += ` <i class="fas fa-chevron-right" style="font-size:0.7rem; opacity:0.5;"></i> 
                              <span onclick="${isLast ? '' : `jumpToStep(${index})`}" style="${isLast ? 'font-weight:bold; color:var(--text-main)' : ''}">${step}</span>`;
             });
             navHtml += `</div>`;
-            
-            // Lo guardamos en el buffer en vez de imprimirlo
             htmlBuffer += navHtml; 
         }
 
-        // --- LÓGICA CORREGIDA: QUÉ TARJETAS MOSTRAR ---
         let stepsToShow = [];
-        
         if (flowPath.length === 0) {
-            // Si no he navegado a nada, muestra las raíces (ej. BIENVENIDA)
             stepsToShow = findFlowRoots(); 
-            // Fallback por si no encuentra raíces
             if(stepsToShow.length === 0 && Object.keys(flow).length > 0) {
                 stepsToShow = [Object.keys(flow).sort()[0]];
             }
         } else {
-            // 🔥 LA CORRECCIÓN CLAVE:
-            // Antes mostrábamos los hijos (getChildrenSteps).
-            // Ahora mostramos EL PASO ACTUAL en el que estamos parados.
             const currentStep = flowPath[flowPath.length - 1];
             stepsToShow = [currentStep];
         }
 
-        // --- RENDERIZADO DE TARJETAS ---
         stepsToShow.forEach(k => {
             const step = flow[k];
             if(!step) return;
@@ -754,12 +834,9 @@
             const userCount = users.filter(u => u.current_step === k).length;
             const badgeHtml = userCount > 0 ? `<div class="user-badge"><i class="fas fa-user"></i> ${userCount}</div>` : '';
 
-            // BOTONES DE NAVEGACIÓN (CHIPS)
-            // Estos son los botones que aparecen AL FINAL de la tarjeta para avanzar
             let chipsHtml = '';
             
             if(step.options && step.options.length > 0) {
-                // Si es un menú con varias opciones
                 step.options.forEach(opt => {
                     chipsHtml += `<div class="flow-chip" onclick="event.stopPropagation(); enterStep('${opt.next_step}')">
                         <span>${opt.label}</span> <i class="fas fa-arrow-right"></i>
@@ -767,23 +844,17 @@
                 });
             }
             else if (step.next_step) {
-                // Si es un paso lineal (ej. input o mensaje simple)
                 chipsHtml = `<div class="flow-chip" onclick="event.stopPropagation(); enterStep('${step.next_step}')">
                     <span>Ir a: ${step.next_step}</span> <i class="fas fa-arrow-right"></i>
                 </div>`;
             } else {
-                 // Si no tiene salida (Fin del flujo)
                  chipsHtml = `<div style="text-align:center; padding:10px; opacity:0.5; font-size:0.8rem;">🏁 Fin del flujo</div>`;
             }
 
-            // LIMPIEZA DE TEXTO (Para que no se vea desalineado)
-            // Usamos .trim() y nos aseguramos de no dejar espacios en el template literal
             const cleanText = (step.message || '').trim() || '<span style="font-style:italic; opacity:0.5">(Sin texto)</span>';
 
-            // HTML ESTRUCTURADO AL BUFFER
             htmlBuffer += `
             <div class="flow-step-card ${typeClass}">
-                
                 <div class="card-header" onclick="edit('${k}')">
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span style="font-size:1.1rem; opacity:0.7;">${icon}</span>
@@ -792,17 +863,11 @@
                     </div>
                     <i class="fas fa-pen" style="font-size:0.8rem; opacity:0.5;"></i>
                 </div>
-
                 <div class="card-body" onclick="edit('${k}')">${cleanText}${step.media && step.media.length > 0 ? `<div class="thumb-row">${step.media.map(u=>`<div style="background-image:url('${u}');" class="thumb-img"></div>`).join('')}</div>` : ''}</div>
-
-                <div class="card-footer">
-                    ${chipsHtml}
-                </div>
-
+                <div class="card-footer">${chipsHtml}</div>
             </div>`;
         });
 
-        // 🚀 PINTAMOS TODO DE UN SOLO GOLPE EN LA INTERFAZ
         c.innerHTML = htmlBuffer;
     }
 
@@ -837,47 +902,33 @@
         return allSteps.filter(s => !targetedSteps.has(s));
     }
 
-    // --- LÓGICA DE FLUJO VERTICAL ---
     function getLinearFlowSequence() {
         const steps = Object.keys(flow);
         if(steps.length === 0) return [];
         
         let seq = [];
-        // Intentamos seguir el hilo lógico comenzando por BIENVENIDA o el primero que hallemos
         let curr = 'BIENVENIDA'; 
-        if(!flow[curr]) curr = steps[0]; // Fallback
+        if(!flow[curr]) curr = steps[0]; 
 
         let safety = 0;
         
-        // Rastreamos hacia adelante
         while(curr && flow[curr] && safety < 100) {
             if(!seq.includes(curr)) seq.push(curr);
-            
-            // Lógica para adivinar el siguiente paso "natural"
             let next = flow[curr].next_step;
-            
-            // Si no tiene next_step directo, miramos sus opciones (botones)
             if(!next && flow[curr].options && flow[curr].options.length > 0) {
-                // Tomamos la primera opción como el camino "principal"
                 next = flow[curr].options[0].next_step;
             }
-            
-            // Evitar bucles infinitos
             if(seq.includes(next)) break; 
-            
             curr = next;
             safety++;
         }
 
-        // Agregamos pasos huérfanos que no se alcanzaron (para que aparezcan al final)
         steps.forEach(s => {
             if(!seq.includes(s)) seq.push(s);
         });
-
         return seq;
     }
 
-    // 2. Renderizador del Cajón
     function toggleFlowDrawer() {
         const drawer = document.getElementById('waFlowDrawer');
         if(drawer.classList.contains('open')) {
@@ -898,7 +949,7 @@
         drawer.innerHTML = '';
         
         let currentIndex = sequence.indexOf(currentStep);
-        if(currentIndex === -1) currentIndex = -1; // No encontrado
+        if(currentIndex === -1) currentIndex = -1;
 
         sequence.forEach((stepId, index) => {
             let statusClass = 'future';
@@ -922,7 +973,6 @@
             drawer.appendChild(div);
         });
 
-        // Auto-scroll para centrar el paso actual
         setTimeout(() => {
             const currentEl = drawer.querySelector('.current');
             if(currentEl) {
@@ -931,24 +981,14 @@
         }, 100);
     }
 
-    // 3. Inyectar Comando en el Input
     function injectStepCommand(stepId) {
         const inp = document.getElementById('waInput');
-        
-        // 1. Escribimos el comando
         inp.value = `>> ${stepId}`; 
-        
-        // 2. 🔥 ESTO FALTABA: Avisar que hubo un cambio para activar la animación
         handleInputTyping(); 
-
-        // 3. Poner el foco en el input
         inp.focus();
-        
-        // Opcional: Cerrar el menú automáticamente al elegir
         toggleFlowDrawer(); 
     }
 
-    // --- EDITOR DE PASOS ---
     let currentMediaList = [];
     function edit(id) {
         const d = flow[id]; 
@@ -966,7 +1006,6 @@
         currentMediaList.forEach((u,i) => c.innerHTML += `<div style="min-width:60px; height:60px; background:url(${u}) center/cover; border-radius:5px; position:relative;"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:red; border-radius:50%; width:18px; height:18px; border:none; color:white; font-size:10px;">x</button></div>`);
     }
 
-    // Helper para Datalist (Autocompletado)
     const getDatalistOptions = () => {
         let opts = '';
         Object.keys(flow).sort().forEach(k => {
@@ -982,11 +1021,9 @@
         const c = document.getElementById('dynFields');
         const wrapMsg = document.getElementById('wrapper-msg'), wrapMedia = document.getElementById('wrapper-media');
         
-        // Ocultamos el mensaje por defecto y la galería si es una Cita
         wrapMsg.style.display = type === 'cita' ? 'none' : 'block'; 
         wrapMedia.style.display = type === 'cita' ? 'none' : 'block';
 
-        // Generamos la lista de pasos existentes para sugerencias
         const dataListHtml = `<datalist id="stepsList">${getDatalistOptions()}</datalist>`;
         let html = dataListHtml; 
 
@@ -1049,27 +1086,22 @@
         const id = document.getElementById('stId').value;
         const type = document.getElementById('stType').value;
         
-        // Objeto base
         const data = { type, message: document.getElementById('stMsg').value, media: currentMediaList };
-        
-        // Array para rastrear qué pasos nuevos debemos crear
         let stepsToCreate = [];
 
-        // 1. Recolectar Next Step (Input/Mensaje/Cita)
         if(document.getElementById('stNext')) {
-            const val = document.getElementById('stNext').value.trim().toUpperCase(); // Forzamos mayúsculas
+            const val = document.getElementById('stNext').value.trim().toUpperCase(); 
             if(val) {
                 data.next_step = val;
                 if(!flow[val]) stepsToCreate.push(val);
             }
         }
 
-        // 2. Recolectar Opciones (Menu)
         if(document.getElementById('optsList')) {
             data.options = [];
             document.querySelectorAll('#optsList div').forEach(row => {
                 const l = row.querySelector('.o-lbl').value;
-                const n = row.querySelector('.o-nxt').value.trim().toUpperCase(); // Forzamos mayúsculas
+                const n = row.querySelector('.o-nxt').value.trim().toUpperCase(); 
                 if(l && n) {
                     data.options.push({label:l, trigger:l, next_step:n});
                     if(!flow[n]) stepsToCreate.push(n);
@@ -1077,44 +1109,34 @@
             });
         }
         
-        // 3. Otros campos
         if(document.getElementById('stVar')) data.save_var = document.getElementById('stVar').value;
         if(document.getElementById('stKw')) data.keywords = document.getElementById('stKw').value.split(',').map(s=>s.trim());
         if(document.getElementById('stAdm')) data.admin_number = document.getElementById('stAdm').value;
 
-        // 👇 AQUÍ ESTÁ LA RECOLECCIÓN DE LOS NUEVOS DATOS DE LA CITA 👇
         if (type === 'cita') {
             data.msg_date = document.getElementById('stCitaDate') ? document.getElementById('stCitaDate').value : '';
             data.msg_time = document.getElementById('stCitaTime') ? document.getElementById('stCitaTime').value : '';
             data.interval = document.getElementById('stCitaInterval') ? document.getElementById('stCitaInterval').value : '30';
         }
-        // 👆 FIN DE LA RECOLECCIÓN DE CITAS 👆
 
-        // --- MAGIA: CREACIÓN AUTOMÁTICA DE PASOS ---
-        // Si detectamos pasos destino que NO existen, los creamos en el servidor
         if(stepsToCreate.length > 0) {
-            // Filtramos duplicados
             stepsToCreate = [...new Set(stepsToCreate)];
             
             for (const newStepName of stepsToCreate) {
-                // Solo si realmente no existe en memoria
                 if(!flow[newStepName]) {
                     console.log("✨ Creando paso automático:", newStepName);
                     const placeholderData = { type: 'message', message: '🚧 Paso creado automáticamente. Edítame.' };
-                    // Guardar en servidor
                     await fetch('/api/flow/step', { 
                         method: 'POST', 
                         headers: {'Content-Type': 'application/json'}, 
                         body: JSON.stringify({ stepId: newStepName, stepData: placeholderData }) 
                     });
-                    // Actualizar memoria local
                     flow[newStepName] = placeholderData;
                 }
             }
             showToast(`✨ ${stepsToCreate.length} pasos nuevos creados`);
         }
 
-        // --- GUARDADO FINAL DEL PASO ACTUAL ---
         await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
         
         flow[id] = data; 
@@ -1139,6 +1161,7 @@
     }
     async function delStep() { await fetch('/api/flow/step/'+document.getElementById('stId').value, {method:'DELETE'}); delete flow[document.getElementById('stId').value]; renderFlowList(); document.getElementById('editorModal').classList.remove('active'); }
 
+    // --- CARGAR RESPUESTAS RÁPIDAS (ACTUALIZADO CON DIVISIÓN PENDIENTES/ACTIVAS) ---
     async function loadKeywords() {
         const container = document.getElementById('keywordsList');
         container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
@@ -1146,7 +1169,6 @@
         try {
             const res = await fetch('/api/keywords');
             const rules = await res.json();
-
             container.innerHTML = '';
 
             if (rules.length === 0) {
@@ -1158,28 +1180,42 @@
                 return;
             }
 
-            rules.forEach(r => {
-                const div = document.createElement('div');
-                div.style.background = 'var(--bg-input)';
-                div.style.padding = '15px';
-                div.style.borderRadius = '10px';
-                div.style.border = '1px solid var(--border)';
-                div.style.position = 'relative';
+            const pendientes = rules.filter(r => !r.answer || r.answer.trim() === '');
+            const activas = rules.filter(r => r.answer && r.answer.trim() !== '');
+            let htmlBuffer = '';
 
-                // Convertimos "hola, precio" en etiquetas visuales
-                const tags = r.keywords.split(',').map(k => 
-                    `<span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-right:5px;">${k.trim()}</span>`
-                ).join('');
+            if (pendientes.length > 0) {
+                htmlBuffer += `<h3 style="grid-column: 1/-1; color: var(--danger); margin-top: 10px;"><i class="fas fa-exclamation-circle"></i> Dudas por aprender (${pendientes.length})</h3>`;
+                pendientes.forEach(r => {
+                    htmlBuffer += `
+                    <div style="background:rgba(239, 68, 68, 0.1); padding:15px; border-radius:10px; border:1px solid var(--danger); position:relative;">
+                        <div style="margin-bottom:10px;"><span style="background:var(--danger); color:white; padding:2px 8px; border-radius:4px; font-size:0.8rem;">${r.keywords}</span></div>
+                        <div style="color:var(--danger); font-size:0.85rem; margin-bottom:15px; font-style: italic;">Sin respuesta asignada.</div>
+                        <div style="position:absolute; top:10px; right:10px; display:flex; gap:10px;">
+                            <button onclick="openKeywordModal('${r.id}', '${r.keywords}', '${r.answer || ''}')" style="background:none; border:none; color:var(--primary); cursor:pointer;"><i class="fas fa-pen"></i></button>
+                            <button onclick="deleteKeyword('${r.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+                });
+            }
 
-                div.innerHTML = `
-                    <div style="margin-bottom:10px;">${tags}</div>
-                    <div style="color:var(--text-main); white-space:pre-wrap; font-size:0.9rem; margin-bottom:15px; padding:10px; background:rgba(0,0,0,0.2); border-radius:6px;">${r.answer}</div>
-                    <button onclick="deleteKeyword('${r.id}')" style="position:absolute; top:10px; right:10px; background:none; border:none; color:var(--danger); cursor:pointer;">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                `;
-                container.appendChild(div);
-            });
+            if (activas.length > 0) {
+                htmlBuffer += `<h3 style="grid-column: 1/-1; color: var(--text-main); margin-top: 20px;"><i class="fas fa-check-circle" style="color:var(--success)"></i> Respuestas Activas</h3>`;
+                activas.forEach(r => {
+                    const tags = r.keywords.split(',').map(k => `<span style="background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 8px; border-radius:4px; font-size:0.8rem; margin-right:5px;">${k.trim()}</span>`).join('');
+                    htmlBuffer += `
+                    <div style="background:var(--bg-input); padding:15px; border-radius:10px; border:1px solid var(--border); position:relative;">
+                        <div style="margin-bottom:10px;">${tags}</div>
+                        <div style="color:var(--text-main); white-space:pre-wrap; font-size:0.9rem; margin-bottom:15px; padding:10px; background:rgba(0,0,0,0.2); border-radius:6px;">${r.answer}</div>
+                        <div style="position:absolute; top:10px; right:10px; display:flex; gap:10px;">
+                            <button onclick="openKeywordModal('${r.id}', '${r.keywords}', '${r.answer || ''}')" style="background:none; border:none; color:var(--primary); cursor:pointer;"><i class="fas fa-pen"></i></button>
+                            <button onclick="deleteKeyword('${r.id}')" style="background:none; border:none; color:var(--danger); cursor:pointer;"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+                });
+            }
+
+            container.innerHTML = htmlBuffer;
 
         } catch (e) {
             console.error(e);
@@ -1187,9 +1223,10 @@
         }
     }
 
-    function openKeywordModal() {
-        document.getElementById('kwInput').value = '';
-        document.getElementById('kwAnswer').value = '';
+    function openKeywordModal(id = null, keywords = '', answer = '') {
+        currentEditKwId = id;
+        document.getElementById('kwInput').value = keywords;
+        document.getElementById('kwAnswer').value = answer;
         document.getElementById('keywordModal').classList.add('active');
     }
 
@@ -1199,16 +1236,21 @@
 
         if (!keywords || !answer) return alert("Escribe las palabras clave y la respuesta.");
 
+        const payload = { keywords, answer };
+        if (currentEditKwId) {
+            payload.id = currentEditKwId;
+        }
+
         try {
             await fetch('/api/keywords', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ keywords, answer })
+                body: JSON.stringify(payload)
             });
         
             document.getElementById('keywordModal').classList.remove('active');
             showToast("✅ Regla guardada");
-            loadKeywords(); // Recargar lista
+            loadKeywords(); 
         } catch (e) {
             alert("Error guardando");
         }
@@ -1232,8 +1274,6 @@
         try { appts = await (await fetch(`${API_BASE}/api/agenda`)).json(); } catch(e){}
 
         const firstDay = new Date(y, m, 1).getDay(), daysInMonth = new Date(y, m+1, 0).getDate();
-        
-        // 🚀 EL LIENZO INVISIBLE (BUFFER)
         let htmlBuffer = ''; 
         
         for(let i=0; i<firstDay; i++) htmlBuffer += `<div></div>`;
@@ -1245,7 +1285,6 @@
             htmlBuffer += `<div class="day ${isToday?'today':''}" onclick="openDayModal('${k}')">${i} ${count?`<span class="day-indicator">${count}</span>`:''}</div>`;
         }
         
-        // 🚀 PINTAMOS TODO DE UN SOLO GOLPE
         g.innerHTML = htmlBuffer; 
     }
 
@@ -1259,7 +1298,6 @@
         const all = await (await fetch(`${API_BASE}/api/agenda`)).json();
         const appts = all[date] || [];
 
-        // 🚀 BUFFER
         let htmlBuffer = appts.length ? '' : '<div style="text-align:center; padding:20px; color:#666;">Sin citas</div>';
 
         appts.sort((a,b)=>a.time.localeCompare(b.time)).forEach(c => {
@@ -1277,7 +1315,6 @@
             </div>`;
         });
         
-        // 🚀 PINTAMOS UNA VEZ
         list.innerHTML = htmlBuffer;
 
         document.getElementById('evtOldTime').dataset.date = date;
@@ -1334,7 +1371,6 @@
     async function loadSchedulerConfig() {
         try {
             const select = document.getElementById('schStepSelect');
-            // Guardamos el valor actual por si ya estaba seleccionado algo y no queremos perderlo al repintar
             const currentVal = select.value; 
             
             select.innerHTML = '<option value="">-- Selecciona un paso --</option>';
@@ -1354,8 +1390,6 @@
                     select.value = settings.scheduler.target_step;
                 }
             }
-            
-            // 🔥 IMPORTANTE: Actualizamos la UI inicial
             toggleSchedulerUI();
 
         } catch (e) {
@@ -1368,17 +1402,10 @@
         const time = document.getElementById('schTime').value;
         const targetStep = document.getElementById('schStepSelect').value;
 
-        if (active && (!time || !targetStep)) {
-            return; 
-        }
+        if (active && (!time || !targetStep)) { return; }
 
         const payload = {
-            scheduler: {
-                active: active,
-                time: time,
-                target_step: targetStep,
-                last_run: "" // Opcional
-            }
+            scheduler: { active: active, time: time, target_step: targetStep, last_run: "" }
         };
 
         try {
@@ -1387,65 +1414,43 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            
-            // Feedback sutil
             showToast("💾 Configuración guardada");
-        } catch (e) {
-            showToast("Error al guardar");
-        }
+        } catch (e) { showToast("Error al guardar"); }
     }
 
-    // --- CONTACTOS Y UTILIDADES ---
     let phoneToDelete = null;
     let isEditingMode = false;
 
     async function editCurrentContactManual() {
         if (!currentChatPhone) return;
-
-        // 1. Obtener datos actuales
         const currentName = document.getElementById('waHeaderName').innerText;
-
-        // 2. Pedir nuevo nombre
         const newName = prompt("📝 Editar nombre del cliente:", currentName);
-    
-        // Si cancela o lo deja vacío, no hacemos nada
         if (!newName || newName.trim() === "") return;
 
-        // 3. Enviar al servidor (Backend)
-        // Nota: Usamos el endpoint '/api/contacts/update' que debes tener en tu backend
         try {
                 const response = await fetch(`${API_BASE}/api/contacts/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: currentChatPhone, // El ID no cambia
-                    name: newName,           // El nombre sí cambia
-                    enable: document.getElementById('waBotSwitch').checked // Mantenemos el estado del bot
+                    phone: currentChatPhone, 
+                    name: newName,           
+                    enable: document.getElementById('waBotSwitch').checked 
                 })
             });
 
             const res = await response.json();
 
             if (res.success || response.ok) {
-                // 4. Actualizar visualmente al instante
                 document.getElementById('waHeaderName').innerText = newName;
-
-                // Actualizamos la lista lateral también
                 const u = users.find(x => getCleanPhone(x.phone) === getCleanPhone(currentChatPhone));
                 if(u) {
-                    u.savedName = newName; // Actualizar memoria local
+                    u.savedName = newName; 
                     if(u.history) u.history.nombre = newName;
                 }
                 renderChatList(users);
-
                 showToast("✅ Nombre actualizado");
-            } else {
-                alert("Error al guardar en el servidor");
-            }
-        } catch (e) {
-            console.error(e);
-            showToast("❌ Error de conexión");
-        }
+            } else { alert("Error al guardar en el servidor"); }
+        } catch (e) { showToast("❌ Error de conexión"); }
     }
 
     function openContactModal() {
@@ -1468,7 +1473,7 @@
         await fetch(`${API_BASE}${endpoint}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone, enable}) });
         document.getElementById('contactModal').classList.remove('active');
         showToast(isEditingMode ? 'Contacto actualizado' : 'Contacto creado');
-        loadActivity(); // Actualizar monitor
+        loadActivity(); 
     }
 
     function askDelete(phone, name) {
@@ -1477,56 +1482,29 @@
         document.getElementById('deleteConfirmModal').classList.add('active');
     }
 
-    // --- LÓGICA VISUAL DE BARRA WHATSAPP ---
-
     function handleInputTyping() {
         const inp = document.getElementById('waInput');
-        const pill = document.getElementById('waInputPill');
+        const iconsToHide = document.querySelectorAll('.hide-on-type');
         const btn = document.getElementById('waMainBtn');
-        const icon = document.getElementById('waMainIcon');
         
-        const text = inp.value; // No usamos trim() aquí para detectar espacios también
-
-        if (text.length > 0) {
-            // ESTADO: ESCRIBIENDO
-            if (!pill.classList.contains('typing')) {
-                pill.classList.add('typing'); // Oculta iconos
-                
-                // Cambiar Micrófono -> Avión
-                btn.classList.add('is-send');
-                icon.className = 'fas fa-paper-plane';
-                // Pequeña animación de entrada
-                icon.style.transform = 'scale(0)';
-                setTimeout(() => icon.style.transform = 'scale(1)', 50);
-            }
+        if (inp.value.length > 0) {
+            iconsToHide.forEach(el => el.style.display = 'none');
+            btn.classList.add('is-send');
+            btn.innerHTML = `<svg id="waMainIcon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="transform: translateX(2px);"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>`;
         } else {
-            // ESTADO: VACÍO
-            if (pill.classList.contains('typing')) {
-                pill.classList.remove('typing'); // Muestra iconos
-                
-                // Cambiar Avión -> Micrófono
-                btn.classList.remove('is-send');
-                icon.className = 'fas fa-microphone';
-                icon.style.transform = 'scale(0)';
-                setTimeout(() => icon.style.transform = 'scale(1)', 50);
-            }
+            iconsToHide.forEach(el => el.style.display = 'inline-block');
+            btn.classList.remove('is-send');
+            // Volvemos al micrófono
+            btn.innerHTML = `<i class="fas fa-microphone" id="waMainIcon"></i>`;
         }
     }
 
-    // Maneja el clic en el botón grande
     function handleMainBtn() {
-        const icon = document.getElementById('waMainIcon');
-        
-        // Si es el avión de papel, enviamos
-        if (icon.classList.contains('fa-paper-plane')) {
+        const btn = document.getElementById('waMainBtn');
+        if (btn.classList.contains('is-send')) {
             sendWaMsg();
-            // Reseteamos la vista manualmente después de enviar
-            document.getElementById('waInputPill').classList.remove('typing');
-            document.getElementById('waMainBtn').classList.remove('is-send');
-            document.getElementById('waMainIcon').className = 'fas fa-microphone';
-        } else {
-            // Si es micrófono
-            showToast("🎤 Grabación de voz no disponible");
+        } else { 
+            showToast("🎤 Grabación de voz no disponible"); 
         }
     }
 
@@ -1535,41 +1513,29 @@
         await fetch(`${API_BASE}/api/contacts/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone: phoneToDelete}) });
         allContactsCache = allContactsCache.filter(u => u.phone !== phoneToDelete);
         document.getElementById('deleteConfirmModal').classList.remove('active');
-        loadActivity(); // Refrescar
+        loadActivity(); 
         showToast('Contacto eliminado');
     }
 
     function formatSmartDate(isoString) {
         if (!isoString) return '';
         const date = new Date(isoString);
-        if (isNaN(date.getTime())) return ''; // Valida que sea una fecha real
+        if (isNaN(date.getTime())) return ''; 
 
         const now = new Date();
-        // Normalizamos las fechas eliminando las horas para hacer una resta exacta de días
         const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        // Calculamos la diferencia en días
         const diffTime = today.getTime() - msgDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 3600 * 24));
 
-        if (diffDays === 0) {
-            // Es hoy: mostrar solo la hora (ej: 14:30)
-            return date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-        } else if (diffDays === 1) {
-            // Fue ayer
-            return 'Ayer';
-        } else if (diffDays > 1 && diffDays < 7) {
-            // Hace menos de una semana: mostrar el día de la semana
+        if (diffDays === 0) { return date.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }); } 
+        else if (diffDays === 1) { return 'Ayer'; } 
+        else if (diffDays > 1 && diffDays < 7) {
             const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
             return dias[date.getDay()];
-        } else {
-            // Más antiguo: mostrar fecha corta (ej: 25/02/2026)
-            return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        }
+        } else { return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
     }
 
-    // --- NAVEGACIÓN Y MENÚ ---
     function toggleMenu() { 
         document.getElementById('sidebar').classList.toggle('active'); 
         document.getElementById('sidebarOverlay').classList.toggle('active'); 
@@ -1588,30 +1554,14 @@
         document.getElementById('sidebar').classList.remove('active');
         document.getElementById('sidebarOverlay').classList.remove('active');
 
-        // --- CARGADORES DE CADA VISTA ---
-        
-        // 1. Si es Monitor
         if(v === 'activity') loadActivity();
-        
-        // 2. Si es Respuestas
         if(v === 'keywords') loadKeywords();
-        
-        // 3. Si es Agenda (AQUÍ ESTABA EL ERROR, AHORA ESTÁ UNIFICADO)
         if(v === 'agenda') {
-            renderCalendar();       // Carga el calendario UNA sola vez
-            loadSchedulerConfig();  // Carga la configuración del bot
+            renderCalendar();       
+            loadSchedulerConfig();  
         }
 
-        // --- TÍTULOS ---
-        const titles = { 
-            activity:'MONITOR', 
-            flow:'FLUJO', 
-            agenda:'AGENDA', 
-            settings:'AJUSTES',
-            keywords: 'RESPUESTAS RÁPIDAS',
-            config: 'CONFIGURACIÓN'
-        };
-        
+        const titles = { activity:'MONITOR', flow:'FLUJO', agenda:'AGENDA', settings:'AJUSTES', keywords: 'RESPUESTAS RÁPIDAS', config: 'CONFIGURACIÓN' };
         const titleEl = document.getElementById('pageTitle');
         if(titleEl) titleEl.innerText = titles[v] || 'CRM';
     }
@@ -1648,29 +1598,14 @@
         const end = document.getElementById('schedEnd').value;
         const msg = document.getElementById('schedMsg').value;
 
-        // Validación básica (solo si está activo)
-        if (active && (!start || !end || !msg)) {
-            // No guardamos si faltan datos críticos al activarlo
-            return;
-        }
+        if (active && (!start || !end || !msg)) { return; }
 
-        const s = { 
-            active: active, 
-            start: start, 
-            end: end, 
-            offline_message: msg 
-        };
+        const s = { active: active, start: start, end: end, offline_message: msg };
 
         try {
-            await fetch(`${API_BASE}/api/settings`, {
-                method:'POST', 
-                headers:{'Content-Type':'application/json'}, 
-                body:JSON.stringify({schedule:s})
-            });
+            await fetch(`${API_BASE}/api/settings`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schedule:s}) });
             showToast('💾 Horario guardado');
-        } catch(e) {
-            showToast('Error al guardar');
-        }
+        } catch(e) { showToast('Error al guardar'); }
     }
 
     function showToast(m) { 
@@ -1681,15 +1616,12 @@
         }
     }
     
-    // --- PUSH Y MOVE USER ---
     function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
         const rawData = window.atob(base64);
         const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
+        for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
         return outputArray;
     }
 
@@ -1736,94 +1668,8 @@
         } catch (e) { alert("Error al mover"); }
     }
 
-    // --- 1. SUBIDA DE IMÁGENES (EDITOR DE FLUJOS) ---
-    async function uploadImages(input) {
-        if (!input.files || input.files.length === 0) return;
-        
-        const formData = new FormData();
-        // Empaquetamos todas las imágenes seleccionadas
-        for (let i = 0; i < input.files.length; i++) {
-            formData.append('images', input.files[i]);
-        }
-
-        showToast("⏳ Subiendo imagen...");
-
-        try {
-            // Mandamos las fotos a tu endpoint backend (/api/upload)
-            const res = await fetch(`${API_BASE}/api/upload`, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await res.json();
-
-            if (data.urls) {
-                // Guardamos las rutas de las fotos y actualizamos la vista
-                currentMediaList = currentMediaList.concat(data.urls);
-                renderGallery();
-                showToast("✅ Imagen guardada con éxito");
-            }
-        } catch (e) {
-            console.error("Error al subir:", e);
-            showToast("❌ Error al subir la imagen");
-        } finally {
-            input.value = ''; // Limpiamos el botón para que puedas subir más
-        }
-    }
-
-    async function uploadChatMedia(input) {
-        if (!input.files || input.files.length === 0) return;
-        if (!currentChatPhone) {
-            showToast("⚠️ Selecciona un chat primero");
-            input.value = '';
-            return;
-        }
-
-        const captionText = document.getElementById('waInput').value.trim();
-
-        const formData = new FormData();
-        formData.append('images', input.files[0]); // Solo mandamos 1 foto a la vez en el chat
-
-        showToast("⏳ Enviando imagen...");
-
-        try {
-            // 1. Subimos la foto al servidor usando tu ruta existente
-            const resUpload = await fetch(`${API_BASE}/api/upload`, { method: 'POST', body: formData });
-            const dataUpload = await resUpload.json();
-
-            if (dataUpload.urls && dataUpload.urls.length > 0) {
-                const imageUrl = dataUpload.urls[0];
-                
-                // 2. Le decimos al servidor que la envíe por WhatsApp
-                await fetch(`${API_BASE}/api/send-message`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        phone: currentChatPhone, 
-                        text: captionText, 
-                        mediaUrl: imageUrl 
-                    })
-                });
-
-                // Limpiamos la caja de texto y mostramos la burbuja
-                document.getElementById('waInput').value = '';
-                addBubble(`📷 Imagen enviada ${captionText ? '- ' + captionText : ''}`, true);
-                showToast("✅ Imagen enviada");
-                
-                // Reseteamos los iconos del input
-                handleInputTyping();
-            }
-        } catch (e) {
-            console.error("Error al enviar multimedia:", e);
-            showToast("❌ Error al enviar la imagen");
-        } finally {
-            input.value = ''; 
-        }
-    }
-
-    // --- MODO OSCURO ---
     function toggleDarkMode(isDark) {
         const statusText = document.getElementById('darkModeStatusText');
-        
         if (isDark) {
             document.body.classList.add('dark-mode');
             if(statusText) statusText.innerText = 'Activado';
@@ -1837,14 +1683,9 @@
 
     function escapeHTML(str) {
         if (!str) return '';
-        return str.replace(/&/g, "&amp;")
-                  .replace(/</g, "&lt;")
-                  .replace(/>/g, "&gt;")
-                  .replace(/"/g, "&quot;")
-                  .replace(/'/g, "&#039;");
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    // Lógica para PWA
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
@@ -1857,7 +1698,6 @@
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
-                console.log('Usuario aceptó instalar');
                 document.getElementById('installAppBtn').style.display = 'none';
             }
             deferredPrompt = null;

@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const pino = require('pino');
 const express = require('express');
 const http = require('http');
@@ -227,16 +227,17 @@ async function connectToWhatsApp() {
         for (const msg of messages) {
             if (!msg.message) continue;
             
+            // 🔥 IGNORAR MENSAJES DEL SISTEMA (EJ. VERSIÓN DESACTUALIZADA) 🔥
+            if (msg.message.protocolMessage || msg.messageStubType) {
+                console.log(`🚫 Ignorando mensaje interno/sistema de WhatsApp.`);
+                continue;
+            }
+            
             const remoteJid = msg.key.remoteJid;
             
-            // =================================================================
-            // 🛡️ ESCUDO ANTI-FANTASMAS: Ignorar Grupos, Estados y Canales
-            // =================================================================
             if (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('@newsletter')) {
-                console.log(`🚫 Ignorando mensaje de canal/grupo/estado: ${remoteJid}`);
                 continue; 
             }
-            // =================================================================
 
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
             const isMe = msg.key.fromMe;
@@ -262,10 +263,24 @@ async function connectToWhatsApp() {
                 });
             }
 
-            const msgText = msg.message?.conversation ||
-                            msg.message?.extendedTextMessage?.text ||
-                            msg.message?.imageMessage?.caption ||
-                            '📷 (Media)';
+            // 🔥 MAGIA: DESCARGAR LA IMAGEN REAL SI EXISTE 🔥
+            let imageUrl = null;
+            let msgText = msg.message?.conversation ||
+                          msg.message?.extendedTextMessage?.text ||
+                          msg.message?.imageMessage?.caption ||
+                          msg.message?.videoMessage?.caption ||
+                          '';
+
+            if (msg.message?.imageMessage) {
+                try {
+                    const buffer = await downloadMediaMessage(msg, 'buffer', { }, { logger: pino({ level: 'silent' }) });
+                    const fileName = `img_${Date.now()}.jpeg`;
+                    fs.writeFileSync(path.join(uploadDir, fileName), buffer);
+                    imageUrl = `/uploads/${fileName}`;
+                } catch (e) {
+                    console.error("❌ Error descargando imagen:", e.message);
+                }
+            }
 
             let currentUser = getUser(incomingPhoneRaw);
             if (!currentUser) {
@@ -275,8 +290,11 @@ async function connectToWhatsApp() {
             if (!currentUser.messages) currentUser.messages = [];
 
             const now = new Date().toISOString();
+            
+            // GUARDAMOS LA IMAGEN REAL EN LA BASE DE DATOS
             currentUser.messages.push({
                 text: msgText,
+                mediaUrl: imageUrl,
                 fromMe: isMe,
                 timestamp: Date.now(),
                 stepId: currentUser.current_step || 'INICIO'
@@ -293,6 +311,7 @@ async function connectToWhatsApp() {
                 global.io.emit('message', {
                     phone: incomingPhoneRaw,
                     text: msgText,
+                    mediaUrl: imageUrl,
                     fromMe: isMe,
                     stepId: currentUser.current_step,
                     to: isMe ? incomingPhoneRaw : undefined,
@@ -301,21 +320,20 @@ async function connectToWhatsApp() {
                 global.io.emit('user_update', {
                     phone: incomingPhoneRaw,
                     last_active: now,
-                    last_message: msgText
+                    last_message: imageUrl ? '📷 Imagen recibida' : msgText
                 });
             }
 
             if (isMe) continue; 
+            if (contactConfig && contactConfig.bot_enabled === false) continue;
 
-            if (contactConfig && contactConfig.bot_enabled === false) {
-                continue;
+            // SOLO PROCESAMOS TEXTO EN EL BOT, IGNORAMOS SI MANDÓ PURA IMAGEN
+            if (msgText.trim()) {
+                if (!userMessageBuffers.has(incomingPhoneRaw)) {
+                    userMessageBuffers.set(incomingPhoneRaw, []);
+                }
+                userMessageBuffers.get(incomingPhoneRaw).push(msgText);
             }
-
-            if (!userMessageBuffers.has(incomingPhoneRaw)) {
-                userMessageBuffers.set(incomingPhoneRaw, []);
-            }
-            
-            userMessageBuffers.get(incomingPhoneRaw).push(msgText);
 
             if (userMessageTimers.has(incomingPhoneRaw)) {
                 clearTimeout(userMessageTimers.get(incomingPhoneRaw));
@@ -323,8 +341,15 @@ async function connectToWhatsApp() {
 
             userMessageTimers.set(incomingPhoneRaw, setTimeout(async () => {
                 
-                const joinedText = userMessageBuffers.get(incomingPhoneRaw).join(' ');
+                const bufferInfo = userMessageBuffers.get(incomingPhoneRaw);
                 
+                // Si fue pura imagen (sin texto), detenemos el bot para no decir "Opción no válida"
+                if (!bufferInfo || bufferInfo.length === 0) {
+                    userMessageTimers.delete(incomingPhoneRaw);
+                    return;
+                }
+
+                const joinedText = bufferInfo.join(' ');
                 userMessageBuffers.delete(incomingPhoneRaw);
                 userMessageTimers.delete(incomingPhoneRaw);
 
@@ -399,61 +424,37 @@ app.post('/api/contacts/delete', async (req, res) => {
 });
 
 app.post('/api/send-message', async (req, res) => {
-    // =================================================================
-    // 📸 SOPORTE PARA MULTIMEDIA DESDE EL CHAT MANUAL
-    // =================================================================
     const { phone, text, mediaUrl } = req.body;
     
-    // Ya no requerimos estrictamente el texto si viene una imagen
     if (!globalSock || !phone) return res.status(400).json({ error: "Datos faltantes o bot offline" });
 
     try {
         const cleanPhone = phone.toString().replace(/\D/g, ''); 
         const user = getUser(cleanPhone);
-        
-        let targetJid;
-
-        if (user && user.jid) {
-            targetJid = user.jid;
-        } else {
-            if (phone.includes('@')) {
-                targetJid = phone;
-            } else {
-                targetJid = cleanPhone + '@s.whatsapp.net';
-            }
-        }
+        let targetJid = user && user.jid ? user.jid : (phone.includes('@') ? phone : cleanPhone + '@s.whatsapp.net');
 
         if (mediaUrl) {
-            // Convierte la ruta de la web en una ruta física en tu PC/Servidor
             const relativePath = mediaUrl.startsWith('/') ? mediaUrl.slice(1) : mediaUrl;
             const absolutePath = path.join(__dirname, 'public', relativePath);
-
-            await globalSock.sendMessage(targetJid, { 
-                image: { url: absolutePath }, 
-                caption: text || '' 
-            });
+            await globalSock.sendMessage(targetJid, { image: { url: absolutePath }, caption: text || '' });
         } else {
-            // Mensaje de texto normal
             await globalSock.sendMessage(targetJid, { text: text || '' });
         }
         
         if (user) {
             if(!user.messages) user.messages = [];
             
-            // Creamos un texto descriptivo para que se vea bonito en tu base de datos
-            const logText = mediaUrl ? `📷 Foto enviada${text ? ' - ' + text : ''}` : text;
-            
+            // GUARDAR IMAGEN ENVIADA DESDE EL CRM
             user.messages.push({
-                text: logText,
+                text: text || '',
+                mediaUrl: mediaUrl || null,
                 fromMe: true,
                 timestamp: Date.now(),
                 stepId: user.current_step || 'MANUAL'
             });
             await updateUser(cleanPhone, { messages: user.messages });
         }
-        
         res.json({ success: true });
-
     } catch (e) {
         console.error("Error enviando:", e);
         res.status(500).json({ error: e.message });
@@ -465,11 +466,7 @@ app.post('/api/simulate/text', async (req, res) => {
     if (!phone || !text) return res.status(400).json({ error: "Faltan datos" });
 
     const fakeMsg = {
-        key: {
-            remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
-            fromMe: false,
-            id: 'SIM_' + Date.now()
-        },
+        key: { remoteJid: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`, fromMe: false, id: 'SIM_' + Date.now() },
         message: { conversation: text },
         pushName: 'Usuario Simulador'
     };
@@ -632,3 +629,4 @@ server.listen(PORT, () => {
     connectToWhatsApp();
     reportToTower();
 });
+
