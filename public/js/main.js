@@ -52,7 +52,15 @@
                     timestamp: new Date().toISOString(),
                     mediaUrl: data.mediaUrl || null
                 });
+
+                // 🔥 CORRECCIÓN: Actualizar metadatos en memoria al instante para la lista lateral
+                userMem.last_message = realText || (data.mediaUrl ? '📷 Imagen' : '');
+                userMem.last_active = new Date().toISOString();
+                if (data.stepId) userMem.current_step = data.stepId;
             }
+
+            // 🔥 CORRECCIÓN: Re-dibujar la lista lateral para que el chat suba y refleje la hora exacta
+            filterChats(currentSearchQuery);
         }
 
         if (currentChatPhone) {
@@ -566,7 +574,6 @@
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'mediaPreviewModal';
-            // El fondo de la pantalla de previsualización se mantiene oscuro tipo WhatsApp
             modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(11,20,26,0.95); z-index:9999; display:none; flex-direction:column; justify-content:center; align-items:center;';
             modal.innerHTML = `
                 <div style="width:100%; max-width:500px; display:flex; flex-direction:column; height:100vh;">
@@ -651,7 +658,6 @@
 
         const safeStepId = stepId ? String(stepId).replace(/'/g, "\\'") : '';
 
-        // Renderizar la imagen si existe
         let mediaHtml = '';
         if (mediaUrl) {
             mediaHtml = `<div style="margin-bottom: 5px;"><img src="${mediaUrl}" style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="window.open('${mediaUrl}', '_blank')"></div>`;
@@ -686,6 +692,13 @@
         if (txt.startsWith('>> ')) {
             const targetStep = txt.replace('>> ', '').trim();
             addBubble(`🔄 <i>Forzando paso: ${targetStep}</i>`, true);
+
+            // 🔥 CORRECCIÓN: Limpiar botones si se fuerza un paso manualmente
+            const qrContainer = document.getElementById('waQuickReplies');
+            if (qrContainer) {
+                qrContainer.innerHTML = '';
+                qrContainer.style.display = 'none';
+            }
 
             try {
                 await fetch(`${API_BASE}/api/crm/execute`, {
@@ -741,6 +754,13 @@
         document.getElementById('jumpModal').classList.remove('active');
         showToast("🔄 Procesando...");
 
+        // 🔥 CORRECCIÓN: Limpiar botones al confirmar el salto de paso desde el historial
+        const qrContainer = document.getElementById('waQuickReplies');
+        if (qrContainer) {
+            qrContainer.innerHTML = '';
+            qrContainer.style.display = 'none';
+        }
+
         try {
             await fetch(`${API_BASE}/api/crm/execute`, {
                 method:'POST', 
@@ -767,6 +787,13 @@
         if(!pendingCrmAction) return;
         document.getElementById('actionConfirmModal').classList.remove('active');
         showToast("🔄 Procesando acción...");
+
+        // 🔥 CORRECCIÓN: Limpiar botones inmediatamente para que no se queden pegados
+        const qrContainer = document.getElementById('waQuickReplies');
+        if (qrContainer) {
+            qrContainer.innerHTML = '';
+            qrContainer.style.display = 'none';
+        }
 
         try {
             await fetch(`${API_BASE}/api/crm/execute`, {
