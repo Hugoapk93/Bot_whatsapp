@@ -87,8 +87,9 @@ const handleMessage = async (sock, msg) => {
 
         let nextStepId = null;
 
+        // 🔥 AQUÍ ESTÁ EL CAMBIO CRUCIAL: Se agregaron "user, dbKey" al handleMenuStep 🔥
         switch (currentStepConfig.type) {
-            case 'menu': nextStepId = await handleMenuStep(currentStepConfig, text, remoteJid, sock); break;
+            case 'menu': nextStepId = await handleMenuStep(currentStepConfig, text, user, dbKey, remoteJid, sock); break;
             case 'input': nextStepId = await handleInputStep(currentStepConfig, text, user, dbKey, remoteJid, sock); break;
             case 'cita': nextStepId = await handleCitaStep(currentStepConfig, text, user, dbKey, remoteJid, sock, msg); break;
             case 'filtro': break;

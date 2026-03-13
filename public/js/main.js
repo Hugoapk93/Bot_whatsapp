@@ -53,13 +53,11 @@
                     mediaUrl: data.mediaUrl || null
                 });
 
-                // 🔥 CORRECCIÓN: Actualizar metadatos en memoria al instante para la lista lateral
                 userMem.last_message = realText || (data.mediaUrl ? '📷 Imagen' : '');
                 userMem.last_active = new Date().toISOString();
                 if (data.stepId) userMem.current_step = data.stepId;
             }
 
-            // 🔥 CORRECCIÓN: Re-dibujar la lista lateral para que el chat suba y refleje la hora exacta
             filterChats(currentSearchQuery);
         }
 
@@ -693,7 +691,6 @@
             const targetStep = txt.replace('>> ', '').trim();
             addBubble(`🔄 <i>Forzando paso: ${targetStep}</i>`, true);
 
-            // 🔥 CORRECCIÓN: Limpiar botones si se fuerza un paso manualmente
             const qrContainer = document.getElementById('waQuickReplies');
             if (qrContainer) {
                 qrContainer.innerHTML = '';
@@ -754,7 +751,6 @@
         document.getElementById('jumpModal').classList.remove('active');
         showToast("🔄 Procesando...");
 
-        // 🔥 CORRECCIÓN: Limpiar botones al confirmar el salto de paso desde el historial
         const qrContainer = document.getElementById('waQuickReplies');
         if (qrContainer) {
             qrContainer.innerHTML = '';
@@ -788,7 +784,6 @@
         document.getElementById('actionConfirmModal').classList.remove('active');
         showToast("🔄 Procesando acción...");
 
-        // 🔥 CORRECCIÓN: Limpiar botones inmediatamente para que no se queden pegados
         const qrContainer = document.getElementById('waQuickReplies');
         if (qrContainer) {
             qrContainer.innerHTML = '';
@@ -812,8 +807,19 @@
         }
     }
 
-    // --- FLUJO Y EDITOR ---
+    // --- FLUJO Y EDITOR (ACTUALIZADO CON TABS) ---
     let flowPath = [];
+
+    // 🔥 NUEVA FUNCION: Manejar las pestañas del editor
+    function switchTab(tab) {
+        document.getElementById('tabBtn-main').classList.remove('active');
+        document.getElementById('tabBtn-errors').classList.remove('active');
+        document.getElementById('tabBtn-' + tab).classList.add('active');
+        
+        document.getElementById('tabContent-main').style.display = 'none';
+        document.getElementById('tabContent-errors').style.display = 'none';
+        document.getElementById('tabContent-' + tab).style.display = 'block';
+    }
 
     function renderFlowList() {
         const c = document.getElementById('flowListContainer');
@@ -1017,20 +1023,48 @@
     }
 
     let currentMediaList = [];
+    
+    // 🔥 ACTUALIZADO PARA CARGAR ERRORES Y TABS
     function edit(id) {
         const d = flow[id]; 
         document.getElementById('stId').value = id; 
         document.getElementById('stType').value = d.type;
         document.getElementById('stMsg').value = d.message || '';
+        
         currentMediaList = d.media || [];
         renderGallery(); 
         renderFields(); 
+
+        // Cargar datos de la pestaña Errores (1, 2 y 3)
+        const err1El = document.getElementById('stErrMsg1');
+        if(err1El) err1El.value = d.error_message_1 || '';
+
+        const err2El = document.getElementById('stErrMsg2');
+        if(err2El) err2El.value = d.error_message_2 || '';
+
+        const err3El = document.getElementById('stErrMsg3');
+        if(err3El) err3El.value = d.error_message_3 || '';
+        
+        const fallbackEl = document.getElementById('stFallbackStep');
+        if(fallbackEl) fallbackEl.value = d.fallback_step || '';
+
+        // Siempre abrir en la principal
+        switchTab('main'); 
+        
         document.getElementById('editorModal').classList.add('active');
     }
     
+    // 🔥 ACTUALIZADO PARA USAR EL DISEÑO NUEVO DE FOTOS (THUMB-WRAP)
     function renderGallery() {
-        const c = document.getElementById('galleryContainer'); c.innerHTML='';
-        currentMediaList.forEach((u,i) => c.innerHTML += `<div style="min-width:60px; height:60px; background:url(${u}) center/cover; border-radius:5px; position:relative;"><button onclick="currentMediaList.splice(${i},1); renderGallery()" style="position:absolute; top:-5px; right:-5px; background:red; border-radius:50%; width:18px; height:18px; border:none; color:white; font-size:10px;">x</button></div>`);
+        const c = document.getElementById('galleryContainer'); 
+        c.innerHTML = '';
+        currentMediaList.forEach((u, i) => {
+            c.innerHTML += `
+            <div class="thumb-wrap">
+                <img src="${u}">
+                <button onclick="currentMediaList.splice(${i},1); renderGallery()" class="del-thumb"><i class="fas fa-times"></i></button>
+            </div>`;
+        });
     }
 
     const getDatalistOptions = () => {
@@ -1046,10 +1080,9 @@
         const id = document.getElementById('stId').value;
         const d = flow[id] || {};
         const c = document.getElementById('dynFields');
-        const wrapMsg = document.getElementById('wrapper-msg'), wrapMedia = document.getElementById('wrapper-media');
+        const wrapMsg = document.getElementById('wrapper-msg');
         
         wrapMsg.style.display = type === 'cita' ? 'none' : 'block'; 
-        wrapMedia.style.display = type === 'cita' ? 'none' : 'block';
 
         const dataListHtml = `<datalist id="stepsList">${getDatalistOptions()}</datalist>`;
         let html = dataListHtml; 
@@ -1097,6 +1130,10 @@
             html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Escribe para crear nuevo...">`;
         }
         c.innerHTML = html;
+        
+        // Refrescar el datalist en el input de Errores para que tenga la info al día
+        const fbEl = document.getElementById('stFallbackStep');
+        if(fbEl) fbEl.setAttribute('list', 'stepsList');
     }
 
     function addOptRow() { 
@@ -1109,12 +1146,35 @@
         ); 
     }
 
+    // 🔥 ACTUALIZADO PARA GUARDAR ERRORES Y EL FALLBACK
     async function saveStep() {
         const id = document.getElementById('stId').value;
         const type = document.getElementById('stType').value;
         
-        const data = { type, message: document.getElementById('stMsg').value, media: currentMediaList };
+        const data = { 
+            type, 
+            message: document.getElementById('stMsg').value, 
+            media: currentMediaList 
+        };
+        
         let stepsToCreate = [];
+
+        // Leer datos de los 3 errores
+        const err1El = document.getElementById('stErrMsg1');
+        if(err1El && err1El.value.trim() !== '') data.error_message_1 = err1El.value.trim();
+
+        const err2El = document.getElementById('stErrMsg2');
+        if(err2El && err2El.value.trim() !== '') data.error_message_2 = err2El.value.trim();
+
+        const err3El = document.getElementById('stErrMsg3');
+        if(err3El && err3El.value.trim() !== '') data.error_message_3 = err3El.value.trim();
+        
+        const fbStepEl = document.getElementById('stFallbackStep');
+        if(fbStepEl && fbStepEl.value.trim() !== '') {
+            const fbVal = fbStepEl.value.trim().toUpperCase();
+            data.fallback_step = fbVal;
+            if(!flow[fbVal]) stepsToCreate.push(fbVal); // Crear el paso de error si no existe
+        }
 
         if(document.getElementById('stNext')) {
             const val = document.getElementById('stNext').value.trim().toUpperCase(); 
@@ -1188,7 +1248,7 @@
     }
     async function delStep() { await fetch('/api/flow/step/'+document.getElementById('stId').value, {method:'DELETE'}); delete flow[document.getElementById('stId').value]; renderFlowList(); document.getElementById('editorModal').classList.remove('active'); }
 
-    // --- CARGAR RESPUESTAS RÁPIDAS (ACTUALIZADO CON DIVISIÓN PENDIENTES/ACTIVAS) ---
+    // --- CARGAR RESPUESTAS RÁPIDAS ---
     async function loadKeywords() {
         const container = document.getElementById('keywordsList');
         container.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
@@ -1507,32 +1567,6 @@
         phoneToDelete = phone;
         document.getElementById('delContactName').innerText = name || phone;
         document.getElementById('deleteConfirmModal').classList.add('active');
-    }
-
-    function handleInputTyping() {
-        const inp = document.getElementById('waInput');
-        const iconsToHide = document.querySelectorAll('.hide-on-type');
-        const btn = document.getElementById('waMainBtn');
-        
-        if (inp.value.length > 0) {
-            iconsToHide.forEach(el => el.style.display = 'none');
-            btn.classList.add('is-send');
-            btn.innerHTML = `<svg id="waMainIcon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="transform: translateX(2px);"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>`;
-        } else {
-            iconsToHide.forEach(el => el.style.display = 'inline-block');
-            btn.classList.remove('is-send');
-            // Volvemos al micrófono
-            btn.innerHTML = `<i class="fas fa-microphone" id="waMainIcon"></i>`;
-        }
-    }
-
-    function handleMainBtn() {
-        const btn = document.getElementById('waMainBtn');
-        if (btn.classList.contains('is-send')) {
-            sendWaMsg();
-        } else { 
-            showToast("🎤 Grabación de voz no disponible"); 
-        }
     }
 
     async function executeDelete() {

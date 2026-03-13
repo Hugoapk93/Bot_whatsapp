@@ -185,13 +185,13 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input
 /* Caja de texto (Píldora) */
 .wa-input-pill { 
     flex: 1; 
-    background: #ffffff; /* Blanco en modo normal */
+    background: #ffffff; 
     border-radius: 24px; 
     padding: 8px 15px 8px 20px; 
     display: flex; 
     align-items: center; 
     min-height: 44px; 
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* Leve sombra para que no se pierda en lo transparente */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
 }
 
 /* Letras de la caja */
@@ -200,7 +200,7 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input
     background: transparent; 
     border: none; 
     padding: 0 10px 0 0; 
-    color: #000000; /* Letras negras en modo normal */
+    color: #000000; 
     font-size: 16px; 
     margin: 0; 
     width: 100%; 
@@ -212,8 +212,8 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input
     width: 44px; 
     height: 44px; 
     border-radius: 50%; 
-    background: #000000; /* Círculo negro en modo normal */
-    color: #ffffff; /* Ícono blanco en modo normal */
+    background: #000000; 
+    color: #ffffff; 
     border: none; 
     display: flex; 
     justify-content: center; 
@@ -228,16 +228,16 @@ input, select, textarea { width: 100%; padding: 12px; background: var(--bg-input
 
 /* --- 🔥 REGLAS PARA MODO OSCURO 🔥 --- */
 body.dark-mode .wa-input-pill {
-    background: #000000; /* Caja negra en modo oscuro */
+    background: #000000; 
 }
 
 body.dark-mode #waInput {
-    color: #ffffff; /* Letras blancas en modo oscuro */
+    color: #ffffff; 
 }
 
 body.dark-mode .wa-main-btn {
-    background: #ffffff; /* Círculo blanco en modo oscuro */
-    color: #000000; /* Ícono negro en modo oscuro */
+    background: #ffffff; 
+    color: #000000; 
 }
 
 .wa-main-btn i, .wa-main-btn svg { transition: transform 0.2s; }
@@ -256,12 +256,12 @@ body.dark-mode .wa-main-btn {
     gap: 10px; 
     overflow-x: auto; 
     justify-content: center; 
-    z-index: 50; /* Asegura que estén por encima de los mensajes */
-    pointer-events: none; /* Hace que el contenedor sea un "fantasma" para que puedas hacer scroll tocando entre los botones */
+    z-index: 50; 
+    pointer-events: none; 
 }
 
 .quick-btn { 
-    pointer-events: auto; /* Reactiva el toque SOLO para los botones */
+    pointer-events: auto; 
     background: var(--bg-card) !important; 
     color: var(--primary) !important; 
     border: 1px solid var(--primary) !important; 
@@ -271,7 +271,7 @@ body.dark-mode .wa-main-btn {
     font-weight: 500; 
     cursor: pointer; 
     flex-shrink: 0; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; /* Sombra un poco más fuerte para que resalten */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important; 
     transition: transform 0.1s, background-color 0.2s; 
 }
 
@@ -288,6 +288,166 @@ body.dark-mode .wa-main-btn {
 .flow-item-row.past { opacity: 0.6; }
 .flow-item-row.current { background: rgba(37, 99, 235, 0.05); color: var(--primary); border-left-color: var(--primary); font-weight: bold; }
 .flow-item-row.future { color: var(--text-main); }
+
+
+/* --- REDISEÑO DEL EDITOR DE PASOS --- */
+.editor-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid var(--border);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 10px 15px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.2s;
+    margin-bottom: -2px; /* Superpone el borde */
+}
+
+.tab-btn:hover {
+    color: var(--text-main);
+    background: var(--bg-input);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom: 2px solid var(--primary);
+}
+
+/* Caja de texto enriquecida */
+.rich-textarea-wrapper {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.rich-textarea-wrapper textarea {
+    background: transparent;
+    border: none;
+    padding: 15px;
+    resize: vertical;
+    min-height: 120px;
+    color: var(--text-main);
+    font-size: 0.95rem;
+    outline: none;
+    font-family: inherit;
+    margin-bottom: 0; /* Quita el margen por defecto */
+}
+
+.textarea-actions {
+    display: flex;
+    justify-content: space-between; /* Galería a la izquierda, clip a la derecha */
+    align-items: center;
+    padding: 5px 10px 10px 10px;
+    background: transparent; /* Se fusiona con la caja de texto */
+    border-top: none; /* Quitamos la línea separadora */
+}
+
+/* Galería de miniaturas integrada */
+.custom-gallery {
+    display: flex;
+    flex: 1; /* Toma todo el espacio disponible a la izquierda del clip */
+    gap: 10px;
+    overflow-x: auto;
+    padding: 0; /* Quitamos el padding extra */
+    margin-right: 10px; /* Separación con el clip */
+}
+
+.custom-gallery:empty { padding: 0; margin-right: 0; }
+
+/* Estilo para los nuevos textareas de error */
+.error-textarea {
+    width: 100%; 
+    border-radius: 8px; 
+    padding: 10px; 
+    background: var(--bg-input); 
+    border: 1px solid var(--border); 
+    color: var(--text-main); 
+    outline: none; 
+    font-family: inherit; 
+    margin-bottom: 15px;
+    resize: vertical;
+}
+
+.attach-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.attach-btn:hover {
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+/* Galería de miniaturas */
+.custom-gallery {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 0 15px 10px 15px; /* Espaciado dentro de la caja */
+}
+
+.custom-gallery:empty { padding: 0; }
+
+.thumb-wrap {
+    position: relative;
+    min-width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--primary);
+}
+
+.thumb-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.del-thumb {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.error-notice {
+    background: rgba(234, 179, 8, 0.1);
+    color: #ca8a04;
+    padding: 12px 15px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+    border-left: 4px solid #eab308;
+    line-height: 1.4;
+}
+
 
 /* --- RESPONSIVE & UTILS --- */
 @media(max-width: 768px) {

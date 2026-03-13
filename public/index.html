@@ -437,39 +437,75 @@
     </div>
 
     <div class="modal" id="editorModal">
-        <div class="sheet">
-            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                <h3 style="margin:0;">Editar Paso</h3>
+        <div class="sheet" style="max-width: 550px; width: 95%;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+                <h3 style="margin:0;"><i class="fas fa-edit" style="color:var(--primary);"></i> Editar Paso</h3>
                 <button onclick="document.getElementById('editorModal').classList.remove('active')" style="background:none; border:none; color:var(--text-main); font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
+            
             <input type="hidden" id="stId">
-            <label>Tipo de Interacción</label>
-            <select id="stType" onchange="renderFields()">
-                <option value="menu">🔘 Menú (Botones)</option>
-                <option value="filtro">👮 Filtro Admin</option>
-                <option value="input">💾 Guardar Dato</option>
-                <option value="message">💬 Mensaje Texto</option>
-                <option value="cita">📅 Citas</option>
-                <option value="fin_bot">🏁 Finalizar</option>
-            </select>
-            <div id="wrapper-msg" style="margin-top:15px;">
-                <label>Mensaje del Bot</label>
-                <textarea id="stMsg" rows="3" placeholder="Hola {{nombre}}..."></textarea>
+            
+            <div class="editor-tabs">
+                <button class="tab-btn active" id="tabBtn-main" onclick="switchTab('main')"><i class="fas fa-comment-dots"></i> Principal</button>
+                <button class="tab-btn" id="tabBtn-errors" onclick="switchTab('errors')"><i class="fas fa-exclamation-triangle"></i> Errores</button>
             </div>
-            <div id="wrapper-media" style="margin-top:15px; background:var(--bg-input); padding:10px; border-radius:8px;">
-                <label>Multimedia (Fotos/Videos)</label>
-                <div id="galleryContainer" style="display:flex; gap:10px; overflow-x:auto; padding:5px 0;"></div>
-                <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
-                <button onclick="document.getElementById('imgUpload').click()" class="admin-btn" style="width:100%; border-style:dashed; margin-top:5px;">+ Subir Archivo</button>
+
+            <div id="tabContent-main" class="tab-content">
+                <label>Tipo de Interacción</label>
+                <select id="stType" onchange="renderFields()" style="margin-bottom:15px;">
+                    <option value="menu">🔘 Menú (Botones)</option>
+                    <option value="filtro">👮 Filtro Admin</option>
+                    <option value="input">💾 Guardar Dato</option>
+                    <option value="message">💬 Mensaje Texto</option>
+                    <option value="cita">📅 Citas</option>
+                    <option value="fin_bot">🏁 Finalizar</option>
+                </select>
+
+                <div id="wrapper-msg">
+                    <label>Mensaje del Bot</label>
+                    <div class="rich-textarea-wrapper">
+                        <textarea id="stMsg" rows="6" placeholder="Escribe el mensaje que enviará el bot aquí..."></textarea>
+                        
+                        <div class="textarea-actions">
+                            <div id="galleryContainer" class="custom-gallery"></div>
+                            
+                            <button onclick="document.getElementById('imgUpload').click()" class="attach-btn" title="Adjuntar foto/video">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="file" id="imgUpload" accept="image/*" multiple style="display:none" onchange="uploadImages(this)">
+                </div>
+
+                <div id="wrapper-media" style="display:none;"></div> 
+
+                <div id="dynFields" style="margin-top:15px;"></div>
             </div>
-            <div id="dynFields" style="margin-top:15px;"></div>
-            <div style="margin-top:20px; display:flex; gap:10px;">
-                <button onclick="saveStep()" class="btn-primary" style="flex:1;">Guardar</button>
-                <button onclick="delStep()" style="background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); padding:10px; border-radius:8px;"><i class="fas fa-trash"></i></button>
+
+            <div id="tabContent-errors" class="tab-content" style="display:none;">
+                <div class="error-notice">
+                    <i class="fas fa-info-circle"></i> Configura qué pasa si el cliente escribe una respuesta inválida (ej. no elige una opción).
+                </div>
+                
+                <label>Mensaje al 1er Error</label>
+                <textarea id="stErrMsg1" rows="2" placeholder="Ej: Disculpa, no entendí. Por favor elige una opción válida." class="error-textarea"></textarea>
+                
+                <label>Mensaje al 2do Error</label>
+                <textarea id="stErrMsg2" rows="2" placeholder="Ej: Opción inválida. Recuerda responder solo con el número (1 o 2)." class="error-textarea"></textarea>
+
+                <label>Mensaje al 3er Error</label>
+                <textarea id="stErrMsg3" rows="2" placeholder="Ej: Veo que tienes dudas, permíteme transferirte..." class="error-textarea"></textarea>
+                
+                <label style="margin-top:10px;">Al fallar 3 veces, mover cliente a:</label>
+                <input id="stFallbackStep" list="stepsList" placeholder="Ej: ASESOR (Dejar en blanco para no mover)" style="margin-bottom: 0;">
+            </div>
+
+            <div style="margin-top:25px; display:flex; gap:10px;">
+                <button onclick="saveStep()" class="btn-primary" style="flex:1; padding:12px; font-size:1rem;"><i class="fas fa-save"></i> Guardar Paso</button>
+                <button onclick="delStep()" style="background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid var(--danger); border-radius:8px; width:50px; display:flex; justify-content:center; align-items:center;"><i class="fas fa-trash"></i></button>
             </div>
         </div>
     </div>
-
     <div class="modal" id="dayModal">
         <div class="sheet">
             <div style="display:flex; justify-content:space-between; margin-bottom:15px;">

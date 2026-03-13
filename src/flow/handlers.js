@@ -6,7 +6,6 @@ const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
 const { isValidName, isValidBirthDate } = require('./validators');
 
-// Lector directo de la agenda para no depender de otros archivos
 const getAgendaLocal = () => {
     try {
         const agendaPath = path.join(__dirname, '../../data/agenda.json');
@@ -24,17 +23,53 @@ const basicClean = (str) => {
     return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 };
 
-async function handleMenuStep(stepConfig, text, remoteJid, sock) {
+// 🔥 NUEVO CEREBRO: Procesador Inteligente de Errores (3 Strikes) 🔥
+async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg) {
+    user.error_count = (user.error_count || 0) + 1; // Sumamos 1 al historial de errores
+
+    // ¿Llegó a 3 errores y hay un paso de rescate configurado?
+    if (user.error_count >= 3 && stepConfig.fallback_step) {
+        await updateUser(dbKey, { error_count: 0 }); // Limpiamos su historial para no ciclarlo
+        
+        // Enviamos el mensaje del 3er error justo antes de transferirlo al asesor
+        if (stepConfig.error_message_3) {
+            if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, stepConfig.error_message_3);
+            else await sock.sendMessage(remoteJid, { text: stepConfig.error_message_3 });
+        }
+        
+        return stepConfig.fallback_step; // Retornamos el paso de destino para forzar el salto
+    }
+
+    // Si no llegó a 3, guardamos el nuevo conteo
+    await updateUser(dbKey, { error_count: user.error_count });
+
+    // Elegimos qué mensaje mostrar según el número de intento
+    let txt = defaultMsg;
+    if (user.error_count === 1 && stepConfig.error_message_1) txt = stepConfig.error_message_1;
+    else if (user.error_count === 2 && stepConfig.error_message_2) txt = stepConfig.error_message_2;
+    else if (user.error_count >= 3 && stepConfig.error_message_3) txt = stepConfig.error_message_3;
+
+    if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
+    else await sock.sendMessage(remoteJid, { text: txt });
+
+    return null; // Retorna null para que el flujo no avance y espere otra respuesta
+}
+
+
+async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const userText = basicClean(text);
     const isNumber = /^[0-9]+$/.test(userText);
     
+    // 1. Éxito por Número
     if (isNumber) {
         const index = parseInt(userText) - 1;
         if (stepConfig.options && stepConfig.options[index]) {
+            if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores
             return stepConfig.options[index].next_step;
         }
     }
 
+    // 2. Éxito por Texto
     if (stepConfig.options && Array.isArray(stepConfig.options)) {
         const userWords = userText.split(' ').filter(w => w.length > 1); 
         
@@ -46,49 +81,39 @@ async function handleMenuStep(stepConfig, text, remoteJid, sock) {
             });
 
             if (matches.length === 1) {
+                if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores
                 return matches[0].next_step;
             }
 
             if (matches.length > 1) {
                 const suggestions = matches.map(m => `"${m.label}"`).join(' o ');
-                const txt = `⚠️ Varias opciones con esa palabra.\n\nCual quieres elegir:\n ${suggestions}`;
-
-                if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
-                else await sock.sendMessage(remoteJid, { text: txt });
-                
-                return null; 
+                return await processError(stepConfig, user, dbKey, remoteJid, sock, `⚠️ Varias opciones coinciden.\n\n¿Cuál quieres elegir:\n ${suggestions}?`);
             }
         }
     }
 
-    const txt = `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`;
-    if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
-    else await sock.sendMessage(remoteJid, { text: txt });
-    
-    return null;
+    // 3. Fallo total (No coincidió nada)
+    return await processError(stepConfig, user, dbKey, remoteJid, sock, `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`);
 }
 
 async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const varName = stepConfig.save_var || 'temp';
 
     if (varName === 'nombre' && !isValidName(text)) {
-        const txt = "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.";
-        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
-        else await sock.sendMessage(remoteJid, { text: txt });
-        return null;
+        return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.");
     }
 
     if (varName === 'fecha_nacimiento' && !isValidBirthDate(text)) {
-        const txt = "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)";
-        if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt); 
-        else await sock.sendMessage(remoteJid, { text: txt });
-        return null; 
+        return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)");
     }
 
+    // Éxito: Guardamos variable y limpiamos posibles errores previos
     if (!user.history) user.history = {};
-
     user.history[varName] = text;
-    await updateUser(dbKey, { history: user.history });
+    
+    const updates = { history: user.history };
+    if (user.error_count > 0) updates.error_count = 0; // Limpiar errores
+    await updateUser(dbKey, updates);
     
     return stepConfig.next_step;
 }
@@ -187,7 +212,6 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
 
     const isAvailable = await checkAvailability(fechaMemoria, horaMemoria);
     if (!isAvailable) {
-        // 🔥 Uso directo de getAgendaLocal 🔥
         const agenda = getAgendaLocal();
         const citasDelDia = agenda[fechaMemoria] || [];
         const horasOcupadas = citasDelDia.map(c => c.time).sort();
@@ -218,11 +242,13 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
     }
 
     if (stepConfig.next_step) {
+        if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores al tener éxito
         return stepConfig.next_step; 
     } else {
         const txt = `✅ Cita confirmada: ${friendlyDate(fechaMemoria)} a las ${horaMemoria}`;
         if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
         else await sock.sendMessage(remoteJid, { text: txt });
+        if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores
         return null;
     }
 }
