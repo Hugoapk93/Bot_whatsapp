@@ -4,8 +4,7 @@ const { updateUser, getUser } = require('../database');
 const { analyzeNaturalLanguage } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
-const { isValidName, isValidBirthDate } = require('./validators');
-
+const { isValidName, isValidBirthDate, normalizeName, normalizeDate } = require('./validators');
 const getAgendaLocal = () => {
     try {
         const agendaPath = path.join(__dirname, '../../data/agenda.json');
@@ -106,15 +105,23 @@ async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
 async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const varName = stepConfig.save_var || 'temp';
 
-    if (varName === 'nombre' && !isValidName(text)) {
-        return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.");
+    if (varName === 'nombre') {
+        const cleanName = normalizeName(text); // 1. Limpiamos: "juan perez" -> "Juan Perez"
+        if (!isValidName(cleanName)) {         // 2. Validamos el nombre ya limpio
+            return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.");
+        }
+        text = cleanName; // 3. ¡Sobreescribimos el texto original para guardar la versión bonita!
     }
 
-    if (varName === 'fecha_nacimiento' && !isValidBirthDate(text)) {
-        return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)");
+    if (varName === 'fecha_nacimiento') {
+        const cleanDate = normalizeDate(text); // 1. Limpiamos: "9 de junio del 98" -> "09/06/1998"
+        if (!isValidBirthDate(cleanDate)) {    // 2. Validamos que la fecha tenga sentido matemático
+            return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)");
+        }
+        text = cleanDate; // 3. ¡Sobreescribimos para guardar la versión de 8 dígitos perfectos!
     }
 
-    // Éxito: Guardamos variable y limpiamos posibles errores previos
+    // Éxito: Guardamos variable normalizada y limpiamos posibles errores previos
     if (!user.history) user.history = {};
     user.history[varName] = text;
     

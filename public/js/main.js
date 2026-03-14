@@ -1056,8 +1056,7 @@
     }
 
     let currentMediaList = [];
-    
-    // 🔥 ACTUALIZADO PARA CARGAR ERRORES Y TABS
+
     function edit(id) {
         const d = flow[id]; 
         document.getElementById('stId').value = id; 
@@ -1114,7 +1113,16 @@
         const d = flow[id] || {};
         const c = document.getElementById('dynFields');
         const wrapMsg = document.getElementById('wrapper-msg');
-        
+        const tabErrorsBtn = document.getElementById('tabBtn-errors');
+        if (tabErrorsBtn) {
+            if (type === 'menu' || type === 'input') {
+                tabErrorsBtn.style.display = 'inline-block';
+            } else {
+                tabErrorsBtn.style.display = 'none';
+                switchTab('main'); // Forzamos el regreso a la principal por si estaba en Errores
+            }
+        }
+
         wrapMsg.style.display = type === 'cita' ? 'none' : 'block'; 
 
         const dataListHtml = `<datalist id="stepsList">${getDatalistOptions()}</datalist>`;
@@ -1134,7 +1142,7 @@
             if(type==='filtro') html += `<label style="margin-top:10px">Admin Tel</label><input id="stAdm" value="${d.admin_number||''}">`;
 
         } else if (type === 'input') {
-            html += `<label>Variable a Guardar</label><input id="stVar" value="${d.save_var||''}">`;
+            html += `<label>Variable a Guardar (ej: nombre, fecha_nacimiento, correo)</label><input id="stVar" value="${d.save_var||''}">`;
             html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Escribe para crear nuevo...">`;
 
         } else if (type === 'cita') {
@@ -1164,10 +1172,10 @@
         }
         c.innerHTML = html;
         
-        // Refrescar el datalist en el input de Errores para que tenga la info al día
         const fbEl = document.getElementById('stFallbackStep');
         if(fbEl) fbEl.setAttribute('list', 'stepsList');
     }
+
 
     function addOptRow() { 
         document.getElementById('optsList').insertAdjacentHTML('beforeend', 
@@ -1179,7 +1187,6 @@
         ); 
     }
 
-    // 🔥 ACTUALIZADO PARA GUARDAR ERRORES Y EL FALLBACK
     async function saveStep() {
         const id = document.getElementById('stId').value;
         const type = document.getElementById('stType').value;
