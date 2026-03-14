@@ -737,6 +737,39 @@
         }
     }
 
+    function handleInputTyping() {
+        const inp = document.getElementById('waInput');
+        const iconsToHide = document.querySelectorAll('.hide-on-type');
+        const btn = document.getElementById('waMainBtn');
+        
+        if (!inp || !btn) return;
+
+        if (inp.value.length > 0) {
+            // Ocultamos el clip
+            iconsToHide.forEach(el => el.style.display = 'none');
+            btn.classList.add('is-send');
+            
+            // Dibujamos la flecha exacta
+            btn.innerHTML = `<svg id="waMainIcon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="transform: translateX(2px);"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>`;
+        } else {
+            // Volvemos a mostrar el clip
+            iconsToHide.forEach(el => el.style.display = 'inline-block');
+            btn.classList.remove('is-send');
+            
+            // Volvemos al micrófono
+            btn.innerHTML = `<i class="fas fa-microphone" id="waMainIcon"></i>`;
+        }
+    }
+
+    function handleMainBtn() {
+        const btn = document.getElementById('waMainBtn');
+        if (btn && btn.classList.contains('is-send')) {
+            sendWaMsg(); // Si es una flecha, enviamos el mensaje
+        } else { 
+            showToast("🎤 Grabación de voz no disponible"); // Si es micrófono
+        }
+    }
+
     // --- ACCIONES Y MODALES ---
     function askJump(step) {
         if(!currentChatPhone) return;

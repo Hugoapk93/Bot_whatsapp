@@ -23,38 +23,45 @@ const basicClean = (str) => {
     return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 };
 
-// 🔥 NUEVO CEREBRO: Procesador Inteligente de Errores (3 Strikes) 🔥
-async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg) {
-    user.error_count = (user.error_count || 0) + 1; // Sumamos 1 al historial de errores
+const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
 
-    // ¿Llegó a 3 errores y hay un paso de rescate configurado?
+async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg) {
+    user.error_count = (user.error_count || 0) + 1;
+
     if (user.error_count >= 3 && stepConfig.fallback_step) {
-        await updateUser(dbKey, { error_count: 0 }); // Limpiamos su historial para no ciclarlo
-        
-        // Enviamos el mensaje del 3er error justo antes de transferirlo al asesor
+        await updateUser(dbKey, { error_count: 0 });
+
         if (stepConfig.error_message_3) {
             if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, stepConfig.error_message_3);
             else await sock.sendMessage(remoteJid, { text: stepConfig.error_message_3 });
         }
         
-        return stepConfig.fallback_step; // Retornamos el paso de destino para forzar el salto
+        return stepConfig.fallback_step;
     }
 
-    // Si no llegó a 3, guardamos el nuevo conteo
     await updateUser(dbKey, { error_count: user.error_count });
 
-    // Elegimos qué mensaje mostrar según el número de intento
     let txt = defaultMsg;
     if (user.error_count === 1 && stepConfig.error_message_1) txt = stepConfig.error_message_1;
     else if (user.error_count === 2 && stepConfig.error_message_2) txt = stepConfig.error_message_2;
     else if (user.error_count >= 3 && stepConfig.error_message_3) txt = stepConfig.error_message_3;
 
+    if ((user.error_count === 1 || user.error_count === 2) && stepConfig.type === 'menu' && stepConfig.options && stepConfig.options.length > 0) {
+        let menuTxt = '\n\n';
+        
+        stepConfig.options.forEach((opt, index) => {
+            const emoji = numberEmojis[index] || `*${index + 1}.*`; 
+            menuTxt += `${emoji} ${opt.label}\n`;
+        });
+        
+        txt += menuTxt;
+    }
+
     if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
     else await sock.sendMessage(remoteJid, { text: txt });
 
-    return null; // Retorna null para que el flujo no avance y espere otra respuesta
+    return null;
 }
-
 
 async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const userText = basicClean(text);
