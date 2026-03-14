@@ -402,8 +402,18 @@ async function connectToWhatsApp() {
 
 app.post('/api/contacts/update', async (req, res) => {
     const { phone, name, enable } = req.body;
-    await updateUser(phone, { name, bot_enabled: enable });
-    toggleContactBot(phone, enable);
+
+    const user = getUser(phone) || {};
+    if (!user.history) user.history = {};
+    user.history.nombre = name;
+    await updateUser(phone, { name, bot_enabled: enable, history: user.history });
+
+    addManualContact(phone, name, enable);
+
+    if (global.io) {
+        global.io.emit('user_update', { phone: phone, name: name, bot_enabled: enable });
+    }
+    
     res.json({ success: true });
 });
 
