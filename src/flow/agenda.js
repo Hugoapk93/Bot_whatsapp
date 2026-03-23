@@ -26,15 +26,17 @@ const saveAgenda = async (data) => {
 };
 
 // --- 2. HELPERS DE TIEMPO ---
-const TIMEZONE = "America/Mexico_City";
 
 const getMxDate = () => {
+    // Leemos la zona horaria directamente de tu panel
+    const settings = getSettings();
+    const tz = settings.timezone || "America/Matamoros";
+    
     const now = new Date();
-    const isoParams = now.toLocaleString("en-US", { timeZone: TIMEZONE });
+    const isoParams = now.toLocaleString("en-US", { timeZone: tz });
     return new Date(isoParams);
 };
 
-// 🔥 NUEVO: Helper de Fecha Amigable (Necesario para handlers.js)
 const friendlyDate = (dateStr) => {
     if(!dateStr) return dateStr;
     const [y, m, d] = dateStr.split('-').map(Number);
@@ -55,21 +57,38 @@ const timeToMinutes = (timeStr) => {
 // --- VALIDACIONES ---
 
 const isDateInPast = (dateStr, timeStr) => {
-    const nowMx = getMxDate();
-    const year = nowMx.getFullYear();
-    const month = String(nowMx.getMonth() + 1).padStart(2, '0');
-    const day = String(nowMx.getDate()).padStart(2, '0');
-    const todayStr = `${year}-${month}-${day}`;
+    if (!dateStr || !timeStr) return false;
 
-    if (dateStr < todayStr) return true;
+    // 1. Obtenemos la zona horaria del panel
+    const settings = getSettings();
+    const tz = settings.timezone || "America/Matamoros";
 
-    if (dateStr === todayStr && timeStr) {
-        const currentMinutes = (nowMx.getHours() * 60) + nowMx.getMinutes();
-        const citaMinutes = timeToMinutes(timeStr);
-        if (citaMinutes < currentMinutes) return true;
+    // 2. Calculamos la fecha y hora EXACTA ACTUAL en esa zona horaria
+    const now = new Date();
+    
+    // Formato YYYY-MM-DD
+    const formatterDate = new Intl.DateTimeFormat("en-CA", { 
+        timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" 
+    });
+    
+    // Formato HH:MM (24 hrs)
+    const formatterTime = new Intl.DateTimeFormat("en-GB", { 
+        timeZone: tz, hour: "2-digit", minute: "2-digit" 
+    });
+
+    const currentDate = formatterDate.format(now); // Ej: "2026-03-23"
+    const currentTime = formatterTime.format(now); // Ej: "13:00"
+
+    if (dateStr < currentDate) {
+        return true;
     }
+    if (dateStr === currentDate && timeStr <= currentTime) {
+        return true;
+    }
+
     return false;
 };
+
 
 const isBusinessClosed = () => {
     const settings = getSettings();
