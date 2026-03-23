@@ -609,7 +609,7 @@
         "hora": "18:30"
       },
       "name": "Hugo Alberto Martinez García",
-      "bot_enabled": true,
+      "bot_enabled": false,
       "error_count": 0
     },
     {
@@ -14750,7 +14750,7 @@
       "jid": "65356567699524@s.whatsapp.net",
       "name": "Hugo Alberto Martinez García",
       "bot_enabled": false,
-      "last_synced": "2026-02-25T19:51:20.621Z",
+      "last_synced": "2026-03-23T15:59:27.121Z",
       "added_at": "2026-02-25T18:21:38.098Z"
     },
     {
@@ -15016,6 +15016,22 @@
       "keys": {
         "p256dh": "BF_ZLmcs2ePWEampE8DL_uZhhNTciUMUEtwJ0-yBls6DJayFaTlYbRPDAX4lblARFI5n-Bmajwbc5t4nLsOyfSA",
         "auth": "6M8qm24I-D9PtUW3d2OAow"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/eR3ptfMU8ec:APA91bFrxNq9t-94XUMt9vWNqyfh5Jtzj-V1YuqoDsiyf9pt0rpFwq7juRpeED2Z92XnWRXn_p5pZZKKBDvwuo19UfBPfAsqlDzbg7vcSEyv9sTq3XbGfC5HYDVbkHxVROqqh24L5gFT",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BEz8zjp_5GA3Ycp93hMhF8Ib16dZBmJNDMDKYVVaodIZVLYW3woyfxXjrpjs2IjgM5PfWyG4lgOh8IBF977Q6uM",
+        "auth": "k_KCmWJArrZ8WLdcjPqz6g"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/ck3QEzb3YGE:APA91bHJn2h7U_rxIgBzS_9PE1gRCnv1rQEKoAJpjeBY592fGiOmj6R3OnX0s4gM8htPBgQ-TDHmnuKggNkeo3u8mmW9T109oay3EBu9Q4NP8S5VNbBMslq5zf4C_iEOlPsHLH7w1TS2",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BIIQbBw_B4nihGJPJbAY-74LKeZCuyxXfDdzRyT3-7NTzzxPXh11RWlJnXt8HZBkSjVTGD-1LsfkkzRG2iMY6dU",
+        "auth": "OH4QS9fJ-sWaubfLDbI8fA"
       }
     }
   ],

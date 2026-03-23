@@ -1553,14 +1553,38 @@
     let phoneToDelete = null;
     let isEditingMode = false;
 
-    async function editCurrentContactManual() {
+    function editCurrentContactManual() {
         if (!currentChatPhone) return;
         const currentName = document.getElementById('waHeaderName').innerText;
-        const newName = prompt("📝 Editar nombre del cliente:", currentName);
-        if (!newName || newName.trim() === "") return;
+        
+        // Llenamos el input con el nombre actual
+        document.getElementById('editNameInput').value = currentName;
+        
+        // Abrimos tu nuevo modal bonito
+        document.getElementById('editNameModal').classList.add('active');
+        
+        // Enfocamos el input automáticamente
+        setTimeout(() => document.getElementById('editNameInput').focus(), 100);
+    }
+
+    function closeEditNameModal() {
+        document.getElementById('editNameModal').classList.remove('active');
+    }
+
+    async function confirmEditName() {
+        if (!currentChatPhone) return;
+        
+        const newName = document.getElementById('editNameInput').value.trim();
+        if (!newName) {
+            showToast("⚠️ El nombre no puede estar vacío");
+            return;
+        }
+
+        // Cerramos el modal mientras enviamos la petición
+        closeEditNameModal();
 
         try {
-                const response = await fetch(`${API_BASE}/api/contacts/update`, {
+            const response = await fetch(`${API_BASE}/api/contacts/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1581,9 +1605,14 @@
                 }
                 renderChatList(users);
                 showToast("✅ Nombre actualizado");
-            } else { alert("Error al guardar en el servidor"); }
-        } catch (e) { showToast("❌ Error de conexión"); }
+            } else { 
+                alert("Error al guardar en el servidor"); 
+            }
+        } catch (e) { 
+            showToast("❌ Error de conexión"); 
+        }
     }
+
 
     function openContactModal() {
         isEditingMode = false;

@@ -580,6 +580,22 @@
         </div>
     </div>
 
+    <div id="editNameModal" class="modal">
+        <div class="sheet" style="height:auto; text-align:center;">
+            <div style="width:60px; height:60px; border-radius:50%; background:rgba(59, 130, 246, 0.1); display:flex; align-items:center; justify-content:center; margin:0 auto 20px auto;">
+                <i class="fas fa-pen" style="font-size:1.5rem; color:var(--primary);"></i>
+            </div>
+            
+            <h3 style="margin-bottom: 20px;">Editar Nombre</h3>
+            
+            <input type="text" id="editNameInput" placeholder="Escribe el nuevo nombre..." style="width: 100%; box-sizing: border-box; margin-bottom: 20px; text-align: center; font-size: 1.1rem; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main);" onkeypress="if(event.key==='Enter') confirmEditName()">
+            
+            <div style="display:flex; gap:10px;">
+                <button onclick="confirmEditName()" class="btn-primary" style="flex:1;">Guardar</button>
+                <button onclick="closeEditNameModal()" class="admin-btn" style="flex:1;">Cancelar</button>
+            </div>
+        </div>
+    </div>
     <script src="/js/main.js"></script>
 
 </body>
