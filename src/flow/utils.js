@@ -66,23 +66,51 @@ const analyzeNaturalLanguage = (text) => {
     let targetDate = new Date(todayMx); 
 
     // --- A. DETECCIÓN DE FECHA ---
-    const dateRegex = /\b(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?\b/;
-    const dateMatch = strForTime.match(dateRegex); 
+    
+    // Diccionario para meses en texto
+    const monthMap = {
+        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
+        'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
+        'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+    };
 
-    if (dateMatch) {
-        const day = parseInt(dateMatch[1]);
-        const month = parseInt(dateMatch[2]);
-        let year = dateMatch[3] ? parseInt(dateMatch[3]) : todayMx.getFullYear();
+    // 1. Regex para fechas humanas: "28 de marzo" o "5 abril del 26"
+    const naturalDateRegex = /\b(\d{1,2})\s+(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:de|del)\s+(\d{2,4}))?\b/;
+    // 2. Regex para fechas numéricas: "28/03/2026" o "28-03"
+    const numericDateRegex = /\b(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?\b/;
+
+    const naturalMatch = lower.match(naturalDateRegex); 
+    const numericMatch = strForTime.match(numericDateRegex);
+
+    if (naturalMatch) {
+        const day = parseInt(naturalMatch[1]);
+        const month = monthMap[naturalMatch[2]];
+        let year = naturalMatch[3] ? parseInt(naturalMatch[3]) : todayMx.getFullYear();
         if (year < 100) year += 2000;
 
         const tentativeDate = new Date(year, month - 1, day);
-        if (!dateMatch[3] && tentativeDate < todayMx) year++; 
+        if (!naturalMatch[3] && tentativeDate < todayMx) year++; 
+
+        response.date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        
+        // Borramos la fecha del string para no confundir a la hora
+        strForTime = strForTime.replace(naturalDateRegex, ' ');
+    }
+    else if (numericMatch) {
+        const day = parseInt(numericMatch[1]);
+        const month = parseInt(numericMatch[2]);
+        let year = numericMatch[3] ? parseInt(numericMatch[3]) : todayMx.getFullYear();
+        if (year < 100) year += 2000;
+
+        const tentativeDate = new Date(year, month - 1, day);
+        if (!numericMatch[3] && tentativeDate < todayMx) year++; 
 
         response.date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 
-        strForTime = strForTime.replace(dateRegex, ' ');
+        strForTime = strForTime.replace(numericDateRegex, ' ');
     }
     else {
+        // Buscamos días de la semana PRIMERO (Lunes, Martes, etc.)
         let dayFound = false;
         const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
         for (let i = 0; i < dias.length; i++) {
@@ -109,6 +137,7 @@ const analyzeNaturalLanguage = (text) => {
                 response.date = formatDate(targetDate);
             }
             else if (lower.includes('manana')) {
+                // Candados para que "10 de la mañana" no cambie el día
                 if (!lower.includes('en la manana') && 
                     !lower.includes('por la manana') && 
                     !lower.includes('de la manana') && 
