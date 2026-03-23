@@ -1,6 +1,5 @@
-// --- UTILIDADES DE TEXTO Y FECHAS (Optimizado con Anti-Repetición) ---
+const { getSettings } = require('../database');
 
-// 1. Algoritmo de Distancia (Levenshtein) nativo
 const getEditDistance = (a, b) => {
     if (a.length === 0) return b.length;
     if (b.length === 0) return a.length;
@@ -19,7 +18,6 @@ const getEditDistance = (a, b) => {
     return matrix[b.length][a.length];
 };
 
-// 2. Normalizar texto
 const normalizeText = (str) => {
     if (!str) return "";
     return str.toLowerCase()
@@ -29,12 +27,10 @@ const normalizeText = (str) => {
         .replace(/\s+/g, ' '); 
 };
 
-// 🔥 HELPER NUEVO: Colapsar letras repetidas (ej: "siii" -> "si", "nooo" -> "no")
 const collapseChars = (str) => {
     return str.replace(/(.)\1+/g, '$1');
 };
 
-// 3. Comparación inteligente (Fuzzy Match Mejorado)
 const isSimilar = (input, keyword) => {
     if (!input || !keyword) return false;
     
@@ -54,17 +50,17 @@ const isSimilar = (input, keyword) => {
     return distance <= maxErrors;
 };
 
-// 4. Inteligencia para Fechas (CON FIX ANTI-COLISIÓN DE NÚMEROS)
 const analyzeNaturalLanguage = (text) => {
     const response = { date: null, time: null };
-    
-    // Usamos el texto original (en minúsculas) para buscar horas y fechas con / o :
+
     let strForTime = text.toLowerCase(); 
-    // Usamos el texto normalizado (sin símbolos) para buscar palabras clave (lunes, hoy, etc)
     const lower = normalizeText(text);
 
+    const settings = getSettings();
+    const tz = settings.timezone || "America/Matamoros"; 
+    
     const now = new Date();
-    const mxDateStr = now.toLocaleString("en-US", {timeZone: "America/Mexico_City"});
+    const mxDateStr = now.toLocaleString("en-US", {timeZone: tz});
     const todayMx = new Date(mxDateStr); 
 
     let targetDate = new Date(todayMx); 
@@ -83,27 +79,11 @@ const analyzeNaturalLanguage = (text) => {
         if (!dateMatch[3] && tentativeDate < todayMx) year++; 
 
         response.date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-        
-        // 🔥 MAGIA ANTI-COLISIÓN: Borramos la fecha detectada del string original 
-        // para que esos números no se confundan con la hora más adelante.
+
         strForTime = strForTime.replace(dateRegex, ' ');
     }
-    // Fechas relativas
-    else if (lower.includes('manana')) {
-        if (!lower.includes('en la manana') && !lower.includes('por la manana')) {
-            targetDate.setDate(todayMx.getDate() + 1);
-            response.date = formatDate(targetDate);
-        }
-    } 
-    else if (lower.includes('pasado manana')) {
-        targetDate.setDate(todayMx.getDate() + 2);
-        response.date = formatDate(targetDate);
-    }
-    else if (lower.includes('hoy')) {
-        response.date = formatDate(targetDate);
-    }
-    // Días de la semana
     else {
+        let dayFound = false;
         const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
         for (let i = 0; i < dias.length; i++) {
             if (lower.includes(dias[i])) {
@@ -114,13 +94,33 @@ const analyzeNaturalLanguage = (text) => {
 
                 targetDate.setDate(todayMx.getDate() + diff);
                 response.date = formatDate(targetDate);
+                dayFound = true;
                 break;
+            }
+        }
+
+        // Si no detectó ningún día de la semana, buscamos "hoy" o "mañana"
+        if (!dayFound) {
+            if (lower.includes('pasado manana')) {
+                targetDate.setDate(todayMx.getDate() + 2);
+                response.date = formatDate(targetDate);
+            }
+            else if (lower.includes('hoy')) {
+                response.date = formatDate(targetDate);
+            }
+            else if (lower.includes('manana')) {
+                if (!lower.includes('en la manana') && 
+                    !lower.includes('por la manana') && 
+                    !lower.includes('de la manana') && 
+                    !lower.includes('la manana')) {
+                    targetDate.setDate(todayMx.getDate() + 1);
+                    response.date = formatDate(targetDate);
+                }
             }
         }
     }
 
-    // --- B. DETECCIÓN DE HORA (usando strForTime limpio de fechas) ---
-    // Usamos regex más estrictos que requieren contexto, no solo un número suelto
+    // --- B. DETECCIÓN DE HORA ---
     const exactTimeMatch = strForTime.match(/\b([01]?[0-9]|2[0-3]):([0-5][0-9])\b/); // ej: 16:00
     const ampmMatch = strForTime.match(/\b(1[0-2]|[1-9])\s*(am|pm|a\.m\.|p\.m\.)\b/i); // ej: 4 pm
     const aLasMatch = strForTime.match(/a\s*l[a|o]s\s*([01]?[0-9]|2[0-3])\b/); // ej: a las 4
@@ -145,11 +145,6 @@ const analyzeNaturalLanguage = (text) => {
 
     if (h !== null) {
         response.time = `${String(h).padStart(2, '0')}:${m}`;
-    }
-
-    // Si detectó algo para el mismo día pero no lo guardó arriba
-    if (!response.date && (lower.includes('manana') || lower.includes('hoy'))) {
-         response.date = formatDate(targetDate);
     }
 
     return response;

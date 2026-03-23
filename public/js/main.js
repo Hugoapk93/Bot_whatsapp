@@ -209,6 +209,11 @@
 
         try { 
             const s = await (await fetch(`${API_BASE}/api/settings`)).json(); 
+            
+            if(s.timezone) { document.getElementById('botTimezone').value = s.timezone; }
+
+            if(typeof previewTimezone === 'function') previewTimezone();
+
             if(s.schedule) { 
                 const act = document.getElementById('schedActive'); if(act) act.checked = s.schedule.active;
                 const start = document.getElementById('schedStart'); if(start) start.value = s.schedule.start;
@@ -1780,6 +1785,54 @@
             if(statusText) statusText.innerText = 'Apagado';
             localStorage.setItem('theme', 'light');
         }
+    }
+
+    async function saveTimezone() {
+        const tz = document.getElementById('botTimezone').value;
+        try {
+            await fetch(`${API_BASE}/api/settings`, { 
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body:JSON.stringify({ timezone: tz }) 
+            });
+            showToast('✅ Zona horaria actualizada');
+        } catch(e) { 
+            showToast('❌ Error al guardar'); 
+        }
+    }
+
+    let tzPreviewInterval = null;
+
+    function previewTimezone() {
+        const tz = document.getElementById('botTimezone').value;
+        const previewEl = document.getElementById('tzPreview');
+        if(!previewEl) return;
+
+        if(tzPreviewInterval) clearInterval(tzPreviewInterval);
+
+        const updateClock = () => {
+            try {
+                const now = new Date();
+                const formatted = new Intl.DateTimeFormat('es-MX', {
+                    timeZone: tz,
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                }).format(now);
+                const finalStr = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                previewEl.innerHTML = `<i class="far fa-clock"></i> ${finalStr}`;
+            } catch(e) {
+                previewEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Zona horaria no soportada';
+            }
+        };
+
+        updateClock();
+        tzPreviewInterval = setInterval(updateClock, 1000);
     }
 
     function escapeHTML(str) {

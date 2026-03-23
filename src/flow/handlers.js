@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { updateUser, getUser } = require('../database');
+const { updateUser, getUser, getSettings } = require('../database');
 const { analyzeNaturalLanguage } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
@@ -157,8 +157,11 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
     let horaMemoria = user.history['hora'];
 
     if (fechaMemoria) {
+        const settings = getSettings();
+        const tz = settings.timezone || "America/Matamoros";
+
         const formatter = new Intl.DateTimeFormat("en-CA", { 
-            timeZone: "America/Matamoros", year: 'numeric', month: '2-digit', day: '2-digit' 
+            timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' 
         });
         const hoyStr = formatter.format(new Date());
 
