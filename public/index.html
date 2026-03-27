@@ -160,7 +160,7 @@
             <div class="modal" id="jumpModal">
                 <div class="sheet" style="text-align:center;">
                     <i class="fas fa-history" style="font-size:2rem; color:var(--primary); margin-bottom:15px;"></i>
-                    <h3>¿Regresar Usuario?</h3>
+                    <h3>¿Mover Usuario?</h3>
                     <p style="color:var(--text-muted); margin-bottom:20px;">
                         ¿Quieres mover a este cliente al paso: <br>
                         <b id="jumpTargetStep" style="color:var(--text-main);"></b>?
@@ -427,28 +427,6 @@
             <div style="display:flex; gap:10px;">
                 <button onclick="executeCrmAction()" class="btn-primary" style="flex:1;">Confirmar</button>
                 <button onclick="document.getElementById('actionConfirmModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal" id="moveUserModal">
-        <div class="sheet" style="height:auto;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                <h3 style="margin:0;">Mover Cliente</h3>
-                <button onclick="document.getElementById('moveUserModal').classList.remove('active')" style="background:none; border:none; color:var(--text-main); font-size:1.5rem; cursor:pointer;">&times;</button>
-            </div>
-
-            <p style="color:var(--text-muted); margin-bottom:15px;">
-                Selecciona el paso al que quieres enviar a <br>
-                <b id="moveUserPhoneLbl" style="color:var(--text-main); font-size:1.1rem;"></b>
-            </p>
-
-            <label>Seleccionar Paso Destino</label>
-            <select id="moveStepSelect" style="margin-bottom:20px;"></select>
-
-            <div style="display:flex; gap:10px;">
-                <button onclick="executeMoveUser()" class="btn-primary" style="flex:1;">Mover Ahora</button>
-                <button onclick="document.getElementById('moveUserModal').classList.remove('active')" class="admin-btn" style="flex:1;">Cancelar</button>
             </div>
         </div>
     </div>

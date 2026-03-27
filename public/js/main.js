@@ -1,13 +1,11 @@
     const API_BASE = '';
     let flow = {}, users = [];
-    let pollingInterval = null, deferredPrompt;
     let apptToDelete = null;
     let allContactsCache = [];
     let currentRefDate = new Date();
     let currentChatPhone = null;
     let pendingJumpStep = null;
     let pendingCrmAction = null;
-    let currentFilter = 'all';
     
     // --- VARIABLES DE SELECCIÓN NUEVAS ---
     let isSelectionMode = false;
@@ -462,7 +460,6 @@
         const u = users.find(x => getCleanPhone(x.phone) === targetKey);
         if(!u) return;
 
-        // Header
         const displayName = u.savedName || u.history?.cliente || u.history?.usuario || u.phone;
         document.getElementById('waHeaderName').innerText = displayName;
         document.getElementById('waHeaderPhone').innerText = u.phone; 
@@ -692,6 +689,7 @@
         handleInputTyping();
         document.getElementById('waFlowDrawer').classList.remove('open'); 
 
+        // --- MODO: FORZAR PASO ---
         if (txt.startsWith('>> ')) {
             const targetStep = txt.replace('>> ', '').trim();
             addBubble(`🔄 <i>Forzando paso: ${targetStep}</i>`, true);
@@ -700,6 +698,15 @@
             if (qrContainer) {
                 qrContainer.innerHTML = '';
                 qrContainer.style.display = 'none';
+            }
+
+            // 🔥 NUEVO: Despertar al bot automáticamente al forzar el paso
+            const botSwitch = document.getElementById('waBotSwitch');
+            if (botSwitch && !botSwitch.checked) {
+                botSwitch.checked = true; // Encendemos el switch visualmente
+                if (typeof toggleCurrentBot === 'function') {
+                    toggleCurrentBot(true); // Le avisamos al servidor
+                }
             }
 
             try {
@@ -715,6 +722,7 @@
             return; 
         }
 
+        // --- MODO: ENVIAR MENSAJE NORMAL ---
         try {
             await fetch(`${API_BASE}/api/send-message`, {
                 method:'POST',
@@ -787,12 +795,20 @@
         if(!pendingJumpStep || !currentChatPhone) return;
 
         document.getElementById('jumpModal').classList.remove('active');
-        showToast("🔄 Procesando...");
+        showToast("Procesando...");
 
         const qrContainer = document.getElementById('waQuickReplies');
         if (qrContainer) {
             qrContainer.innerHTML = '';
             qrContainer.style.display = 'none';
+        }
+
+        const botSwitch = document.getElementById('waBotSwitch');
+        if (botSwitch && !botSwitch.checked) {
+            botSwitch.checked = true;
+            if (typeof toggleCurrentBot === 'function') {
+                toggleCurrentBot(true);
+            }
         }
 
         try {
@@ -802,7 +818,6 @@
                 body: JSON.stringify({ phone: currentChatPhone, stepId: pendingJumpStep })
             });
 
-            addBubble(`🔄 Sistema: Usuario movido a ${pendingJumpStep}`, true);
             loadActivity();
         } catch (e) {
             console.error(e);
@@ -1053,11 +1068,18 @@
     }
 
     function injectStepCommand(stepId) {
+        const drawer = document.getElementById('waFlowDrawer');
+        if (drawer && drawer.classList.contains('open')) {
+            toggleFlowDrawer(); 
+        }
+
         const inp = document.getElementById('waInput');
-        inp.value = `>> ${stepId}`; 
-        handleInputTyping(); 
-        inp.focus();
-        toggleFlowDrawer(); 
+        if (inp) {
+            inp.value = '';
+            handleInputTyping();
+        }
+
+        askJump(stepId);
     }
 
     let currentMediaList = [];
@@ -1777,30 +1799,6 @@
                 });
             } catch (error) { console.error('Error Push', error); }
         }
-    }
-
-    let userToMove = null;
-    function openMoveModal(phone, currentStep) {
-        userToMove = phone;
-        document.getElementById('moveUserPhoneLbl').innerText = phone;
-        const select = document.getElementById('moveStepSelect');
-        select.innerHTML = getSelectOptions(currentStep);
-        document.getElementById('moveUserModal').classList.add('active');
-    }
-
-    async function executeMoveUser() {
-        const targetStep = document.getElementById('moveStepSelect').value;
-        if (!userToMove || !targetStep) return;
-        try {
-            await fetch(`${API_BASE}/api/crm/execute`, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ phone: userToMove, stepId: targetStep })
-            });
-            showToast(`Cliente movido a ${targetStep}`);
-            document.getElementById('moveUserModal').classList.remove('active');
-            loadActivity();
-        } catch (e) { alert("Error al mover"); }
     }
 
     function toggleDarkMode(isDark) {
