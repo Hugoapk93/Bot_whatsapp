@@ -73,7 +73,12 @@
                             
                             <i class="fas fa-search" style="color: #8696a0; font-size: 1rem; margin-right: 10px; display: flex; align-items: center;"></i>
                             
-                            <input type="text" class="wa-search-input" placeholder="Buscar..." onkeyup="filterChats(this.value)" style="flex: 1; background: transparent; border: none; outline: none; padding: 0; margin: 0; font-size: 1rem; line-height: normal; color: var(--text-main, #000); height: 100%;">
+                            <input type="text" class="wa-search-input" name="search_box_rndm" placeholder="Buscar..." 
+                                   autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+                                   readonly onfocus="this.removeAttribute('readonly');"
+                                   onkeyup="filterChats(this.value)" 
+                                   style="flex: 1; background: transparent; border: none; outline: none; padding: 0; margin: 0; font-size: 1rem; line-height: normal; color: var(--text-main, #000); height: 100%;">
+                                   
                         </div>
                     </div>
 
@@ -136,11 +141,12 @@
                     <div class="wa-input-area" id="waInputArea" style="display:none;">
     
                         <div class="wa-input-pill" id="waInputPill">
-                            <input type="text" id="waInput" placeholder="Mensaje" 
-                                   autocomplete="off"
+                            <input type="text" id="waInput" name="chat_box_rndm" placeholder="Mensaje" 
+                                   autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" 
+                                   readonly onfocus="this.removeAttribute('readonly');"
                                    oninput="handleInputTyping()"
                                    onkeypress="if(event.key==='Enter') sendWaMsg()">
-        
+
                             <label for="chatImgUpload" style="cursor:pointer; color:#8696a0; margin:0 8px;">
                                 <i class="fas fa-paperclip" title="Adjuntar archivo" style="font-size:1.3rem;"></i>
                             </label>
@@ -154,7 +160,7 @@
                             <i class="fas fa-microphone" id="waMainIcon"></i>
                         </button>
                     </div>
-                    </div>
+                </div>
             </div>
 
             <div class="modal" id="jumpModal">
@@ -566,8 +572,12 @@
             
             <h3 style="margin-bottom: 20px;">Editar Nombre</h3>
             
-            <input type="text" id="editNameInput" placeholder="Escribe el nuevo nombre..." style="width: 100%; box-sizing: border-box; margin-bottom: 20px; text-align: center; font-size: 1.1rem; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main);" onkeypress="if(event.key==='Enter') confirmEditName()">
-            
+            <input type="text" id="editNameInput" name="name_box_rndm" placeholder="Escribe el nuevo nombre..." 
+                   autocomplete="off" autocorrect="off" spellcheck="false"
+                   readonly onfocus="this.removeAttribute('readonly');"
+                   style="width: 100%; box-sizing: border-box; margin-bottom: 20px; text-align: center; font-size: 1.1rem; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main);" 
+                   onkeypress="if(event.key==='Enter') confirmEditName()">
+
             <div style="display:flex; gap:10px;">
                 <button onclick="confirmEditName()" class="btn-primary" style="flex:1;">Guardar</button>
                 <button onclick="closeEditNameModal()" class="admin-btn" style="flex:1;">Cancelar</button>

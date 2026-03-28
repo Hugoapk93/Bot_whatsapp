@@ -424,29 +424,42 @@
         if (!currentChatPhone) return;
 
         const targetKey = getCleanPhone(currentChatPhone);
-        const u = users.find(x => getCleanPhone(x.phone) === targetKey);
+        let u = users.find(x => getCleanPhone(x.phone) === targetKey);
+
         if (!u) {
-            if (switchEl) switchEl.checked = !val;
-            return;
+            u = { phone: currentChatPhone, bot_enabled: !val };
+            users.push(u); // Lo añadimos a la lista visual para que no marque error
         }
+
         const phoneToSend = u.realDbPhone || u.phone || currentChatPhone;
+        const currentName = u.savedName || u.history?.nombre || phoneToSend;
 
         try {
-            const response = await fetch(`${API_BASE}/api/contacts/toggle`, {
+            const response = await fetch(`${API_BASE}/api/contacts/update`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phoneToSend, enable: val })
+                body: JSON.stringify({ phone: phoneToSend, name: currentName, enable: val })
             });
-            const data = await response.json();
 
-            if (data.success) {
+            const data = await response.json().catch(() => ({})); 
+
+            if (data.success || response.ok) {
                 showToast(val ? 'Bot Activado' : 'Bot Pausado');
                 u.bot_enabled = val;
-                const cachedContact = allContactsCache.find(c => getCleanPhone(c.phone) === targetKey);
-                if (cachedContact) cachedContact.bot_enabled = val;
+
+                let cachedContact = allContactsCache.find(c => getCleanPhone(c.phone) === targetKey);
+                if (cachedContact) {
+                    cachedContact.bot_enabled = val;
+                } else {
+                    allContactsCache.push({ phone: phoneToSend, name: currentName, bot_enabled: val });
+                }
+                
                 renderChatList(users);
-            } else { throw new Error("Error server"); }
+            } else { 
+                throw new Error("Error server"); 
+            }
         } catch (e) {
+            console.error("Error actualizando bot:", e);
             showToast("Error actualizando bot");
             if (switchEl) switchEl.checked = !val;
             u.bot_enabled = !val;
