@@ -152,6 +152,7 @@ const analyzeNaturalLanguage = (text) => {
     // --- B. DETECCIÓN DE HORA ---
     const exactTimeMatch = strForTime.match(/\b([01]?[0-9]|2[0-3]):([0-5][0-9])\b/); // ej: 16:00
     const ampmMatch = strForTime.match(/\b(1[0-2]|[1-9])\s*(am|pm|a\.m\.|p\.m\.)\b/i); // ej: 4 pm
+    const coloquialMatch = strForTime.match(/\b([01]?[0-9]|2[0-3])\s*(?:de la|en la|por la)\s*(manana|tarde|noche)\b/i);
     const aLasMatch = strForTime.match(/a\s*l[a|o]s\s*([01]?[0-9]|2[0-3])\b/); // ej: a las 4
     const hrsMatch = strForTime.match(/\b([01]?[0-9]|2[0-3])\s*(hrs|horas)\b/); // ej: 16 hrs
 
@@ -165,6 +166,16 @@ const analyzeNaturalLanguage = (text) => {
         const period = ampmMatch[2].toLowerCase().replace(/\./g, '');
         if (period === 'pm' && h < 12) h += 12;
         if (period === 'am' && h === 12) h = 0;
+    } else if (coloquialMatch) {
+        h = parseInt(coloquialMatch[1]);
+        const periodoStr = coloquialMatch[2].toLowerCase();
+
+        if ((periodoStr === 'tarde' || periodoStr === 'noche') && h < 12) {
+            h += 12;
+        }
+        if (periodoStr === 'manana' && h === 12) {
+            h = 0;
+        }
     } else if (aLasMatch) {
         h = parseInt(aLasMatch[1]);
         if (h >= 1 && h <= 7) h += 12; // Asumir que "a las 4" es 16:00
