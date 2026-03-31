@@ -1,5 +1,6 @@
     const API_BASE = '';
     let flow = {}, users = [];
+    let deferredPrompt;
     let apptToDelete = null;
     let allContactsCache = [];
     let currentRefDate = new Date();
@@ -161,6 +162,9 @@
 
                     loadAll();
                     await loadActivity();
+
+                    const defaultBtn = document.getElementById('defaultMenuBtn');
+                    nav('activity', defaultBtn); 
 
                     if (window.location.hash === '#agenda') {
                         nav('agenda'); 

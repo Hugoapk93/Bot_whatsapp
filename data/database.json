@@ -94,13 +94,6 @@
       "phone": "65356567699524",
       "messages": [
         {
-          "text": "Por favor elige una de las siguientes opciones:\n\nPor favor responde solo con el número de la *opción* que necesitas:\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito\n",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773502332163,
-          "stepId": "BIENVENIDA"
-        },
-        {
           "text": "Ok",
           "mediaUrl": null,
           "fromMe": false,
@@ -596,11 +589,18 @@
           "fromMe": true,
           "timestamp": 1774704487199,
           "stepId": "AGENDA_CONFIRMADA"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1774977890333,
+          "stepId": "BIENVENIDA"
         }
       ],
-      "last_active": "2026-03-28T13:28:07.199Z",
+      "last_active": "2026-03-31T17:24:50.333Z",
       "jid": "65356567699524@lid",
-      "current_step": "AGENDA_CONFIRMADA",
+      "current_step": "BIENVENIDA",
       "history": {
         "nombre": "Hugo Alberto Martinez García",
         "nacimiento": "27/12/1993",
@@ -14760,7 +14760,7 @@
       "jid": "65356567699524@s.whatsapp.net",
       "name": "Hugo Alberto Martinez García",
       "bot_enabled": false,
-      "last_synced": "2026-03-23T15:59:27.121Z",
+      "last_synced": "2026-03-31T17:24:50.283Z",
       "added_at": "2026-02-25T18:21:38.098Z"
     },
     {
@@ -14970,6 +14970,38 @@
       "bot_enabled": false,
       "last_synced": "2026-03-28T14:57:59.465Z",
       "added_at": "2026-03-28T14:57:59.465Z"
+    },
+    {
+      "phone": "5218991797533",
+      "jid": "5218991797533@s.whatsapp.net",
+      "name": "Adrian Neftalí Ramirez Calamaco",
+      "bot_enabled": true,
+      "last_synced": "2026-03-31T17:05:27.188Z",
+      "added_at": "2026-03-31T17:05:27.188Z"
+    },
+    {
+      "phone": "5218991633641",
+      "jid": "5218991633641@s.whatsapp.net",
+      "name": "Adrian",
+      "bot_enabled": true,
+      "last_synced": "2026-03-31T17:05:27.188Z",
+      "added_at": "2026-03-31T17:05:27.188Z"
+    },
+    {
+      "phone": "5218991564150",
+      "jid": "5218991564150@s.whatsapp.net",
+      "name": "Miriam Vargas Cardona",
+      "bot_enabled": true,
+      "last_synced": "2026-03-31T17:05:27.188Z",
+      "added_at": "2026-03-31T17:05:27.188Z"
+    },
+    {
+      "phone": "5218992257507",
+      "jid": "5218992257507@s.whatsapp.net",
+      "name": "Maria de Jesús Ramirez González",
+      "bot_enabled": true,
+      "last_synced": "2026-03-31T17:05:27.188Z",
+      "added_at": "2026-03-31T17:05:27.188Z"
     }
   ],
   "settings": {
@@ -14983,7 +15015,7 @@
       "active": true,
       "time": "07:04",
       "target_step": "AGENDA_CONFIRMADA",
-      "last_run": "2026-03-28"
+      "last_run": "2026-03-31"
     },
     "timezone": "America/Matamoros"
   },
@@ -15026,6 +15058,38 @@
       "keys": {
         "p256dh": "BLX5kaSnr8Xj6jOkpfNTTnQ_pF3b1CtaTeP1LSqF1Vbz0X-uws8wz7AlP8h9HNh6ivQ0pcHmKdCahaYHLV-UAxY",
         "auth": "0hJZbPYzhM1Ch3gkTbs28w"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/ccFcU-JMeIY:APA91bErGSwLa1V2LpRbmWdwL2QdO_HBN4lEX6pcb4lVd3WVcB8cdFzIPKWTcFBs7QWU9xx8Bgx6qvpTxMtVEh-p5_iRWPzGMPsNUpsPTri0TVRj6wFxWnSL_R14HNpj2oheS1b5LHLD",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BN0OH86G9a1S_r2ok1gZ0nnvpXPyUaORqMFeJalcdkR6UPK4ARxvafYs38TkL-1msknLFn1aru6kNbJ5WLuWmFo",
+        "auth": "sWohV6vSlq9BiUNySzUyRw"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fuA18BhJ0aQ:APA91bEqlAub3OIlHeF9YTV7LD-c7QDDW4Q-qcCoMSlhvqRqjwurLf01IwbgU1r7ejnnKimRC5SduWhigBI4-B3vYg-dQ4m4_wxHEcWs75dwr8xUbta4jBQxhBheSg7q-rpbP8eJHvHv",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BAinG5Wvi_9joHsPSFAir5qkMFlxR-1wyr19CtRrTKhUrsEIY0LjWAWbirbNQw2Bbd0J0l5h72zRe4yCJALToAo",
+        "auth": "lA-Qu6_G1U44J3cW5G2WIQ"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/dxoqAr05GMw:APA91bEWNsLRRkdMMN3GbbW4nK6sllaB_DytXospxxn_7Oavl00x0Gb-PbFyWESZ9u3tJn1oQG8spbVi_myoWNk-JkG-zqksf3NySpGe5s94vAJ5Dle2xt5wDSPPN4l45zwk1i3r1qwa",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BDtkyY3H62ED5sIaEaBwIgH-ZHcNau8U7zX5PGYVJjgAat5QZV-PxFj3O-Ql7C6lZQexE1-Np0oid4my96u8VrM",
+        "auth": "uqiwqH_Cgk-xPgjqLGx8yg"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fZph_2M9800:APA91bEHhm1Q1bUcd4xRmwtvPn9axXEV5s3wl8bzZd2DTtBQ6fiO7qBIfPXPICAEdwRy_PTf2_qv1IjFmG1ZMwGX5OHIDHLICbyOiV2awpRp0IiFEyvmrAlJpubs6SzdcIoKwdsCyi0a",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BPVVoYls1_z6ca4SrOIUPs8zTEzTy71ZrQexpBDK-bsLluqEXIvQgxhhO6yM9WvOo68noWTvcl9nQJg9m-o8WSU",
+        "auth": "pxEuFyysD9HMbf_vhMOk6g"
       }
     }
   ],
