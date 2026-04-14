@@ -15002,6 +15002,46 @@
       "bot_enabled": true,
       "last_synced": "2026-03-31T17:05:27.188Z",
       "added_at": "2026-03-31T17:05:27.188Z"
+    },
+    {
+      "phone": "5218991261289",
+      "jid": "5218991261289@s.whatsapp.net",
+      "name": "Perla Morales González",
+      "bot_enabled": true,
+      "last_synced": "2026-04-14T13:48:22.045Z",
+      "added_at": "2026-04-14T13:48:22.045Z"
+    },
+    {
+      "phone": "5218992170452",
+      "jid": "5218992170452@s.whatsapp.net",
+      "name": "Jhony Méndez Olaya",
+      "bot_enabled": true,
+      "last_synced": "2026-04-14T13:48:22.045Z",
+      "added_at": "2026-04-14T13:48:22.045Z"
+    },
+    {
+      "phone": "5218991566876",
+      "jid": "5218991566876@s.whatsapp.net",
+      "name": "Ma Catarina Cliente",
+      "bot_enabled": true,
+      "last_synced": "2026-04-14T13:48:22.045Z",
+      "added_at": "2026-04-14T13:48:22.045Z"
+    },
+    {
+      "phone": "5218991059132",
+      "jid": "5218991059132@s.whatsapp.net",
+      "name": "Pablo Villanueva Hernández",
+      "bot_enabled": true,
+      "last_synced": "2026-04-14T13:48:22.045Z",
+      "added_at": "2026-04-14T13:48:22.045Z"
+    },
+    {
+      "phone": "5218999506190",
+      "jid": "5218999506190@s.whatsapp.net",
+      "name": "HR Puertas De Forja",
+      "bot_enabled": true,
+      "last_synced": "2026-04-14T13:48:22.045Z",
+      "added_at": "2026-04-14T13:48:22.045Z"
     }
   ],
   "settings": {
@@ -15015,7 +15055,7 @@
       "active": true,
       "time": "07:04",
       "target_step": "AGENDA_CONFIRMADA",
-      "last_run": "2026-03-31"
+      "last_run": "2026-04-14"
     },
     "timezone": "America/Matamoros"
   },
@@ -15090,6 +15130,78 @@
       "keys": {
         "p256dh": "BPVVoYls1_z6ca4SrOIUPs8zTEzTy71ZrQexpBDK-bsLluqEXIvQgxhhO6yM9WvOo68noWTvcl9nQJg9m-o8WSU",
         "auth": "pxEuFyysD9HMbf_vhMOk6g"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/eYFlAxRh7t8:APA91bHF4NLZH77EAmJZwoeNOEWvc6rD7qUI7Toi3I81zWqUHhJp22wscX8Q_koXnBlv-I3udZc4Oe2uExEpDj_0q7eTwftRXE_a6IjwcJSoogK7KAtxqK5AAvIOIzdOGpFsSeCec5ld",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BHob__eUXkDMUzLdPlkrnJZIWKHT1ISU5HMjngIyFqk9NKxH6xP75B6XZeTGUSYqNQ8HOa8wokwmcgGJbNzB34A",
+        "auth": "qtryNVfL5dQ5kAOK-rWfLg"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fXCp0K4wLJM:APA91bHA_WfNiiRbwMaEGQLRQHfepyD8GdHa77GDPsH1fDgx-wyTfeRjDi-ev5vKNNPYHjYaO54P7zpoghivfPWC5yrvOG_9AnBEyBIXiokqZfP_uD1lacWZ_l-NTA10zfwA82GRfUCx",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BF9UBtPP50UdO_vcMOu5Sg2edRQCtnvsCJBZtILc5TLqsCL1Fuv9xYkBv8wXG86tReBmnV-53Qnfo1ntplMG2Vg",
+        "auth": "bURM9p_Uthc5aXcE7WcpqQ"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/f0FBEc39eDE:APA91bHn7sFo-aDig11C0rXTtGBpzjeecQEOjqhHX8eyTWFG3LpT2WU-9gKjJ0P86VjcUlVF2NGN0tmcCTKafu29vqbN-O6WrVpPv3NESX18HjuIIS9V7Wgb2RsOmYXAK_2-jQCpfd2w",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BDTEFdaVgMzENTc1wLgn9T99k1O83Sxl6LXD9fBtf1mFHgXYVARJykMmqi_kwuah6w1FqmlLNpCRMhidnoeR3Qk",
+        "auth": "5Yn9hhxc_hrEDadxTIZifQ"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fZ_lZI80EHo:APA91bHE2NyPSLVRxbssF1f-fF8PtiBXsKmMNflHK4ypBLA0s4pYd7zjucJ7SY2mf6-1c_baV7MMppyRB8ixzmu4xWL7RJdGFPYNtz7NtI1KHczDrmMhNt4SOk8rEOQis1pF35inYRVy",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BJ9Qci9NaTOOlF5-k5ymQyEyGhKlK63HWgfQKnWboA3m9Ana3Wl67nA0jQyYyRgsMfwxOhdgGCR6UEG3K8kAo1c",
+        "auth": "dzeayF7Rhml2EJ2zeQdrKA"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fUKatIgVHVM:APA91bGIiR3UyKjQ8LncAHP03NP7NJoKj3Z4tT4bxaRhDo5jBb0bxMC82Y-wXttH_Mupq0FltRqD4PkjvGQ9ZhHGOA0RNM9ULCdsSaucgJBsXxwwg06q29wsK1mxG9oICijM3-uq_4LO",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BEKJ8LiHPANTrrSTAKXIBDo-nQOE-r-OX8SbT-9fRcKQ69nrQjHq6yW6toKpma2wILlK6gED4cesVSB7V__xZBg",
+        "auth": "9KzW7DINKsDYfVeRxgh8PQ"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fJjXTc6Mfbs:APA91bGinWBuXoMzFzIFdw5UBzT72S1Oh-BKd7vphsm757IYXOMjd6-_Po1Flm8pwT6RDPOh0zxmtKpxw34rq7M5Fu0_jP35tYfRLsaeHwIW2VUqqgC3tm4PrGFN8b7wPbw8cSuo4vuI",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BGBxrmu6L5lb7spGiLpz-QACzEXTkPj59O3lhDAyhDYq1atGLa2Fkpn-Z0W9_uFlFImP9FFt3MX2AUzoKLSpoNk",
+        "auth": "AnPBosHRS3a3QDLWHxXSnA"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/dk38B7vwg3k:APA91bE9N5AOK9w9LYXCI5ThKeVMeemKUXCGqwZfpqMG4RfNNCDvd5TeO6MwqxL0UgemwmstxkpS9B7Q7jsxnfWRm7Cx_HcEFTHG_mUKLcVIPrWPfGpmCSz8P-v7di06oh4mBfWcc2nJ",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BMO4uS4hGGOSxTz4MbQUobxH86Wrl34YvolxUb0PanPn5A5ImKfGTaY8N2Y2tgJgeeHi_ERVxgia1TAE5beOqLo",
+        "auth": "R6CQsTG1gcH0MgLJ_bR2ag"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/fG1LYMyA46A:APA91bFhtxiNkjlmCZmZIOuIWPnlH3P9UfDkk14Z7mwAUu9TJn6PJuSougr_GoGjntFsIgeJZtMlhk4z4m5iYFngQw0OekT0A2HoGF7vldVVv2qjGhdkyZ9nPu6lOuBLrW5FyvaybPzR",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BCY9V44Be6mZH0ljW23sSkDSQD9km5OKUXSGai9WzWKIjFse-YUhlnM5y9-yFTmz5Bh8ED9gHzr60sNJimfAWr0",
+        "auth": "MrdyVT2ebQ1JWdUVJSIdcQ"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/eC3AqjKwnQw:APA91bHsdqoQiCMeBmPhd5mgF-_RAW7qemxEhumubR7TCWpZGMlDinyO8-dBu3B-qjJy4EsfHZCLuF8xRs45ilwRWxYLvFIiLDDWkWNCuwnzpqhUCYz7JjeLZv-knVQI87IMcN5gijRf",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BH5GrTB9LPj7-_l87Bs3pPlit-PfKbusTHjO6-Lh2OmVPtpU7bGZmgbXyWIL4HJPd-PawPbt3zDvZcuYgco394M",
+        "auth": "_ChxQ0ZyJvnD9nTtHB2yTg"
       }
     }
   ],
