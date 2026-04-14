@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const { updateUser, getUser, getSettings } = require('../database');
+const { updateUser, getUser, getSettings, getKeywords, saveKeyword } = require('../database');
 const { analyzeNaturalLanguage } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
 const { isValidName, isValidBirthDate, normalizeName, normalizeDate } = require('./validators');
+
 const getAgendaLocal = () => {
     try {
         const agendaPath = path.join(__dirname, '../../data/agenda.json');
@@ -23,6 +24,41 @@ const basicClean = (str) => {
 };
 
 const numberEmojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+
+const isQuestion = (rawText) => {
+    if (!rawText) return false;
+    if (rawText.includes('?') || rawText.includes('¿')) return true;
+
+    const clean = basicClean(rawText);
+    const keywords = ['como', 'cuando', 'donde', 'por que', 'cuanto', 'precio', 'costo', 'aceptan', 'tienen', 'requisito', 'duda'];
+    const regex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'i');
+    return regex.test(clean);
+};
+
+async function handleDudaPendiente(rawText, user, dbKey, remoteJid, sock, instruction) {
+
+    try {
+        const todasLasReglas = getKeywords();
+        const yaExiste = todasLasReglas.find(regla => regla.keywords === rawText);
+        
+        if (!yaExiste) {
+            saveKeyword({
+                id: 'kw_' + Date.now(),
+                keywords: rawText,
+                answer: ""
+            });
+            console.log(`🧠 Nueva duda enviada al panel de aprendizaje: "${rawText}"`);
+        }
+    } catch (err) {
+        console.error("Error al guardar la duda en el panel de Respuestas Rápidas:", err);
+    }
+
+    const msgDuda = `¡Buena pregunta! 🧐\n\nHe guardado tu duda para que un asesor te la resuelva al terminar.\n\n${instruction}`;
+
+    if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, msgDuda);
+    else await sock.sendMessage(remoteJid, { text: msgDuda });
+    return null;
+}
 
 async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg) {
     user.error_count = (user.error_count || 0) + 1;
@@ -70,7 +106,7 @@ async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     if (isNumber) {
         const index = parseInt(userText) - 1;
         if (stepConfig.options && stepConfig.options[index]) {
-            if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores
+            if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); 
             return stepConfig.options[index].next_step;
         }
     }
@@ -87,7 +123,7 @@ async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
             });
 
             if (matches.length === 1) {
-                if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores
+                if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 });
                 return matches[0].next_step;
             }
 
@@ -98,7 +134,12 @@ async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
         }
     }
 
-    // 3. Fallo total (No coincidió nada)
+    // 🔥 3. PARACAÍDAS PARA DUDAS (Si no acertó a una opción, revisamos si preguntó algo)
+    if (isQuestion(text)) {
+        return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, elige una de las opciones válidas del menú para continuar con tu trámite.");
+    }
+
+    // 4. Fallo total (No coincidió nada y no es duda)
     return await processError(stepConfig, user, dbKey, remoteJid, sock, `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`);
 }
 
@@ -106,33 +147,51 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const varName = stepConfig.save_var || 'temp';
 
     if (varName === 'nombre') {
-        const cleanName = normalizeName(text); // 1. Limpiamos: "juan perez" -> "Juan Perez"
-        if (!isValidName(cleanName)) {         // 2. Validamos el nombre ya limpio
+        const cleanName = normalizeName(text);
+        if (!isValidName(cleanName)) {
+            // Si el nombre no es válido, revisamos si es porque nos hizo una pregunta
+            if (isQuestion(text)) {
+                return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, escribe solo tu nombre completo para continuar.");
+            }
             return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.");
         }
-        text = cleanName; // 3. ¡Sobreescribimos el texto original para guardar la versión bonita!
+        text = cleanName; 
     }
 
     if (varName === 'fecha_nacimiento') {
-        const cleanDate = normalizeDate(text); // 1. Limpiamos: "9 de junio del 98" -> "09/06/1998"
-        if (!isValidBirthDate(cleanDate)) {    // 2. Validamos que la fecha tenga sentido matemático
+        const cleanDate = normalizeDate(text); 
+        if (!isValidBirthDate(cleanDate)) {
+            // Si la fecha falla, revisamos si fue una pregunta
+            if (isQuestion(text)) {
+                return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, escribe tu fecha en formato DD/MM/AAAA para continuar.");
+            }
             return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)");
         }
-        text = cleanDate; // 3. ¡Sobreescribimos para guardar la versión de 8 dígitos perfectos!
+        text = cleanDate; 
     }
 
-    // Éxito: Guardamos variable normalizada y limpiamos posibles errores previos
+    // Para inputs que no tienen reglas estrictas (como "correo" o "notas"), escaneamos por precaución
+    if (varName !== 'nombre' && varName !== 'fecha_nacimiento' && isQuestion(text)) {
+        return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, ingresa el dato solicitado para avanzar.");
+    }
+
     if (!user.history) user.history = {};
     user.history[varName] = text;
     
     const updates = { history: user.history };
-    if (user.error_count > 0) updates.error_count = 0; // Limpiar errores
+    if (user.error_count > 0) updates.error_count = 0; 
     await updateUser(dbKey, updates);
     
     return stepConfig.next_step;
 }
 
 async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, msg) {
+    
+    // Paracaídas para el módulo de citas
+    if (isQuestion(text)) {
+        return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, indícame la fecha o la hora en la que te gustaría agendar tu cita.");
+    }
+
     console.log(`🧠 Analizando Cita: "${text}"`);
     const analysis = analyzeNaturalLanguage(text);
 
@@ -259,13 +318,13 @@ async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, ms
     }
 
     if (stepConfig.next_step) {
-        if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores al tener éxito
+        if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); 
         return stepConfig.next_step; 
     } else {
         const txt = `✅ Cita confirmada: ${friendlyDate(fechaMemoria)} a las ${horaMemoria}`;
         if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, txt);
         else await sock.sendMessage(remoteJid, { text: txt });
-        if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); // Limpiar errores
+        if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); 
         return null;
     }
 }

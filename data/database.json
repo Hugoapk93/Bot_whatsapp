@@ -94,181 +94,6 @@
       "phone": "65356567699524",
       "messages": [
         {
-          "text": "Ok",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1773502381343,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Al final responderé cualquier duda, por favor elige alguna de estas opciones para terminar la encuesta:\n\nPor favor responde solo con el número de la *opción* que necesitas:\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito\n",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773502386034,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Hola",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1773502884612,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Ntp, en este momento te transfiero con un asesor para que atienda tus dudas.",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773502890425,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "Hola Hugo Alberto Martinez García, ¿cómo se encuentra hoy?\nDígame, ¿en qué puedo ayudarle?",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773502892456,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773503307633,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Ok",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1773503433136,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Por favor elige una de las siguientes opciones:\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito\n",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773503437840,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Bien",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1773503455699,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Al final responderé cualquier duda, por favor elige alguna de estas opciones para terminar la encuesta:\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito\n",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773503460385,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "No",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1773503482169,
-          "stepId": "BIENVENIDA"
-        },
-        {
-          "text": "Ntp, en este momento te transfiero con un asesor para que atienda tus dudas.",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773503486872,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "Hola Hugo Alberto Martinez García, ¿cómo se encuentra hoy?\nDígame, ¿en qué puedo ayudarle?",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1773503488895,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "Hola",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1774276086100,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "¡Buenas tardes! Bienvenido a Elektra Motos Reynosa. 🏍️\n\nSoy Hugo Martínez, asesor autorizado de Banco Azteca.\n\n¿En qué te puedo ayudar hoy?\n\n1️⃣ Solicitar un préstamo nuevo\n2️⃣ Seguimiento a mi solicitud\n3️⃣ Ya tengo crédito",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1774276086136,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "4",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1774276086150,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "Por favor responde solo con el número de la *opción* que necesitas:\n\n1️⃣ Solicitar un préstamo nuevo\n2️⃣ Seguimiento a mi solicitud\n3️⃣ Ya tengo crédito\n",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1774276086163,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "4",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1774276086181,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "Para continuar necesito que elijas una de estas opciones *escribiendo el número.*\n\nAsí podré ayudarte más rápido. 👍\n\n1️⃣ Solicitar un préstamo nuevo\n2️⃣ Seguimiento a mi solicitud\n3️⃣ Ya tengo crédito\n",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1774276086194,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "Ok",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1774276086207,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "No te preocupes 👍\n\nTe voy a pasar con un asesor para que pueda ayudarte directamente y resolver tus dudas.\n\nUn momento por favor…",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1774276086220,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "¡Buenas tardes! Bienvenido a Elektra Motos Reynosa. 🏍️\n\nSoy Hugo Martínez, asesor autorizado de Banco Azteca.\n\n¿En qué te puedo ayudar hoy?\n\n1️⃣ Solicitar un préstamo nuevo\n2️⃣ Seguimiento a mi solicitud\n3️⃣ Ya tengo crédito",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1774276086233,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "1",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1774276086246,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "1",
-          "mediaUrl": null,
-          "fromMe": true,
-          "timestamp": 1774276086259,
-          "stepId": "ATENCIÓN"
-        },
-        {
-          "text": "¡Excelente! ¿Qué tipo de préstamo te interesa?\n\n1️⃣ Préstamo en efectivo 💵\n2️⃣ Préstamo para Moto 🛵",
-          "mediaUrl": null,
-          "fromMe": false,
-          "timestamp": 1774276086272,
-          "stepId": "ATENCIÓN"
-        },
-        {
           "text": "1",
           "mediaUrl": null,
           "fromMe": true,
@@ -596,20 +421,195 @@
           "fromMe": true,
           "timestamp": 1774977890333,
           "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Gjsjfjgndndnfnfncndgnfndnckfkfkdkfg",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197331241,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Gnfjdjfjgkdjrkgkdkengncksks",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197331254,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Nfnfjdjgjfndjfjrkcnc",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197331267,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "kflfld;gf;kjdkj",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197356964,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "sjkslkjijvoinoer;;lnn",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197361343,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Por favor elige una de las siguientes opciones:\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito\n",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197366274,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "fjskkvkffheuslnvsdkt",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197366427,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Al final responderé cualquier duda, por favor elige alguna de estas opciones para terminar la encuesta:\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito\n",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197371108,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "fksjglkjdslkjdflkjs",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197401602,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "fddslvknvrsdf",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197403935,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "sdlhgrhuvsdonvous",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197406595,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "vdohglshdsddlhgrihvsd",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197409667,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "sdlhgsjhsdiohbsddhgrwr",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776197413040,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Ntp, en este momento te transfiero con un asesor para que atienda tus dudas.",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197417755,
+          "stepId": "ATENCIÓN"
+        },
+        {
+          "text": "Hola Hugo Alberto Martinez García, ¿cómo se encuentra hoy?\nDígame, ¿en qué puedo ayudarle?",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197419784,
+          "stepId": "ATENCIÓN"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197466644,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "👋 ¡Hola!\nBienvenid@ a Elektra Motos Reynosa.\nSoy Hugo Martínez, asesor de crédito de Banco Azteca, y estoy aquí para ayudarte.\n\n👉 Cuéntame, ¿qué tipo de préstamo te interesa?\n\n\n1️⃣ Préstamo en efectivo\n2️⃣ Préstamo para Moto\n3️⃣ Ya tengo crédito",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776198731915,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "1",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776198737114,
+          "stepId": "BIENVENIDA"
+        },
+        {
+          "text": "Excelente ✨\nPor favor envíame los siguientes datos para validar tu información:\n\n• Nombre completo.",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776198743835,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "hugi",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776198769964,
+          "stepId": "EFECTIVO"
+        },
+        {
+          "text": "Muy bien Hugi ahora su:\n\n• Fecha de nacimiento.",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776198792392,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "tengo una duda, checan buro?",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776203635933,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "¡Buena pregunta! 🧐\n\nHe guardado tu duda para que un asesor te la resuelva al terminar.\n\nPor favor, ingresa el dato solicitado para avanzar.",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776203641436,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "revisan buro?",
+          "mediaUrl": null,
+          "fromMe": false,
+          "timestamp": 1776203683727,
+          "stepId": "FECHA_DE_NACIMIENTO"
+        },
+        {
+          "text": "¡Buena pregunta! 🧐\n\nHe guardado tu duda para que un asesor te la resuelva al terminar.\n\nPor favor, ingresa el dato solicitado para avanzar.",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776203688418,
+          "stepId": "FECHA_DE_NACIMIENTO"
         }
       ],
-      "last_active": "2026-03-31T17:24:50.333Z",
+      "last_active": "2026-04-14T21:54:48.418Z",
       "jid": "65356567699524@lid",
-      "current_step": "BIENVENIDA",
+      "current_step": "FECHA_DE_NACIMIENTO",
       "history": {
-        "nombre": "Hugo Alberto Martinez García",
+        "nombre": "Hugo",
         "nacimiento": "27/12/1993",
         "dirección": "Hacienda del sol",
         "fecha": "2026-03-28",
         "hora": "14:00"
       },
-      "name": "Hugo Alberto Martinez García",
-      "bot_enabled": false,
+      "name": "Hugo",
+      "bot_enabled": true,
       "error_count": 0
     },
     {
@@ -928,6 +928,19 @@
       "last_active": "2026-03-13T20:50:04.461Z",
       "jid": "5216145527378@s.whatsapp.net",
       "current_step": "BIENVENIDA"
+    },
+    {
+      "phone": "44522318880835",
+      "messages": [
+        {
+          "text": "¡Hola! 👋 Me interesa cotizar una motocicleta con Elektra Motos. ¿Me podrían compartir los requisitos, por favor?",
+          "mediaUrl": null,
+          "fromMe": true,
+          "timestamp": 1776197330760,
+          "stepId": "INICIO"
+        }
+      ],
+      "last_active": "2026-04-14T20:08:50.760Z"
     }
   ],
   "contacts": [
@@ -14758,9 +14771,9 @@
     {
       "phone": "65356567699524",
       "jid": "65356567699524@s.whatsapp.net",
-      "name": "Hugo Alberto Martinez García",
-      "bot_enabled": false,
-      "last_synced": "2026-03-31T17:24:50.283Z",
+      "name": "Hugo",
+      "bot_enabled": true,
+      "last_synced": "2026-04-14T21:53:14.777Z",
       "added_at": "2026-02-25T18:21:38.098Z"
     },
     {
@@ -15042,6 +15055,14 @@
       "bot_enabled": true,
       "last_synced": "2026-04-14T13:48:22.045Z",
       "added_at": "2026-04-14T13:48:22.045Z"
+    },
+    {
+      "phone": "5218999418013",
+      "jid": "5218999418013@s.whatsapp.net",
+      "name": "Mario Baz",
+      "bot_enabled": true,
+      "last_synced": "2026-04-14T20:08:50.389Z",
+      "added_at": "2026-04-14T20:08:50.389Z"
     }
   ],
   "settings": {
@@ -15202,6 +15223,14 @@
       "keys": {
         "p256dh": "BH5GrTB9LPj7-_l87Bs3pPlit-PfKbusTHjO6-Lh2OmVPtpU7bGZmgbXyWIL4HJPd-PawPbt3zDvZcuYgco394M",
         "auth": "_ChxQ0ZyJvnD9nTtHB2yTg"
+      }
+    },
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/eq9V_Uzjvhw:APA91bF5Ogfk9BSalrBq8JIxBdPcDJTnqQFwJb56VV5k7ACraNvy44-imR-cS5_YCg9xa5G8QU0BJQgxDo7c6a3aUVeteEXsyEkgLv3wYYQePAb8ChEq4C-mdqmU5r-TBjtRBazb3TqW",
+      "expirationTime": null,
+      "keys": {
+        "p256dh": "BFj-GiqcaAm-TURA2qpsX4mLeiIrzCbcoAPyy-dBHq0f-eISZEnC23KmQama6L_OIJi8qgi2bPUVgyt5M-_dk_Y",
+        "auth": "5Yo-hVJ1GR754WCaootSyg"
       }
     }
   ],
@@ -16569,9 +16598,14 @@
   },
   "keywords": [
     {
-      "keywords": "Gola",
-      "answer": "Gksls",
-      "id": "1773077448517"
+      "keywords": "tengo una duda, checan buro?",
+      "answer": "Sí revisamos buró de crédito.",
+      "id": "kw_1776203640499"
+    },
+    {
+      "id": "kw_1776203688280",
+      "keywords": "revisan buro?",
+      "answer": ""
     }
   ]
 }

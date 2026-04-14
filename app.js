@@ -100,6 +100,70 @@ let connectionStatus = 'disconnected';
 const userMessageBuffers = new Map();
 const userMessageTimers = new Map();
 
+// 🔥 FUNCIÓN CENTRALIZADA PARA PROCESAR EL TEXTO AGRUPADO 🔥
+async function procesarMensajeAgrupado(incomingPhoneRaw, sock) {
+    if (!userMessageTimers.has(incomingPhoneRaw)) return;
+    
+    const timerData = userMessageTimers.get(incomingPhoneRaw);
+    const finalMsg = timerData.msg;
+    const bufferInfo = userMessageBuffers.get(incomingPhoneRaw);
+    
+    if (!bufferInfo || bufferInfo.length === 0) {
+        userMessageTimers.delete(incomingPhoneRaw);
+        return;
+    }
+
+    const joinedText = bufferInfo.join(' ');
+    userMessageBuffers.delete(incomingPhoneRaw);
+    userMessageTimers.delete(incomingPhoneRaw);
+
+    console.log(`📦 Mensaje agrupado de ${incomingPhoneRaw}: "${joinedText}"`);
+
+    if (finalMsg.message.extendedTextMessage) {
+        finalMsg.message.extendedTextMessage.text = joinedText;
+    } else if (finalMsg.message.conversation) {
+        finalMsg.message.conversation = joinedText;
+    } else {
+        finalMsg.message = { conversation: joinedText };
+    }
+
+    const keywordMatch = findKeywordMatch(joinedText);
+    const remoteJid = finalMsg.key.remoteJid;
+
+    if (keywordMatch) {
+        console.log(`🧠 Interceptor activado: "${keywordMatch.keywords}"`);
+        await sock.sendMessage(remoteJid, { text: keywordMatch.answer });
+        const userState = getUser(incomingPhoneRaw);
+        setTimeout(async () => {
+            await sendStepMessage(sock, remoteJid, userState.current_step || 'INICIO', userState);
+        }, 1000);
+        return; 
+    }
+
+    try {
+        await handleMessage(sock, finalMsg);
+
+        const postFlowUser = getUser(incomingPhoneRaw);
+        if (postFlowUser && postFlowUser.history) {
+            const capturedName = postFlowUser.history.nombre ||
+                                 postFlowUser.history.cliente ||
+                                 postFlowUser.history.usuario;
+
+            const allContacts = getAllContacts();
+            let contactConfig = allContacts.find(c => c.phone === incomingPhoneRaw);
+
+            if (capturedName && contactConfig && contactConfig.name !== capturedName) {
+                addManualContact(incomingPhoneRaw, capturedName, contactConfig.bot_enabled);
+                await updateUser(incomingPhoneRaw, { name: capturedName });
+                if (global.io) global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
+                contactConfig.name = capturedName;
+            }
+        }
+    } catch (err) {
+        console.error("Error procesando mensaje:", err);
+    }
+}
+
 async function reportToTower() {
     try {
         await fetch(TOWER_URL, {
@@ -172,6 +236,29 @@ async function connectToWhatsApp() {
 
     sock.ev.on('creds.update', saveCreds);
 
+    sock.ev.on('presence.update', (m) => {
+        const fullJid = m.id; // Necesitamos el ID completo con @s.whatsapp.net
+        const incomingPhoneRaw = fullJid.replace(/[^0-9]/g, '');
+        
+        // Buscamos el estado usando el ID completo
+        const estado = m.presences[fullJid]?.lastKnownPresence; 
+
+        if (userMessageTimers.has(incomingPhoneRaw) && estado) {
+            const timerData = userMessageTimers.get(incomingPhoneRaw);
+            
+            if (estado === 'composing') {
+                clearTimeout(timerData.timer);
+                timerData.timer = setTimeout(() => procesarMensajeAgrupado(incomingPhoneRaw, globalSock), 10000);
+                console.log(`⏱️ Extendiendo tiempo para ${incomingPhoneRaw} (Está escribiendo...)`);
+            } 
+            else if (estado === 'paused') {
+                clearTimeout(timerData.timer);
+                console.log(`⚡ Procesando rápido a ${incomingPhoneRaw} (Dejó de escribir)`);
+                procesarMensajeAgrupado(incomingPhoneRaw, globalSock);
+            }
+        }
+    });
+
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
@@ -227,7 +314,6 @@ async function connectToWhatsApp() {
         for (const msg of messages) {
             if (!msg.message) continue;
             
-            // 🔥 IGNORAR MENSAJES DEL SISTEMA (EJ. VERSIÓN DESACTUALIZADA) 🔥
             if (msg.message.protocolMessage || msg.messageStubType) {
                 console.log(`🚫 Ignorando mensaje interno/sistema de WhatsApp.`);
                 continue;
@@ -263,7 +349,6 @@ async function connectToWhatsApp() {
                 });
             }
 
-            // 🔥 MAGIA: DESCARGAR LA IMAGEN REAL SI EXISTE 🔥
             let imageUrl = null;
             let msgText = msg.message?.conversation ||
                           msg.message?.extendedTextMessage?.text ||
@@ -291,7 +376,6 @@ async function connectToWhatsApp() {
 
             const now = new Date().toISOString();
             
-            // GUARDAMOS LA IMAGEN REAL EN LA BASE DE DATOS
             currentUser.messages.push({
                 text: msgText,
                 mediaUrl: imageUrl,
@@ -327,75 +411,28 @@ async function connectToWhatsApp() {
             if (isMe) continue; 
             if (contactConfig && contactConfig.bot_enabled === false) continue;
 
-            // SOLO PROCESAMOS TEXTO EN EL BOT, IGNORAMOS SI MANDÓ PURA IMAGEN
             if (msgText.trim()) {
                 if (!userMessageBuffers.has(incomingPhoneRaw)) {
                     userMessageBuffers.set(incomingPhoneRaw, []);
                 }
                 userMessageBuffers.get(incomingPhoneRaw).push(msgText);
+
+                try { await sock.presenceSubscribe(remoteJid); } catch (e) {}
             }
 
             if (userMessageTimers.has(incomingPhoneRaw)) {
-                clearTimeout(userMessageTimers.get(incomingPhoneRaw));
+                clearTimeout(userMessageTimers.get(incomingPhoneRaw).timer);
             }
 
-            userMessageTimers.set(incomingPhoneRaw, setTimeout(async () => {
-                
-                const bufferInfo = userMessageBuffers.get(incomingPhoneRaw);
-                
-                // Si fue pura imagen (sin texto), detenemos el bot para no decir "Opción no válida"
-                if (!bufferInfo || bufferInfo.length === 0) {
-                    userMessageTimers.delete(incomingPhoneRaw);
-                    return;
-                }
+            // Guardamos el timeout Y la referencia al último mensaje para poder usarlo después
+            const nuevoTimer = setTimeout(() => {
+                procesarMensajeAgrupado(incomingPhoneRaw, sock);
+            }, 4500); // Mantenemos 4.5 segundos como red de seguridad por defecto
 
-                const joinedText = bufferInfo.join(' ');
-                userMessageBuffers.delete(incomingPhoneRaw);
-                userMessageTimers.delete(incomingPhoneRaw);
-
-                console.log(`📦 Mensaje agrupado de ${incomingPhoneRaw}: "${joinedText}"`);
-
-                const finalMsg = msg; 
-                if (finalMsg.message.extendedTextMessage) {
-                    finalMsg.message.extendedTextMessage.text = joinedText;
-                } else if (finalMsg.message.conversation) {
-                    finalMsg.message.conversation = joinedText;
-                } else {
-                    finalMsg.message = { conversation: joinedText };
-                }
-
-                const keywordMatch = findKeywordMatch(joinedText);
-                if (keywordMatch) {
-                    console.log(`🧠 Interceptor activado: "${keywordMatch.keywords}"`);
-                    await sock.sendMessage(remoteJid, { text: keywordMatch.answer });
-                    const userState = getUser(incomingPhoneRaw);
-                    setTimeout(async () => {
-                        await sendStepMessage(sock, remoteJid, userState.current_step || 'INICIO', userState);
-                    }, 1000);
-                    return; 
-                }
-
-                try {
-                    await handleMessage(sock, finalMsg);
-
-                    const postFlowUser = getUser(incomingPhoneRaw);
-                    if (postFlowUser && postFlowUser.history) {
-                        const capturedName = postFlowUser.history.nombre ||
-                                             postFlowUser.history.cliente ||
-                                             postFlowUser.history.usuario;
-
-                        if (capturedName && contactConfig.name !== capturedName) {
-                            addManualContact(incomingPhoneRaw, capturedName, contactConfig.bot_enabled);
-                            await updateUser(incomingPhoneRaw, { name: capturedName });
-                            if (global.io) global.io.emit('user_update', { phone: incomingPhoneRaw, name: capturedName });
-                            contactConfig.name = capturedName;
-                        }
-                    }
-                } catch (err) {
-                    console.error("Error procesando mensaje:", err);
-                }
-
-            }, 4500));
+            userMessageTimers.set(incomingPhoneRaw, {
+                timer: nuevoTimer,
+                msg: msg
+            });
         }
     });
 }
@@ -454,7 +491,6 @@ app.post('/api/send-message', async (req, res) => {
         if (user) {
             if(!user.messages) user.messages = [];
             
-            // GUARDAR IMAGEN ENVIADA DESDE EL CRM
             user.messages.push({
                 text: text || '',
                 mediaUrl: mediaUrl || null,
@@ -639,4 +675,3 @@ server.listen(PORT, () => {
     connectToWhatsApp();
     reportToTower();
 });
-
