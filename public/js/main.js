@@ -18,6 +18,13 @@
     // --- VARIABLES PARA RESPUESTAS Y MULTIMEDIA ---
     let currentEditKwId = null;
     let pendingMediaFile = null;
+    let renderListTimer = null;
+    function smartRenderChats() {
+        clearTimeout(renderListTimer);
+        renderListTimer = setTimeout(() => {
+            filterChats(currentSearchQuery);
+        }, 150); 
+    }
 
     // --- SOCKET.IO ---
     const socket = io({ reconnection: true });
@@ -41,7 +48,7 @@
                 const cleanDb = u.realDbPhone ? String(u.realDbPhone).replace(/\D/g, '') : '';
                 return cleanPhone === targetPhoneKey || cleanDb === targetPhoneKey;
             });
-            
+
             if (userMem) {
                 if (!userMem.messages) userMem.messages = [];
                 userMem.messages.push({
@@ -52,12 +59,12 @@
                     mediaUrl: data.mediaUrl || null
                 });
 
-                userMem.last_message = realText || (data.mediaUrl ? '📷 Imagen' : '');
+                                userMem.last_message = realText || (data.mediaUrl ? '📷 Imagen' : '');
                 userMem.last_active = new Date().toISOString();
                 if (data.stepId) userMem.current_step = data.stepId;
             }
 
-            filterChats(currentSearchQuery);
+            smartRenderChats();
         }
 
         if (currentChatPhone) {
@@ -96,14 +103,14 @@
 
         if (userIndex !== -1) {
             users[userIndex] = { ...users[userIndex], ...data };
-            if (data.name) {
+                        if (data.name) {
                 users[userIndex].savedName = data.name;
                 if (!users[userIndex].history) users[userIndex].history = {};
                 users[userIndex].history.nombre = data.name;
             }
         }
 
-        renderChatList(users);
+        smartRenderChats();
 
         if (currentChatPhone && getCleanPhone(currentChatPhone) === targetPhone) {
             if (data.name) {
@@ -122,7 +129,9 @@
         if (!exists) {
             newUser.savedName = newUser.name || newUser.phone;
             users.unshift(newUser); 
-            renderChatList(users);
+
+            smartRenderChats();
+
             showInAppNotify(`Nuevo cliente: ${newUser.savedName}`);
         }
     });
@@ -717,7 +726,6 @@
                 qrContainer.style.display = 'none';
             }
 
-            // 🔥 NUEVO: Despertar al bot automáticamente al forzar el paso
             const botSwitch = document.getElementById('waBotSwitch');
             if (botSwitch && !botSwitch.checked) {
                 botSwitch.checked = true; // Encendemos el switch visualmente
@@ -880,7 +888,6 @@
     // --- FLUJO Y EDITOR (ACTUALIZADO CON TABS) ---
     let flowPath = [];
 
-    // 🔥 NUEVA FUNCION: Manejar las pestañas del editor
     function switchTab(tab) {
         document.getElementById('tabBtn-main').classList.remove('active');
         document.getElementById('tabBtn-errors').classList.remove('active');
@@ -1129,8 +1136,7 @@
         
         document.getElementById('editorModal').classList.add('active');
     }
-    
-    // 🔥 ACTUALIZADO PARA USAR EL DISEÑO NUEVO DE FOTOS (THUMB-WRAP)
+
     function renderGallery() {
         const c = document.getElementById('galleryContainer'); 
         c.innerHTML = '';
