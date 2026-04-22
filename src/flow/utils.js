@@ -21,8 +21,8 @@ const getEditDistance = (a, b) => {
 const normalizeText = (str) => {
     if (!str) return "";
     return str.toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos (sí -> si)
-        .replace(/[^a-z0-9 ]/g, "")  // Solo letras y números
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+        .replace(/[^a-z0-9 ]/g, "")  
         .trim()
         .replace(/\s+/g, ' '); 
 };
@@ -67,16 +67,13 @@ const analyzeNaturalLanguage = (text) => {
 
     // --- A. DETECCIÓN DE FECHA ---
     
-    // Diccionario para meses en texto
     const monthMap = {
         'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
         'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
         'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
     };
 
-    // 1. Regex para fechas humanas: "28 de marzo" o "5 abril del 26"
     const naturalDateRegex = /\b(\d{1,2})\s+(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+(?:de|del)\s+(\d{2,4}))?\b/;
-    // 2. Regex para fechas numéricas: "28/03/2026" o "28-03"
     const numericDateRegex = /\b(\d{1,2})[\/\-\.](\d{1,2})(?:[\/\-\.](\d{2,4}))?\b/;
 
     const naturalMatch = lower.match(naturalDateRegex); 
@@ -93,7 +90,6 @@ const analyzeNaturalLanguage = (text) => {
 
         response.date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
         
-        // Borramos la fecha del string para no confundir a la hora
         strForTime = strForTime.replace(naturalDateRegex, ' ');
     }
     else if (numericMatch) {
@@ -110,7 +106,6 @@ const analyzeNaturalLanguage = (text) => {
         strForTime = strForTime.replace(numericDateRegex, ' ');
     }
     else {
-        // Buscamos días de la semana PRIMERO (Lunes, Martes, etc.)
         let dayFound = false;
         const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
         for (let i = 0; i < dias.length; i++) {
@@ -127,7 +122,6 @@ const analyzeNaturalLanguage = (text) => {
             }
         }
 
-        // Si no detectó ningún día de la semana, buscamos "hoy" o "mañana"
         if (!dayFound) {
             if (lower.includes('pasado manana')) {
                 targetDate.setDate(todayMx.getDate() + 2);
@@ -137,7 +131,6 @@ const analyzeNaturalLanguage = (text) => {
                 response.date = formatDate(targetDate);
             }
             else if (lower.includes('manana')) {
-                // Candados para que "10 de la mañana" no cambie el día
                 if (!lower.includes('en la manana') && 
                     !lower.includes('por la manana') && 
                     !lower.includes('de la manana') && 
@@ -149,41 +142,73 @@ const analyzeNaturalLanguage = (text) => {
         }
     }
 
-    // --- B. DETECCIÓN DE HORA ---
-    const exactTimeMatch = strForTime.match(/\b([01]?[0-9]|2[0-3]):([0-5][0-9])\b/); // ej: 16:00
-    const ampmMatch = strForTime.match(/\b(1[0-2]|[1-9])\s*(am|pm|a\.m\.|p\.m\.)\b/i); // ej: 4 pm
-    const coloquialMatch = strForTime.match(/\b([01]?[0-9]|2[0-3])\s*(?:de la|en la|por la)\s*(manana|tarde|noche)\b/i);
-    const aLasMatch = strForTime.match(/a\s*l[a|o]s\s*([01]?[0-9]|2[0-3])\b/); // ej: a las 4
-    const hrsMatch = strForTime.match(/\b([01]?[0-9]|2[0-3])\s*(hrs|horas)\b/); // ej: 16 hrs
-
+    // --- B. DETECCIÓN DE HORA (NUEVA LÓGICA INTELIGENTE) ---
     let h = null, m = '00';
+    let isPM = false;
+    let isAM = false;
 
-    if (exactTimeMatch) {
-        h = parseInt(exactTimeMatch[1]);
-        m = exactTimeMatch[2];
+    // Estandarizamos los indicadores para no batallar con los puntos
+    const timeStr = strForTime.replace(/\./g, ''); 
+
+    // 1. Regex de formato exacto (Ej: "1:00 pm", "14:00", "02:30 hrs")
+    const colonMatch = timeStr.match(/\b([01]?[0-9]|2[0-3]):([0-5][0-9])(?:\s*(am|pm|hrs|horas))?\b/i);
+    // 2. Solo el número con AM/PM (Ej: "1 pm", "10 am")
+    const ampmMatch = timeStr.match(/\b(1[0-2]|[1-9])\s*(am|pm)\b/i);
+    // 3. Modificadores coloquiales (Ej: "3 de la tarde")
+    const coloquialMatch = timeStr.match(/\b([01]?[0-9]|2[0-3])\s*(?:de la|en la|por la)\s*(manana|tarde|noche)\b/i);
+    // 4. A las horas (Ej: "A las 4")
+    const aLasMatch = timeStr.match(/a\s*l[a|o]s\s*([01]?[0-9]|2[0-3])\b/i);
+    // 5. Horas solas (Ej: "16 hrs")
+    const hrsMatch = timeStr.match(/\b([01]?[0-9]|2[0-3])\s*(hrs|horas)\b/i);
+
+    // Diccionario de horas habladas
+    const wordHours = {
+        'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
+        'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10,
+        'once': 11, 'doce': 12, 'mediodia': 12, 'medio dia': 12
+    };
+
+    if (colonMatch) {
+        h = parseInt(colonMatch[1]);
+        m = colonMatch[2];
+        if (colonMatch[3] && colonMatch[3].toLowerCase() === 'pm') isPM = true;
+        if (colonMatch[3] && colonMatch[3].toLowerCase() === 'am') isAM = true;
     } else if (ampmMatch) {
         h = parseInt(ampmMatch[1]);
-        const period = ampmMatch[2].toLowerCase().replace(/\./g, '');
-        if (period === 'pm' && h < 12) h += 12;
-        if (period === 'am' && h === 12) h = 0;
+        if (ampmMatch[2].toLowerCase() === 'pm') isPM = true;
+        if (ampmMatch[2].toLowerCase() === 'am') isAM = true;
     } else if (coloquialMatch) {
         h = parseInt(coloquialMatch[1]);
         const periodoStr = coloquialMatch[2].toLowerCase();
-
-        if ((periodoStr === 'tarde' || periodoStr === 'noche') && h < 12) {
-            h += 12;
-        }
-        if (periodoStr === 'manana' && h === 12) {
-            h = 0;
-        }
-    } else if (aLasMatch) {
-        h = parseInt(aLasMatch[1]);
-        if (h >= 1 && h <= 7) h += 12; // Asumir que "a las 4" es 16:00
+        if (periodoStr === 'tarde' || periodoStr === 'noche') isPM = true;
+        if (periodoStr === 'manana') isAM = true;
     } else if (hrsMatch) {
         h = parseInt(hrsMatch[1]);
+    } else if (aLasMatch) {
+        h = parseInt(aLasMatch[1]);
+    } else {
+        // Buscamos si usó palabras como "una" o "mediodía"
+        for (const [word, num] of Object.entries(wordHours)) {
+            if (new RegExp(`\\b${word}\\b`, 'i').test(timeStr)) {
+                h = num;
+                if (/\b(pm|tarde|noche)\b/.test(timeStr)) isPM = true;
+                if (/\b(am|manana|madrugada)\b/.test(timeStr)) isAM = true;
+                break;
+            }
+        }
     }
 
     if (h !== null) {
+        // Corrección a formato 24hrs si detectamos PM
+        if (isPM && h < 12) h += 12;
+        // Corrección de medianoche si detectamos AM
+        if (isAM && h === 12) h = 0;
+
+        // Asunciones lógicas: Si dice "1", "2" o "3" sin AM/PM, lo pasamos a la tarde.
+        if (!isPM && !isAM && h >= 1 && h <= 7) {
+            h += 12;
+        }
+
         response.time = `${String(h).padStart(2, '0')}:${m}`;
     }
 
