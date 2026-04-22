@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { updateUser, getUser, getSettings, getKeywords, saveKeyword } = require('../database');
-const { analyzeNaturalLanguage } = require('./utils');
+// 🔥 CORRECCIÓN 1: Aquí agregamos isSimilar para tolerar errores ortográficos
+const { analyzeNaturalLanguage, isSimilar } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 const { validateBusinessRules, checkAvailability, bookAppointment, isDateInPast, friendlyDate } = require('./agenda');
 const { isValidName, isValidBirthDate, normalizeName, normalizeDate } = require('./validators');
@@ -98,28 +99,31 @@ async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg
     return null;
 }
 
+// 🔥 CORRECCIÓN 2: Menú súper flexible para tolerar errores ortográficos y "1 solisitar"
 async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const userText = basicClean(text);
-    const isNumber = /^[0-9]+$/.test(userText);
     
-    // 1. Éxito por Número
-    if (isNumber) {
-        const index = parseInt(userText) - 1;
+    const numberMatch = userText.match(/^(\d+)/); 
+    if (numberMatch) {
+        const index = parseInt(numberMatch[1]) - 1;
         if (stepConfig.options && stepConfig.options[index]) {
             if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); 
             return stepConfig.options[index].next_step;
         }
     }
 
-    // 2. Éxito por Texto
     if (stepConfig.options && Array.isArray(stepConfig.options)) {
-        const userWords = userText.split(' ').filter(w => w.length > 1); 
+        const userWords = userText.split(' ').filter(w => w.length > 3); 
         
         if (userWords.length > 0) {
             const matches = stepConfig.options.filter(opt => {
-                const optLabel = basicClean(opt.label);
-                const optTrigger = basicClean(opt.trigger || "");
-                return userWords.every(word => optLabel.includes(word) || optTrigger.includes(word));
+                const optLabelWords = basicClean(opt.label).split(' ');
+                const optTriggerWords = basicClean(opt.trigger || "").split(' ');
+                const allTargetWords = [...optLabelWords, ...optTriggerWords].filter(w => w.length > 3);
+
+                return userWords.some(uWord => 
+                    allTargetWords.some(tWord => isSimilar(uWord, tWord))
+                );
             });
 
             if (matches.length === 1) {
@@ -134,12 +138,10 @@ async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
         }
     }
 
-    // 🔥 3. PARACAÍDAS PARA DUDAS (Si no acertó a una opción, revisamos si preguntó algo)
     if (isQuestion(text)) {
         return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, elige una de las opciones válidas del menú para continuar con tu trámite.");
     }
 
-    // 4. Fallo total (No coincidió nada y no es duda)
     return await processError(stepConfig, user, dbKey, remoteJid, sock, `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`);
 }
 
@@ -149,7 +151,6 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     if (varName === 'nombre') {
         const cleanName = normalizeName(text);
         if (!isValidName(cleanName)) {
-            // Si el nombre no es válido, revisamos si es porque nos hizo una pregunta
             if (isQuestion(text)) {
                 return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, escribe solo tu nombre completo para continuar.");
             }
@@ -161,7 +162,6 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     if (varName === 'fecha_nacimiento') {
         const cleanDate = normalizeDate(text); 
         if (!isValidBirthDate(cleanDate)) {
-            // Si la fecha falla, revisamos si fue una pregunta
             if (isQuestion(text)) {
                 return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, escribe tu fecha en formato DD/MM/AAAA para continuar.");
             }
@@ -170,7 +170,6 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
         text = cleanDate; 
     }
 
-    // Para inputs que no tienen reglas estrictas (como "correo" o "notas"), escaneamos por precaución
     if (varName !== 'nombre' && varName !== 'fecha_nacimiento' && isQuestion(text)) {
         return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, ingresa el dato solicitado para avanzar.");
     }
@@ -187,7 +186,6 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
 
 async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, msg) {
     
-    // Paracaídas para el módulo de citas
     if (isQuestion(text)) {
         return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, indícame la fecha o la hora en la que te gustaría agendar tu cita.");
     }
