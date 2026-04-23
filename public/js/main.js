@@ -888,14 +888,17 @@
     // --- FLUJO Y EDITOR (ACTUALIZADO CON TABS) ---
     let flowPath = [];
 
-    function switchTab(tab) {
-        document.getElementById('tabBtn-main').classList.remove('active');
-        document.getElementById('tabBtn-errors').classList.remove('active');
-        document.getElementById('tabBtn-' + tab).classList.add('active');
-        
-        document.getElementById('tabContent-main').style.display = 'none';
-        document.getElementById('tabContent-errors').style.display = 'none';
-        document.getElementById('tabContent-' + tab).style.display = 'block';
+    function switchErrTab(tab) {
+        ['menu', 'name', 'date'].forEach(t => {
+            const btn = document.getElementById('tabErrBtn-' + t);
+            const content = document.getElementById('tabErrContent-' + t);
+            if(btn) btn.classList.remove('active');
+            if(content) content.style.display = 'none';
+        });
+        const activeBtn = document.getElementById('tabErrBtn-' + tab);
+        const activeContent = document.getElementById('tabErrContent-' + tab);
+        if(activeBtn) activeBtn.classList.add('active');
+        if(activeContent) activeContent.style.display = 'block';
     }
 
     function renderFlowList() {
@@ -1118,22 +1121,6 @@
         renderGallery(); 
         renderFields(); 
 
-        // Cargar datos de la pestaña Errores (1, 2 y 3)
-        const err1El = document.getElementById('stErrMsg1');
-        if(err1El) err1El.value = d.error_message_1 || '';
-
-        const err2El = document.getElementById('stErrMsg2');
-        if(err2El) err2El.value = d.error_message_2 || '';
-
-        const err3El = document.getElementById('stErrMsg3');
-        if(err3El) err3El.value = d.error_message_3 || '';
-        
-        const fallbackEl = document.getElementById('stFallbackStep');
-        if(fallbackEl) fallbackEl.value = d.fallback_step || '';
-
-        // Siempre abrir en la principal
-        switchTab('main'); 
-        
         document.getElementById('editorModal').classList.add('active');
     }
 
@@ -1163,16 +1150,7 @@
         const d = flow[id] || {};
         const c = document.getElementById('dynFields');
         const wrapMsg = document.getElementById('wrapper-msg');
-        const tabErrorsBtn = document.getElementById('tabBtn-errors');
-        if (tabErrorsBtn) {
-            if (type === 'menu' || type === 'input') {
-                tabErrorsBtn.style.display = 'inline-block';
-            } else {
-                tabErrorsBtn.style.display = 'none';
-                switchTab('main'); // Forzamos el regreso a la principal por si estaba en Errores
-            }
-        }
-
+        
         wrapMsg.style.display = type === 'cita' ? 'none' : 'block'; 
 
         const dataListHtml = `<datalist id="stepsList">${getDatalistOptions()}</datalist>`;
@@ -1183,7 +1161,7 @@
             (d.options||[]).forEach(o => {
                 html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
                     <input class="o-lbl" value="${o.label}" placeholder="Texto Botón">
-                    <input class="o-nxt" list="stepsList" value="${o.next_step||''}" placeholder="Destino (Escribe para crear)" style="font-weight:bold; color:var(--primary);">
+                    <input class="o-nxt" list="stepsList" value="${o.next_step||''}" placeholder="Destino" style="font-weight:bold; color:var(--primary);">
                     <button onclick="this.parentElement.remove()" style="color:var(--danger); background:none; border:none;">✕</button>
                 </div>`;
             });
@@ -1199,33 +1177,26 @@
             html += `
             <div style="background:var(--bg-input); padding:15px; border-radius:8px; border:1px solid var(--border); margin-bottom:15px;">
                 <h4 style="margin-top:0; margin-bottom:15px; color:var(--text-main);"><i class="far fa-calendar-alt" style="color:var(--primary);"></i> Configuración del Agendador</h4>
-                
                 <label>Pregunta para el Día</label>
-                <input type="text" id="stCitaDate" value="${d.msg_date || '¿Qué día te gustaría agendar?'}" placeholder="Ej: ¿Qué día te esperamos?">
-                
+                <input type="text" id="stCitaDate" value="${d.msg_date || '¿Qué día te gustaría agendar?'}">
                 <label>Pregunta para la Hora</label>
-                <input type="text" id="stCitaTime" value="${d.msg_time || '¿A qué hora te queda mejor?'}" placeholder="Ej: Perfecto, ¿a qué hora te agendo?">
-                
+                <input type="text" id="stCitaTime" value="${d.msg_time || '¿A qué hora te queda mejor?'}">
                 <label>Duración de cada turno</label>
                 <select id="stCitaInterval" style="margin-bottom:0;">
                     <option value="15" ${d.interval == '15' ? 'selected' : ''}>Cada 15 minutos</option>
                     <option value="30" ${d.interval == '30' || !d.interval ? 'selected' : ''}>Cada 30 minutos</option>
                     <option value="60" ${d.interval == '60' ? 'selected' : ''}>Cada 1 hora</option>
-                    <option value="1440" ${d.interval == '1440' ? 'selected' : ''}>1 Cita por Día (Todo el día)</option>
+                    <option value="1440" ${d.interval == '1440' ? 'selected' : ''}>Todo el día</option>
                 </select>
             </div>
             <label>Siguiente Paso (Al terminar de agendar)</label>
-            <input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Ej: DESPEDIDA">`;
+            <input id="stNext" list="stepsList" value="${d.next_step||''}">`;
 
         } else {
-            html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}" placeholder="Escribe para crear nuevo...">`;
+            html += `<label>Siguiente Paso Automático</label><input id="stNext" list="stepsList" value="${d.next_step||''}">`;
         }
         c.innerHTML = html;
-        
-        const fbEl = document.getElementById('stFallbackStep');
-        if(fbEl) fbEl.setAttribute('list', 'stepsList');
     }
-
 
     function addOptRow() { 
         document.getElementById('optsList').insertAdjacentHTML('beforeend', 
@@ -1248,23 +1219,6 @@
         };
         
         let stepsToCreate = [];
-
-        // Leer datos de los 3 errores
-        const err1El = document.getElementById('stErrMsg1');
-        if(err1El && err1El.value.trim() !== '') data.error_message_1 = err1El.value.trim();
-
-        const err2El = document.getElementById('stErrMsg2');
-        if(err2El && err2El.value.trim() !== '') data.error_message_2 = err2El.value.trim();
-
-        const err3El = document.getElementById('stErrMsg3');
-        if(err3El && err3El.value.trim() !== '') data.error_message_3 = err3El.value.trim();
-        
-        const fbStepEl = document.getElementById('stFallbackStep');
-        if(fbStepEl && fbStepEl.value.trim() !== '') {
-            const fbVal = fbStepEl.value.trim().toUpperCase();
-            data.fallback_step = fbVal;
-            if(!flow[fbVal]) stepsToCreate.push(fbVal); // Crear el paso de error si no existe
-        }
 
         if(document.getElementById('stNext')) {
             const val = document.getElementById('stNext').value.trim().toUpperCase(); 
@@ -1301,7 +1255,6 @@
             
             for (const newStepName of stepsToCreate) {
                 if(!flow[newStepName]) {
-                    console.log("✨ Creando paso automático:", newStepName);
                     const placeholderData = { type: 'message', message: '🚧 Paso creado automáticamente. Edítame.' };
                     await fetch('/api/flow/step', { 
                         method: 'POST', 
@@ -1311,7 +1264,6 @@
                     flow[newStepName] = placeholderData;
                 }
             }
-            showToast(`✨ ${stepsToCreate.length} pasos nuevos creados`);
         }
 
         await fetch('/api/flow/step', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ stepId: id, stepData: data }) });
@@ -1600,15 +1552,28 @@
 
     function editCurrentContactManual() {
         if (!currentChatPhone) return;
-        const currentName = document.getElementById('waHeaderName').innerText;
         
-        // Llenamos el input con el nombre actual
-        document.getElementById('editNameInput').value = currentName;
+        const nameEl = document.getElementById('waHeaderName');
+        document.getElementById('editNameInput').value = nameEl && nameEl.innerText !== 'Desconocido' ? nameEl.innerText : '';
+
+        const phoneClean = currentChatPhone.replace(/@s\.whatsapp\.net|@lid/g, '');
         
-        // Abrimos tu nuevo modal bonito
+        // 🔥 LÓGICA INTELIGENTE: Si el número ya tiene formato, separamos la lada de los 10 dígitos
+        if (phoneClean.startsWith('52') && phoneClean.length === 12) {
+            document.getElementById('countryCodeSelect').value = '52';
+            document.getElementById('editPhoneInput').value = phoneClean.slice(2);
+        } else if (phoneClean.startsWith('521') && phoneClean.length === 13) {
+            document.getElementById('countryCodeSelect').value = '52';
+            document.getElementById('editPhoneInput').value = phoneClean.slice(3);
+        } else if (phoneClean.startsWith('1') && phoneClean.length === 11) {
+            document.getElementById('countryCodeSelect').value = '1';
+            document.getElementById('editPhoneInput').value = phoneClean.slice(1);
+        } else {
+            // Si es un LID, se pone completo en la cajita para que lo borres manualmente
+            document.getElementById('editPhoneInput').value = phoneClean;
+        }
+
         document.getElementById('editNameModal').classList.add('active');
-        
-        // Enfocamos el input automáticamente
         setTimeout(() => document.getElementById('editNameInput').focus(), 100);
     }
 
@@ -1617,47 +1582,68 @@
     }
 
     async function confirmEditName() {
-        if (!currentChatPhone) return;
-        
         const newName = document.getElementById('editNameInput').value.trim();
-        if (!newName) {
+        let phoneInputValue = document.getElementById('editPhoneInput').value.trim();
+        const oldPhone = currentChatPhone; 
+
+        if (!newName || !currentChatPhone) {
             showToast("⚠️ El nombre no puede estar vacío");
             return;
         }
 
-        // Cerramos el modal mientras enviamos la petición
-        closeEditNameModal();
+        const prefix = document.getElementById('countryCodeSelect').value;
+        const oldPhoneClean = oldPhone.replace(/@s\.whatsapp\.net|@lid/g, '');
+        let finalNewPhone = phoneInputValue;
 
-        try {
-            const response = await fetch(`${API_BASE}/api/contacts/update`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: currentChatPhone, 
-                    name: newName,           
-                    enable: document.getElementById('waBotSwitch').checked 
-                })
-            });
-
-            const res = await response.json();
-
-            if (res.success || response.ok) {
-                document.getElementById('waHeaderName').innerText = newName;
-                const u = users.find(x => getCleanPhone(x.phone) === getCleanPhone(currentChatPhone));
-                if(u) {
-                    u.savedName = newName; 
-                    if(u.history) u.history.nombre = newName;
-                }
-                renderChatList(users);
-                showToast("✅ Nombre actualizado");
-            } else { 
-                alert("Error al guardar en el servidor"); 
+        if (phoneInputValue !== oldPhoneClean && phoneInputValue !== '') {
+            phoneInputValue = phoneInputValue.replace(/\D/g, '');
+            
+            if (phoneInputValue.length === 10) {
+                finalNewPhone = (prefix === '52' ? '521' : prefix) + phoneInputValue;
+            } else if (!phoneInputValue.startsWith(prefix)) {
+                finalNewPhone = prefix + phoneInputValue;
             }
-        } catch (e) { 
-            showToast("❌ Error de conexión"); 
+        } else {
+            finalNewPhone = oldPhoneClean;
         }
-    }
 
+        const isBotEnabled = document.getElementById('waBotSwitch').checked;
+        await fetch(`${API_BASE}/api/contacts/update`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ phone: oldPhone, name: newName, enable: isBotEnabled })
+        });
+
+        if (finalNewPhone && finalNewPhone !== oldPhoneClean) {
+            try {
+                await fetch(`${API_BASE}/api/contacts/link-lid`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ lidPhone: oldPhone, realPhone: finalNewPhone })
+                });
+                showToast("🔗 Contacto fusionado con número real");
+                
+                closeWaChat(); 
+                setTimeout(() => loadActivity(), 500);
+            } catch (e) {
+                showToast("❌ Error al vincular número");
+            }
+        } else {
+
+            const nameEl = document.getElementById('waHeaderName');
+            if (nameEl) nameEl.innerText = newName;
+            
+            const u = users.find(x => getCleanPhone(x.phone) === getCleanPhone(currentChatPhone));
+            if(u) {
+                u.savedName = newName; 
+                if(u.history) u.history.nombre = newName;
+            }
+            renderChatList(users);
+            showToast("✅ Nombre actualizado");
+        }
+
+        closeEditNameModal();
+    }
 
     function openContactModal() {
         isEditingMode = false;
@@ -1736,12 +1722,13 @@
 
         if(v === 'activity') loadActivity();
         if(v === 'keywords') loadKeywords();
+        if(v === 'errors') loadGlobalErrors();
         if(v === 'agenda') {
             renderCalendar();       
             loadSchedulerConfig();  
         }
 
-        const titles = { activity:'MONITOR', flow:'FLUJO', agenda:'AGENDA', settings:'AJUSTES', keywords: 'RESPUESTAS RÁPIDAS', config: 'CONFIGURACIÓN' };
+        const titles = { activity:'MONITOR', flow:'FLUJO', errors:'MANEJO DE ERRORES', agenda:'AGENDA', settings:'AJUSTES', keywords: 'RESPUESTAS RÁPIDAS', config: 'CONFIGURACIÓN' };
         const titleEl = document.getElementById('pageTitle');
         if(titleEl) titleEl.innerText = titles[v] || 'CRM';
     }
@@ -1883,6 +1870,103 @@
 
         updateClock();
         tzPreviewInterval = setInterval(updateClock, 1000);
+    }
+
+    // --- MANEJO GLOBAL DE ERRORES ---
+    async function loadGlobalErrors() {
+        let dl = document.getElementById('stepsList');
+        if (!dl) {
+            dl = document.createElement('datalist');
+            dl.id = 'stepsList';
+            document.body.appendChild(dl);
+        }
+        let opts = '';
+        Object.keys(flow).sort().forEach(k => opts += `<option value="${k}">`);
+        dl.innerHTML = opts;
+
+        try {
+            const settings = await (await fetch(`${API_BASE}/api/settings`)).json();
+            if (settings.globalErrors) {
+                const ge = settings.globalErrors;
+                
+                if (ge.menu) {
+                    document.getElementById('menuErrTries').value = ge.menu.tries || '3';
+                    document.getElementById('menuErrFallback').value = ge.menu.fallback || '';
+                    document.getElementById('globErrMsgMenu1').value = ge.menu.err1 || '';
+                    document.getElementById('globErrMsgMenu2').value = ge.menu.err2 || '';
+                    document.getElementById('globErrMsgMenu3').value = ge.menu.err3 || '';
+                }
+                if (ge.name) {
+                    document.getElementById('nameErrTries').value = ge.name.tries || '3';
+                    document.getElementById('nameErrFallback').value = ge.name.fallback || '';
+                    document.getElementById('globErrMsgName1').value = ge.name.err1 || '';
+                    document.getElementById('globErrMsgName2').value = ge.name.err2 || '';
+                    document.getElementById('globErrMsgName3').value = ge.name.err3 || '';
+                }
+                if (ge.date) {
+                    document.getElementById('dateErrTries').value = ge.date.tries || '3';
+                    document.getElementById('dateErrFallback').value = ge.date.fallback || '';
+                    document.getElementById('globErrMsgDate1').value = ge.date.err1 || '';
+                    document.getElementById('globErrMsgDate2').value = ge.date.err2 || '';
+                    document.getElementById('globErrMsgDate3').value = ge.date.err3 || '';
+                }
+            }
+        } catch (e) {
+            console.error("No se pudieron cargar los errores globales", e);
+        }
+    }
+
+    async function saveGlobalErrors() {
+        console.log("1. Botón presionado. Recopilando datos de la interfaz...");
+
+        try {
+            const globalErrors = {
+                menu: {
+                    tries: parseInt(document.getElementById('menuErrTries').value) || 3,
+                    fallback: document.getElementById('menuErrFallback').value.trim().toUpperCase(),
+                    err1: document.getElementById('globErrMsgMenu1').value.trim(),
+                    err2: document.getElementById('globErrMsgMenu2').value.trim(),
+                    err3: document.getElementById('globErrMsgMenu3').value.trim()
+                },
+                name: {
+                    tries: parseInt(document.getElementById('nameErrTries').value) || 3,
+                    fallback: document.getElementById('nameErrFallback').value.trim().toUpperCase(),
+                    err1: document.getElementById('globErrMsgName1').value.trim(),
+                    err2: document.getElementById('globErrMsgName2').value.trim(),
+                    err3: document.getElementById('globErrMsgName3').value.trim()
+                },
+                date: {
+                    tries: parseInt(document.getElementById('dateErrTries').value) || 3,
+                    fallback: document.getElementById('dateErrFallback').value.trim().toUpperCase(),
+                    err1: document.getElementById('globErrMsgDate1').value.trim(),
+                    err2: document.getElementById('globErrMsgDate2').value.trim(),
+                    err3: document.getElementById('globErrMsgDate3').value.trim()
+                }
+            };
+
+            console.log("2. Datos armados correctamente:", globalErrors);
+            console.log("3. Enviando datos al servidor...");
+
+            const response = await fetch(`${API_BASE}/api/settings`, { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ globalErrors: globalErrors }) 
+            });
+
+            console.log("4. El servidor respondió con status:", response.status);
+
+            if (response.ok) {
+                showToast('✅ Configuración de errores guardada');
+                console.log("5. ¡Éxito total!");
+            } else {
+                showToast('❌ Error del servidor al guardar');
+                console.error("Error: El servidor rechazó los datos.");
+            }
+
+        } catch (e) { 
+            console.error("❌ JavaScript tropezó en este error exacto:", e);
+            showToast('❌ Error interno al leer los datos'); 
+        }
     }
 
     function escapeHTML(str) {

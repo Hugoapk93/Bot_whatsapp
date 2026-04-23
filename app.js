@@ -196,6 +196,10 @@ function safeReadJSON(filePath, defaultVal) {
 }
 
 const agendaPath = path.join(dataDir, 'agenda.json');
+const lidMapPath = path.join(dataDir, 'lid_map.json');
+function getLidMap() { return safeReadJSON(lidMapPath, {}); }
+function saveLidMap(data) { fs.writeFileSync(lidMapPath, JSON.stringify(data, null, 2)); }
+
 function getAgenda() { return safeReadJSON(agendaPath, {}); }
 function saveAgenda(data) { fs.writeFileSync(agendaPath, JSON.stringify(data, null, 2)); }
 
@@ -297,7 +301,28 @@ async function connectToWhatsApp() {
         }
     });
 
-    sock.ev.on('contacts.upsert', (contacts) => syncContacts(contacts));
+    sock.ev.on('contacts.upsert', (contacts) => {
+        syncContacts(contacts);
+        let lidMap = getLidMap();
+        let updated = false;
+        
+        for (const c of contacts) {
+            const cId = c.id || '';
+            const cLid = c.lid || '';
+
+            if (cId.includes('@s.whatsapp.net') && cLid.includes('@lid')) {
+                const cleanPhone = cId.replace(/[^0-9]/g, '');
+                const cleanLid = cLid.replace(/[^0-9]/g, '');
+
+                if (cleanPhone && cleanLid && lidMap[cleanLid] !== cleanPhone) {
+                    lidMap[cleanLid] = cleanPhone;
+                    updated = true;
+                    console.log(`🔗 Auto-Vinculación: Máscara ${cleanLid} -> Tel Real ${cleanPhone}`);
+                }
+            }
+        }
+        if (updated) saveLidMap(lidMap);
+    });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         const isFromMe = messages[0]?.key?.fromMe;
@@ -313,15 +338,27 @@ async function connectToWhatsApp() {
 
         for (const msg of messages) {
             if (!msg.message) continue;
-            
+
             if (msg.message.protocolMessage || msg.messageStubType) {
                 console.log(`🚫 Ignorando mensaje interno/sistema de WhatsApp.`);
                 continue;
             }
-            
-            const remoteJid = msg.key.remoteJid;
-            
-            if (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('@newsletter')) {
+
+            let remoteJid = msg.key.remoteJid;
+
+            if (remoteJid && remoteJid.includes('@lid')) {
+                let lidMap = getLidMap();
+                const cleanLid = remoteJid.replace(/[^0-9]/g, '');
+                const realPhone = lidMap[cleanLid];
+
+                if (realPhone) {
+                    console.log(`✅ Traductor: Convirtiendo ${cleanLid} a ${realPhone}`);
+                    remoteJid = realPhone + '@s.whatsapp.net';
+                    msg.key.remoteJid = remoteJid; 
+                }
+            }
+
+            if (remoteJid && (remoteJid.includes('@g.us') || remoteJid.includes('@broadcast') || remoteJid.includes('@newsletter'))) {
                 continue; 
             }
 
@@ -468,6 +505,38 @@ app.post('/api/contacts/delete', async (req, res) => {
     const { phone } = req.body;
     const deleted = deleteUser(phone);
     res.json({ success: deleted });
+});
+
+app.post('/api/contacts/link-lid', async (req, res) => {
+    const { lidPhone, realPhone } = req.body;
+    if (!lidPhone || !realPhone) return res.status(400).json({ error: "Faltan datos" });
+
+    const cleanLid = String(lidPhone).replace(/[^0-9]/g, '');
+    const cleanReal = String(realPhone).replace(/[^0-9]/g, '');
+
+    // 1. Guardar en el diccionario global
+    let lidMap = getLidMap();
+    lidMap[cleanLid] = cleanReal;
+    saveLidMap(lidMap);
+
+    const userLid = getUser(cleanLid);
+    if (userLid) {
+        let userReal = getUser(cleanReal);
+        if (!userReal) {
+            userReal = { ...userLid, phone: cleanReal };
+        } else {
+            userReal.messages = [...(userReal.messages || []), ...(userLid.messages || [])];
+            userReal.messages.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)); // Ordenar por fecha
+            userReal.name = userReal.name || userLid.name; // Pasar el nombre
+        }
+        
+        await updateUser(cleanReal, userReal);
+        deleteUser(cleanLid); // Borramos el registro fantasma del LID
+        
+        if (global.io) global.io.emit('status', { status: 'connected' }); // Forzar refresco ligero en el cliente
+    }
+
+    res.json({ success: true, newPhone: cleanReal });
 });
 
 app.post('/api/send-message', async (req, res) => {
