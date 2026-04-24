@@ -331,6 +331,10 @@ async function connectToWhatsApp() {
                         userReal.history = { ...(userLid.history || {}), ...(userReal.history || {}) };
                         userReal.current_step = userLid.current_step || userReal.current_step || 'INICIO';
                         userReal.name = userReal.name || userLid.name || cleanPhone;
+
+                        // 🔥 CORRECCIÓN 3: Traspasar el "reloj" para mantener la posición en la lista 🔥
+                        userReal.last_active = userLid.last_active || userReal.last_active || new Date().toISOString();
+                        userReal.created_at = userLid.created_at || userReal.created_at || Date.now();
                         
                         // 🔥 CORRECCIÓN 2: Traspasar el estado del botón "Pausar Bot" 🔥
                         const allC = getAllContacts();
@@ -556,6 +560,10 @@ app.post('/api/contacts/link-lid', async (req, res) => {
         userReal.history = { ...(userLid.history || {}), ...(userReal.history || {}) };
         userReal.current_step = userLid.current_step || userReal.current_step || 'INICIO';
         userReal.name = userReal.name || userLid.name; 
+
+        // 🔥 CORRECCIÓN 3: Traspasar el "reloj" para mantener la posición en la lista 🔥
+        userReal.last_active = userLid.last_active || userReal.last_active || new Date().toISOString();
+        userReal.created_at = userLid.created_at || userReal.created_at || Date.now();
 
         // 🔥 CORRECCIÓN 2: Traspasar el estado del botón "Pausar Bot" al botón manual 🔥
         const allC = getAllContacts();
