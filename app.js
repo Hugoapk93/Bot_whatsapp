@@ -475,7 +475,14 @@ async function connectToWhatsApp() {
             }
 
             if (isMe) continue; 
-            if (contactConfig && contactConfig.bot_enabled === false) continue;
+            const isPaused = (contactConfig && contactConfig.bot_enabled === false) || 
+                             (currentUser && currentUser.bot_enabled === false);
+                             
+            if (isPaused) {
+                console.log(`⏸️ Bot silenciado. Ignorando mensaje de: ${incomingPhoneRaw}`);
+
+                continue;
+            }
 
             if (msgText.trim()) {
                 if (!userMessageBuffers.has(incomingPhoneRaw)) {
@@ -520,8 +527,12 @@ app.post('/api/contacts/update', async (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/api/contacts/toggle', (req, res) => {
-    res.json(toggleContactBot(req.body.phone, req.body.enable));
+app.post('/api/contacts/toggle', async (req, res) => {
+    const { phone, enable } = req.body;
+
+    await updateUser(phone, { bot_enabled: enable });
+    
+    res.json(toggleContactBot(phone, enable));
 });
 
 app.post('/api/contacts/add', (req, res) => {
