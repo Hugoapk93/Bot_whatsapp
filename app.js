@@ -100,7 +100,6 @@ let connectionStatus = 'disconnected';
 const userMessageBuffers = new Map();
 const userMessageTimers = new Map();
 
-// 🔥 FUNCIÓN CENTRALIZADA PARA PROCESAR EL TEXTO AGRUPADO 🔥
 async function procesarMensajeAgrupado(incomingPhoneRaw, sock) {
     if (!userMessageTimers.has(incomingPhoneRaw)) return;
     
@@ -299,7 +298,7 @@ async function connectToWhatsApp() {
         }
     });
 
-    sock.ev.on('contacts.upsert', (contacts) => {
+    sock.ev.on('contacts.upsert', async (contacts) => {
         syncContacts(contacts);
         let lidMap = getLidMap();
         let updated = false;
@@ -316,6 +315,25 @@ async function connectToWhatsApp() {
                     lidMap[cleanLid] = cleanPhone;
                     updated = true;
                     console.log(`🔗 Auto-Vinculación: Máscara ${cleanLid} -> Tel Real ${cleanPhone}`);
+                    
+                    // 🔥 NUEVO: Mudanza automática del historial de chat 🔥
+                    const userLid = getUser(cleanLid);
+                    if (userLid && userLid.messages && userLid.messages.length > 0) {
+                        let userReal = getUser(cleanPhone) || { phone: cleanPhone, messages: [] };
+                        
+                        // Clonación profunda
+                        const msgsLid = JSON.parse(JSON.stringify(userLid.messages || []));
+                        const msgsReal = JSON.parse(JSON.stringify(userReal.messages || []));
+                        
+                        userReal.messages = [...msgsReal, ...msgsLid];
+                        userReal.messages.sort((a,b) => a.timestamp - b.timestamp);
+                        userReal.name = userReal.name || userLid.name || cleanPhone;
+                        
+                        await updateUser(cleanPhone, userReal);
+                        deleteUser(cleanLid); // Limpiamos la basura
+                        
+                        if (global.io) global.io.emit('status', { status: 'connected' }); 
+                    }
                 }
             }
         }
@@ -517,21 +535,29 @@ app.post('/api/contacts/link-lid', async (req, res) => {
     lidMap[cleanLid] = cleanReal;
     saveLidMap(lidMap);
 
+    // 2. Fusión blindada de datos
     const userLid = getUser(cleanLid);
     if (userLid) {
-        let userReal = getUser(cleanReal);
-        if (!userReal) {
-            userReal = { ...userLid, phone: cleanReal };
-        } else {
-            userReal.messages = [...(userReal.messages || []), ...(userLid.messages || [])];
-            userReal.messages.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)); // Ordenar por fecha
-            userReal.name = userReal.name || userLid.name; // Pasar el nombre
-        }
+        let userReal = getUser(cleanReal) || { phone: cleanReal, messages: [] };
         
+        // 🔥 Clonación profunda para asegurar que deleteUser no borre los mensajes de la memoria
+        const msgsLid = JSON.parse(JSON.stringify(userLid.messages || []));
+        const msgsReal = JSON.parse(JSON.stringify(userReal.messages || []));
+        
+        userReal.messages = [...msgsReal, ...msgsLid];
+        userReal.messages.sort((a,b) => a.timestamp - b.timestamp); // Ordenar por fecha cronológica
+        
+        // Traspasar también en qué paso de flujo se quedó y los datos que ya dio
+        userReal.history = { ...(userLid.history || {}), ...(userReal.history || {}) };
+        userReal.current_step = userLid.current_step || userReal.current_step || 'INICIO';
+        userReal.name = userReal.name || userLid.name; 
+
         await updateUser(cleanReal, userReal);
-        deleteUser(cleanLid); // Borramos el registro fantasma del LID
         
-        if (global.io) global.io.emit('status', { status: 'connected' }); // Forzar refresco ligero en el cliente
+        // Borramos el registro fantasma del LID
+        deleteUser(cleanLid); 
+        
+        if (global.io) global.io.emit('status', { status: 'connected' }); 
     }
 
     res.json({ success: true, newPhone: cleanReal });
