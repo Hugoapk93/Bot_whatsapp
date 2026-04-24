@@ -316,21 +316,30 @@ async function connectToWhatsApp() {
                     updated = true;
                     console.log(`🔗 Auto-Vinculación: Máscara ${cleanLid} -> Tel Real ${cleanPhone}`);
                     
-                    // 🔥 NUEVO: Mudanza automática del historial de chat 🔥
                     const userLid = getUser(cleanLid);
                     if (userLid && userLid.messages && userLid.messages.length > 0) {
                         let userReal = getUser(cleanPhone) || { phone: cleanPhone, messages: [] };
                         
-                        // Clonación profunda
+                        // Clonación de mensajes
                         const msgsLid = JSON.parse(JSON.stringify(userLid.messages || []));
                         const msgsReal = JSON.parse(JSON.stringify(userReal.messages || []));
                         
                         userReal.messages = [...msgsReal, ...msgsLid];
                         userReal.messages.sort((a,b) => a.timestamp - b.timestamp);
+                        
+                        // 🔥 CORRECCIÓN 1: Traspasar variables y paso actual sin borrarlas 🔥
+                        userReal.history = { ...(userLid.history || {}), ...(userReal.history || {}) };
+                        userReal.current_step = userLid.current_step || userReal.current_step || 'INICIO';
                         userReal.name = userReal.name || userLid.name || cleanPhone;
                         
+                        // 🔥 CORRECCIÓN 2: Traspasar el estado del botón "Pausar Bot" 🔥
+                        const allC = getAllContacts();
+                        const lidC = allC.find(x => x.phone === cleanLid);
+                        const botEnabledState = lidC !== undefined ? lidC.bot_enabled : true;
+                        addManualContact(cleanPhone, userReal.name, botEnabledState);
+
                         await updateUser(cleanPhone, userReal);
-                        deleteUser(cleanLid); // Limpiamos la basura
+                        deleteUser(cleanLid); 
                         
                         if (global.io) global.io.emit('status', { status: 'connected' }); 
                     }
@@ -530,31 +539,31 @@ app.post('/api/contacts/link-lid', async (req, res) => {
     const cleanLid = String(lidPhone).replace(/[^0-9]/g, '');
     const cleanReal = String(realPhone).replace(/[^0-9]/g, '');
 
-    // 1. Guardar en el diccionario global
     let lidMap = getLidMap();
     lidMap[cleanLid] = cleanReal;
     saveLidMap(lidMap);
 
-    // 2. Fusión blindada de datos
     const userLid = getUser(cleanLid);
     if (userLid) {
         let userReal = getUser(cleanReal) || { phone: cleanReal, messages: [] };
         
-        // 🔥 Clonación profunda para asegurar que deleteUser no borre los mensajes de la memoria
         const msgsLid = JSON.parse(JSON.stringify(userLid.messages || []));
         const msgsReal = JSON.parse(JSON.stringify(userReal.messages || []));
         
         userReal.messages = [...msgsReal, ...msgsLid];
-        userReal.messages.sort((a,b) => a.timestamp - b.timestamp); // Ordenar por fecha cronológica
+        userReal.messages.sort((a,b) => a.timestamp - b.timestamp); 
         
-        // Traspasar también en qué paso de flujo se quedó y los datos que ya dio
         userReal.history = { ...(userLid.history || {}), ...(userReal.history || {}) };
         userReal.current_step = userLid.current_step || userReal.current_step || 'INICIO';
         userReal.name = userReal.name || userLid.name; 
 
+        // 🔥 CORRECCIÓN 2: Traspasar el estado del botón "Pausar Bot" al botón manual 🔥
+        const allC = getAllContacts();
+        const lidC = allC.find(x => x.phone === cleanLid);
+        const botEnabledState = lidC !== undefined ? lidC.bot_enabled : true;
+        addManualContact(cleanReal, userReal.name, botEnabledState);
+
         await updateUser(cleanReal, userReal);
-        
-        // Borramos el registro fantasma del LID
         deleteUser(cleanLid); 
         
         if (global.io) global.io.emit('status', { status: 'connected' }); 
