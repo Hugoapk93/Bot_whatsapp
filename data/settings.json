@@ -1,0 +1,38 @@
+{
+  "schedule": {
+    "active": true,
+    "start": "09:00",
+    "end": "19:00",
+    "offline_message": "Hola {{nombre}} 😊\nEn este momento estoy fuera de la sucursal,\npero mañana temprano reviso tu solicitud y te confirmo."
+  },
+  "scheduler": {
+    "active": true,
+    "time": "07:04",
+    "target_step": "AGENDA_CONFIRMADA",
+    "last_run": "2026-04-24"
+  },
+  "timezone": "America/Matamoros",
+  "globalErrors": {
+    "menu": {
+      "tries": 3,
+      "fallback": "AGENDA_CONFIRMADA",
+      "err1": "",
+      "err2": "",
+      "err3": ""
+    },
+    "name": {
+      "tries": 3,
+      "fallback": "",
+      "err1": "",
+      "err2": "",
+      "err3": ""
+    },
+    "date": {
+      "tries": 3,
+      "fallback": "",
+      "err1": "",
+      "err2": "",
+      "err3": ""
+    }
+  }
+}
