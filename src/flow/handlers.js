@@ -35,8 +35,8 @@ const isQuestion = (rawText) => {
     return regex.test(clean);
 };
 
-async function handleDudaPendiente(rawText, user, dbKey, remoteJid, sock, instruction) {
-
+// 🔥 MEJORA: Ahora solo guarda la pregunta en silencio, sin responder "Buena pregunta".
+async function handleDudaPendiente(rawText) {
     try {
         const todasLasReglas = getKeywords();
         const yaExiste = todasLasReglas.find(regla => regla.keywords === rawText);
@@ -47,17 +47,11 @@ async function handleDudaPendiente(rawText, user, dbKey, remoteJid, sock, instru
                 keywords: rawText,
                 answer: ""
             });
-            console.log(`🧠 Nueva duda enviada al panel de aprendizaje: "${rawText}"`);
+            console.log(`🧠 Duda nueva guardada en silencio para el panel: "${rawText}"`);
         }
     } catch (err) {
-        console.error("Error al guardar la duda en el panel de Respuestas Rápidas:", err);
+        console.error("Error al guardar la duda silenciosa:", err);
     }
-
-    const msgDuda = `¡Buena pregunta! 🧐\n\nHe guardado tu duda para que un asesor te la resuelva al terminar.\n\n${instruction}`;
-
-    if (esSimulador(remoteJid)) enviarAlFrontend(remoteJid, msgDuda);
-    else await sock.sendMessage(remoteJid, { text: msgDuda });
-    return null;
 }
 
 async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg, category = null) {
@@ -66,18 +60,14 @@ async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg
     const settings = getSettings();
     const globalErrors = settings.globalErrors || {};
     
-    // Obtenemos la configuración específica de la categoría (ej. 'menu', 'name', 'date')
     const catConfig = category && globalErrors[category] ? globalErrors[category] : null;
 
-    // 2. Definimos los límites y el paso de rescate
-    // Primero revisamos si el paso tiene configuración propia, si no, usamos la global, si no, default (3).
     const maxTries = stepConfig.fallback_tries || (catConfig ? catConfig.tries : 3);
     const fallbackStep = stepConfig.fallback_step || (catConfig ? catConfig.fallback : null);
 
     if (user.error_count >= maxTries && fallbackStep) {
         await updateUser(dbKey, { error_count: 0 });
 
-        // 🔥 3. Usamos el mensaje del intento final (ej. err3) si existe
         let finalMsg = null;
         if (user.error_count === 3) finalMsg = stepConfig.error_message_3 || (catConfig ? catConfig.err3 : null);
         else if (user.error_count === 2) finalMsg = stepConfig.error_message_2 || (catConfig ? catConfig.err2 : null);
@@ -92,7 +82,6 @@ async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg
 
     await updateUser(dbKey, { error_count: user.error_count });
 
-    // 🔥 4. Buscamos el mensaje correcto según el número de intento
     let txt = defaultMsg;
     if (user.error_count === 1) {
         txt = stepConfig.error_message_1 || (catConfig ? catConfig.err1 : null) || defaultMsg;
@@ -102,7 +91,6 @@ async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg
         txt = stepConfig.error_message_3 || (catConfig ? catConfig.err3 : null) || defaultMsg;
     }
 
-    // 🔥 5. Si es un menú, le pegamos las opciones (Solo al primer y segundo intento)
     if ((user.error_count === 1 || user.error_count === 2) && stepConfig.type === 'menu' && stepConfig.options && stepConfig.options.length > 0) {
         let menuTxt = '\n\n';
         
@@ -153,14 +141,14 @@ async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
 
             if (matches.length > 1) {
                 const suggestions = matches.map(m => `"${m.label}"`).join(' o ');
-                // Le pasamos la categoría 'menu'
                 return await processError(stepConfig, user, dbKey, remoteJid, sock, `⚠️ Varias opciones coinciden.\n\n¿Cuál quieres elegir:\n ${suggestions}?`, 'menu');
             }
         }
     }
 
+    // 🔥 MEJORA: Guarda la duda y deja que el código avance al processError del menú
     if (isQuestion(text)) {
-        return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, elige una de las opciones válidas del menú para continuar con tu trámite.");
+        await handleDudaPendiente(text);
     }
 
     return await processError(stepConfig, user, dbKey, remoteJid, sock, `⚠️ Opción no válida.\nEscribe el número o el nombre de la opción.`, 'menu');
@@ -172,10 +160,7 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     if (varName === 'nombre') {
         const cleanName = normalizeName(text);
         if (!isValidName(cleanName)) {
-            if (isQuestion(text)) {
-                return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, escribe solo tu nombre completo para continuar.");
-            }
-            // 🔥 Le pasamos la categoría 'name' para que lea tu panel
+            if (isQuestion(text)) await handleDudaPendiente(text); // 🔥 MEJORA
             return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Error.\n\nPor favor escribe solo tu nombre completo.", 'name');
         }
         text = cleanName; 
@@ -184,17 +169,15 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     if (varName === 'fecha_nacimiento') {
         const cleanDate = normalizeDate(text); 
         if (!isValidBirthDate(cleanDate)) {
-            if (isQuestion(text)) {
-                return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, escribe tu fecha en formato DD/MM/AAAA para continuar.");
-            }
-            // 🔥 Le pasamos la categoría 'date' para que lea tu panel
+            if (isQuestion(text)) await handleDudaPendiente(text); // 🔥 MEJORA
             return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Fecha incorrecta.\nPor favor escribe tu fecha así: \n\nDD/MM/AAAA \n(Ej: 02/07/1984)", 'date');
         }
         text = cleanDate; 
     }
 
     if (varName !== 'nombre' && varName !== 'fecha_nacimiento' && isQuestion(text)) {
-        return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, ingresa el dato solicitado para avanzar.");
+        await handleDudaPendiente(text); // 🔥 MEJORA
+        return await processError(stepConfig, user, dbKey, remoteJid, sock, "⚠️ Por favor, ingresa el dato solicitado para avanzar.");
     }
 
     if (!user.history) user.history = {};
@@ -209,8 +192,9 @@ async function handleInputStep(stepConfig, text, user, dbKey, remoteJid, sock) {
 
 async function handleCitaStep(stepConfig, text, user, dbKey, remoteJid, sock, msg) {
     
+    // 🔥 MEJORA: Guarda la duda en silencio y deja que pregunte de nuevo por la fecha o la hora.
     if (isQuestion(text)) {
-        return await handleDudaPendiente(text, user, dbKey, remoteJid, sock, "Por favor, indícame la fecha o la hora en la que te gustaría agendar tu cita.");
+        await handleDudaPendiente(text);
     }
 
     console.log(`🧠 Analizando Cita: "${text}"`);
