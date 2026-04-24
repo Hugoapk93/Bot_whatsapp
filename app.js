@@ -132,11 +132,9 @@ async function procesarMensajeAgrupado(incomingPhoneRaw, sock) {
 
     if (keywordMatch) {
         console.log(`🧠 Interceptor activado: "${keywordMatch.keywords}"`);
+
         await sock.sendMessage(remoteJid, { text: keywordMatch.answer });
-        const userState = getUser(incomingPhoneRaw);
-        setTimeout(async () => {
-            await sendStepMessage(sock, remoteJid, userState.current_step || 'INICIO', userState);
-        }, 1000);
+
         return; 
     }
 

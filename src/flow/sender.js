@@ -27,10 +27,23 @@ const enviarAlFrontend = (jid, contenido, type = 'text') => {
 
 const typing = async (sock, jid, length) => {
     if (esSimulador(jid)) return;
-    const ms = Math.min(Math.max(length * 40, 500), 2000); 
+
+    let msBase = length * 30; 
+
+    msBase = Math.min(Math.max(msBase, 500), 4000); 
+
+    let u = 0, v = 0;
+    while(u === 0) u = Math.random(); 
+    while(v === 0) v = Math.random();
+    let gauss = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+
+    let finalMs = Math.round(msBase + (gauss * 200));
+
+    finalMs = Math.min(Math.max(finalMs, 500), 5000);
+
     try {
         await sock.sendPresenceUpdate('composing', jid);
-        await new Promise(r => setTimeout(r, ms));
+        await new Promise(r => setTimeout(r, finalMs));
         await sock.sendPresenceUpdate('paused', jid);
     } catch(e) { /* Ignorar error de presencia */ }
 };
