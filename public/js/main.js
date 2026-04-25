@@ -530,6 +530,7 @@
         const msgs = u.messages || [];
 
         if (!isRefresh) {
+            pushNavigationLayer(); 
             box.innerHTML = '';
             document.getElementById('waInputArea').style.display = 'flex';
             if(msgs.length === 0) {
@@ -627,6 +628,7 @@
     }
     
     function showMediaPreviewModal(dataUrl) {
+        pushNavigationLayer();
         let modal = document.getElementById('mediaPreviewModal');
         if (!modal) {
             modal = document.createElement('div');
@@ -1306,10 +1308,12 @@
     }
 
     function createNewStepPrompt() {
+        pushNavigationLayer();
         document.getElementById('newStepNameInput').value = '';
         document.getElementById('stepNameModal').classList.add('active');
         setTimeout(() => document.getElementById('newStepNameInput').focus(), 100);
     }
+    
     function confirmCreateStep() {
         const n = document.getElementById('newStepNameInput').value.toUpperCase().trim();
         if(!n) return alert("El nombre es requerido");
@@ -1384,6 +1388,7 @@
     }
 
     function openKeywordModal(id = null, keywords = '', answer = '') {
+        pushNavigationLayer();
         currentEditKwId = id;
         document.getElementById('kwInput').value = keywords;
         document.getElementById('kwAnswer').value = answer;
@@ -1451,6 +1456,7 @@
     function changeMonth(d) { currentRefDate.setMonth(currentRefDate.getMonth()+d); renderCalendar(); }
 
     async function openDayModal(date) {
+        pushNavigationLayer();
         document.getElementById('modalDateTitle').innerText = date;
         const list = document.getElementById('modalApptList');
         list.innerHTML = 'Cargando...';
@@ -1583,13 +1589,13 @@
 
     function editCurrentContactManual() {
         if (!currentChatPhone) return;
-        
+        pushNavigationLayer();
+
         const nameEl = document.getElementById('waHeaderName');
         document.getElementById('editNameInput').value = nameEl && nameEl.innerText !== 'Desconocido' ? nameEl.innerText : '';
 
         const phoneClean = currentChatPhone.replace(/@s\.whatsapp\.net|@lid/g, '');
         
-        // 🔥 LÓGICA INTELIGENTE: Si el número ya tiene formato, separamos la lada de los 10 dígitos
         if (phoneClean.startsWith('52') && phoneClean.length === 12) {
             document.getElementById('countryCodeSelect').value = '52';
             document.getElementById('editPhoneInput').value = phoneClean.slice(2);
@@ -1600,7 +1606,6 @@
             document.getElementById('countryCodeSelect').value = '1';
             document.getElementById('editPhoneInput').value = phoneClean.slice(1);
         } else {
-            // Si es un LID, se pone completo en la cajita para que lo borres manualmente
             document.getElementById('editPhoneInput').value = phoneClean;
         }
 
@@ -1677,6 +1682,7 @@
     }
 
     function openContactModal() {
+        pushNavigationLayer();
         isEditingMode = false;
         document.getElementById('modalTitleContact').innerText = "Nuevo Contacto";
         document.getElementById('newContName').value = '';
@@ -1734,8 +1740,13 @@
     }
 
     function toggleMenu() { 
-        document.getElementById('sidebar').classList.toggle('active'); 
+        const sidebar = document.getElementById('sidebar');
+        const isOpening = !sidebar.classList.contains('active');
+    
+        sidebar.classList.toggle('active'); 
         document.getElementById('sidebarOverlay').classList.toggle('active'); 
+    
+        if (isOpening) pushNavigationLayer(); 
     }
 
     function nav(v, btn) {
@@ -1999,6 +2010,56 @@
             showToast('❌ Error interno al leer los datos'); 
         }
     }
+
+    // --- EL CADENERO DE CAPAS (ACTUALIZADO: DOBLE GESTO PARA SALIR) ---
+    let lastBackPress = 0;
+
+    window.addEventListener('popstate', function (event) {
+        // 1. Prioridad: ¿Hay algún modal abierto?
+        const activeModal = document.querySelector('.modal.active');
+        if (activeModal) {
+            activeModal.classList.remove('active');
+            if (activeModal.id === 'editNameModal') closeEditNameModal();
+            return;
+        }
+
+        // 2. Prioridad: ¿Estamos dentro de un chat en el celular?
+        const mainChat = document.getElementById('waMainChat');
+        if (window.innerWidth <= 768 && mainChat && mainChat.classList.contains('mobile-open')) {
+            closeWaChat();
+            return;
+        }
+
+        // 3. Prioridad: ¿Está el menú lateral abierto?
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && sidebar.classList.contains('active')) {
+            toggleMenu();
+            return;
+        }
+
+        // 4. PRIORIDAD FINAL: "Doble toque" para salir (Estándar Android PWA)
+        const now = Date.now();
+        if (now - lastBackPress < 2000) {
+            // Si deslizó dos veces en menos de 2 segundos, forzamos el retroceso nativo.
+            // Al no haber más historial, el sistema operativo SÍ cerrará la app inmediatamente.
+            history.back(); 
+            return;
+        }
+
+        // Si es el primer toque, mostramos la advertencia y reiniciamos la trampa
+        lastBackPress = now;
+        showToast("Desliza atrás de nuevo para salir");
+        pushNavigationLayer(); 
+    });
+
+    function pushNavigationLayer() {
+        history.pushState({ layer: true }, '');
+    }
+
+    // Levantamos la primera capa de seguridad al abrir la app
+    window.addEventListener('load', () => {
+        pushNavigationLayer(); 
+    });
 
     function escapeHTML(str) {
         if (!str) return '';
