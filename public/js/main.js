@@ -19,11 +19,46 @@
     let currentEditKwId = null;
     let pendingMediaFile = null;
     let renderListTimer = null;
-    function smartRenderChats() {
-        clearTimeout(renderListTimer);
-        renderListTimer = setTimeout(() => {
+    
+    function smartRenderChats(phoneToUpdate = null) {
+        // 1. Si hay una búsqueda activa, o no sabemos qué teléfono cambió,
+        // hacemos el re-renderizado completo con debounce (tu lógica original).
+        if (currentSearchQuery || !phoneToUpdate) {
+            clearTimeout(renderListTimer);
+            renderListTimer = setTimeout(() => {
+                // requestAnimationFrame asegura que el repintado sea fluido
+                requestAnimationFrame(() => {
+                    filterChats(currentSearchQuery);
+                });
+            }, 200); // 200ms da un respiro un poco más amplio al procesador
+            return;
+        }
+
+        // 2. ACTUALIZACIÓN QUIRÚRGICA: Solo actualizamos el chat que recibió el mensaje
+        const cleanPhone = getCleanPhone(phoneToUpdate);
+        const chatRow = document.getElementById(`chat-row-${cleanPhone}`);
+        const userMem = users.find(u => getCleanPhone(u.phone) === cleanPhone);
+
+        if (chatRow && userMem) {
+            // Buscar los elementos de texto dentro de este chat específico
+            // Ajusta los selectores si tu estructura HTML cambia
+            const previewEl = chatRow.querySelector('.wa-msg-preview span:last-child');
+            const timeEl = chatRow.querySelector('.wa-time-meta');
+            
+            // Actualizar el texto del último mensaje y la hora
+            if (previewEl) previewEl.innerText = escapeHTML(userMem.last_message || '...');
+            if (timeEl) timeEl.innerText = formatSmartDate(userMem.last_active);
+
+            // Mover este chat visualmente al principio de la lista
+            const chatListContainer = document.getElementById('waChatList');
+            if (chatListContainer.firstChild !== chatRow) {
+                chatListContainer.prepend(chatRow);
+            }
+        } else {
+            // Si el nodo no existe en el DOM (es un cliente totalmente nuevo),
+            // forzamos un renderizado completo.
             filterChats(currentSearchQuery);
-        }, 150); 
+        }
     }
 
     // --- SOCKET.IO ---
@@ -35,17 +70,17 @@
         // 1. Extraer el texto real
         let realText = data.text || data.body || data.caption || data.message || '';
         
-        // Soporte extra
         if(!realText && data.extendedTextMessage) realText = data.extendedTextMessage.text;
         if(!realText && data.conversation) realText = data.conversation;
         if(!realText && data.imageMessage) realText = data.imageMessage.caption || '';
         if(!realText && data.videoMessage) realText = data.videoMessage.caption || '🎥 Video';
 
-        const targetPhoneKey = String(data.phone || data.from || data.to || '').replace(/\D/g, '');
+        const targetPhoneKey = getCleanPhone(data.phone || data.from || data.to || '');
+        
         if (targetPhoneKey && typeof users !== 'undefined' && users.length > 0) {
             const userMem = users.find(u => {
-                const cleanPhone = String(u.phone).replace(/\D/g, '');
-                const cleanDb = u.realDbPhone ? String(u.realDbPhone).replace(/\D/g, '') : '';
+                const cleanPhone = getCleanPhone(u.phone);
+                const cleanDb = getCleanPhone(u.realDbPhone);
                 return cleanPhone === targetPhoneKey || cleanDb === targetPhoneKey;
             });
 
@@ -59,36 +94,30 @@
                     mediaUrl: data.mediaUrl || null
                 });
 
-                                userMem.last_message = realText || (data.mediaUrl ? '📷 Imagen' : '');
+                userMem.last_message = realText || (data.mediaUrl ? '📷 Imagen' : '');
                 userMem.last_active = new Date().toISOString();
                 if (data.stepId) userMem.current_step = data.stepId;
             }
 
-            smartRenderChats();
+            smartRenderChats(targetPhoneKey);
         }
 
+        // 🔥 MEJORA: Validación del chat abierto actualmente usando getCleanPhone
         if (currentChatPhone) {
-            const currentKey = String(currentChatPhone).replace(/\D/g, ''); 
-            const msgFromKey = String(data.from || data.phone || '').replace(/\D/g, ''); 
-            const msgToKey   = String(data.to || data.phone || '').replace(/\D/g, '');    
+            const currentKey = getCleanPhone(currentChatPhone); 
+            const msgFromKey = getCleanPhone(data.from || data.phone || ''); 
+            const msgToKey   = getCleanPhone(data.to || data.phone || '');    
 
             let isMatch = (currentKey === msgFromKey || currentKey === msgToKey);
 
             if (!isMatch && typeof users !== 'undefined' && users.length > 0) {
-                const senderUser = users.find(u => {
-                    const uPhone = String(u.phone).replace(/\D/g, '');
-                    const uDbPhone = u.realDbPhone ? String(u.realDbPhone).replace(/\D/g, '') : '';
-                    return uPhone === msgFromKey || uDbPhone === msgFromKey;
-                });
-
-                if (senderUser) {
-                    const senderKey = String(senderUser.phone).replace(/\D/g, '');
-                    if (senderKey === currentKey) {
-                        isMatch = true; 
-                    }
+                const senderUser = users.find(u => getCleanPhone(u.phone) === msgFromKey || getCleanPhone(u.realDbPhone) === msgFromKey);
+                if (senderUser && getCleanPhone(senderUser.phone) === currentKey) {
+                    isMatch = true; 
                 }
             }
 
+            // Si es el chat abierto, inyectamos la burbuja en tiempo real
             if (isMatch) {
                  if(realText || data.mediaUrl) {
                      addBubble(realText, data.fromMe, null, new Date().toISOString(), data.mediaUrl);
@@ -96,6 +125,7 @@
             }
         }
     });
+
 
     socket.on('user_update', (data) => {
         const targetPhone = getCleanPhone(data.phone);
@@ -321,6 +351,7 @@
             const lastMsg = escapeHTML(rawMsg); 
 
             const div = document.createElement('div');
+            div.id = `chat-row-${getCleanPhone(u.phone)}`; 
             div.className = `wa-chat-item ${activeClass} ${selectedClass}`;
             div.oncontextmenu = function(e) { e.preventDefault(); return false; }; 
             
