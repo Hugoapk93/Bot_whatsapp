@@ -1,5 +1,5 @@
 const { getUser, updateUser, getFlowStep, getFullFlow } = require('../database');
-const { isBotDisabled } = require('../contacts');
+const { isBotDisabled, addManualContact } = require('../contacts');
 const { isSimilar, normalizeText } = require('./utils');
 const { sendStepMessage, esSimulador, enviarAlFrontend } = require('./sender');
 
@@ -29,7 +29,6 @@ const handleMessage = async (sock, msg) => {
         let isFlowReset = false;
 
         if (!user?.phone) {
-            console.log(`✨ Nuevo usuario: ${dbKey}`);
             await updateUser(dbKey, { current_step: INITIAL_STEP, history: {}, jid: remoteJid, last_active: timestamp });
             user = getUser(dbKey);
             isFlowReset = true;
@@ -39,8 +38,6 @@ const handleMessage = async (sock, msg) => {
 
         if (user.blocked) return;
 
-        // 🔥 ELIMINAMOS EL BLOQUE DE NOTIFICACIÓN PUSH CONSTANTE DE AQUÍ 🔥
-
         const lastActive = new Date(user.last_active || timestamp).getTime();
         if ((new Date().getTime() - lastActive) / 60000 > MAX_INACTIVE_MINUTES && user.current_step !== INITIAL_STEP) {
             await updateUser(dbKey, { current_step: INITIAL_STEP, history: {} });
@@ -49,6 +46,32 @@ const handleMessage = async (sock, msg) => {
         }
 
         const fullFlow = getFullFlow();
+
+        // 🔥 LA MAGIA: Función centralizada que evalúa el destino ANTES de enviar el mensaje
+        const ejecutarTransicion = async (destinoId) => {
+            const destConf = getFlowStep(destinoId);
+            const isFin = destConf && (destConf.type === 'fin_bot' || destConf.type === 'fin');
+
+            // 1. Guardar el nuevo paso y APAGAR EL BOT en la DB si es el fin
+            await updateUser(dbKey, { 
+                current_step: destinoId,
+                bot_enabled: isFin ? false : undefined 
+            });
+
+            const updatedUser = getUser(dbKey);
+
+            // 2. Si aterrizó en el fin, avisar al CRM inmediatamente para apagar el switch visual
+            if (isFin) {
+                console.log(`🏁 El cliente ${dbKey} aterrizó en el fin. Bot apagado.`);
+                addManualContact(dbKey, updatedUser.name || dbKey, false);
+                if (global.io) global.io.emit('user_update', { phone: dbKey, bot_enabled: false });
+            }
+
+            // 3. Enviar el mensaje del nuevo paso (ya con el bot apagado en memoria)
+            await sendStepMessage(sock, remoteJid, destinoId, updatedUser);
+        };
+
+        // BÚSQUEDA DE SALTO POR KEYWORD
         let jumpStep = null;
         for (const [sKey, sVal] of Object.entries(fullFlow)) {
             if (sVal.keywords?.some(k => isSimilar(text, k))) {
@@ -57,9 +80,7 @@ const handleMessage = async (sock, msg) => {
             }
         }
 
-        if (jumpStep === user.current_step) {
-            jumpStep = null;
-        }
+        if (jumpStep === user.current_step) jumpStep = null;
 
         if (jumpStep) {
             const currentConf = getFlowStep(user.current_step);
@@ -67,38 +88,42 @@ const handleMessage = async (sock, msg) => {
                 console.log(`🛡️ Keyword ignorada (Filtro)`);
             } else {
                 console.log(`🔀 Keyword Salto: ${jumpStep}`);
-                await updateUser(dbKey, { current_step: jumpStep });
-                await sendStepMessage(sock, remoteJid, jumpStep, user);
+                await ejecutarTransicion(jumpStep);
                 return;
             }
         }
 
         if (isFlowReset) {
-            await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
+            await ejecutarTransicion(INITIAL_STEP);
             return;
         }
 
         const currentStepConfig = getFlowStep(user.current_step);
         if (!currentStepConfig) {
-            await updateUser(dbKey, { current_step: INITIAL_STEP });
-            await sendStepMessage(sock, remoteJid, INITIAL_STEP, user);
+            await ejecutarTransicion(INITIAL_STEP);
             return;
         }
 
         let nextStepId = null;
 
-        // 🔥 AQUÍ ESTÁ EL CAMBIO CRUCIAL: Se agregaron "user, dbKey" al handleMenuStep 🔥
         switch (currentStepConfig.type) {
             case 'menu': nextStepId = await handleMenuStep(currentStepConfig, text, user, dbKey, remoteJid, sock); break;
             case 'input': nextStepId = await handleInputStep(currentStepConfig, text, user, dbKey, remoteJid, sock); break;
             case 'cita': nextStepId = await handleCitaStep(currentStepConfig, text, user, dbKey, remoteJid, sock, msg); break;
             case 'filtro': break;
+            case 'fin_bot':
+            case 'fin':
+                // Red de seguridad: Si lo forzaron a caer aquí o el caché de app.js falló, apágalo.
+                await updateUser(dbKey, { bot_enabled: false });
+                addManualContact(dbKey, user.name || dbKey, false);
+                if (global.io) global.io.emit('user_update', { phone: dbKey, bot_enabled: false });
+                return;
             default: console.warn("Tipo de paso desconocido:", currentStepConfig.type);
         }
 
+        // AVANCE NATURAL AL SIGUIENTE PASO
         if (nextStepId) {
-            await updateUser(dbKey, { current_step: nextStepId });
-            await sendStepMessage(sock, remoteJid, nextStepId, getUser(dbKey));
+            await ejecutarTransicion(nextStepId);
         }
 
     } catch (err) {

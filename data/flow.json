@@ -306,10 +306,9 @@
   },
   "AGENDA_CONFIRMADA": {
     "type": "message",
-    "keywords": [],
     "message": "Listo, {{nombre_primer}}.\n\nTe agendé para el {{fecha}} a las {{hora}}.\nAl llegar, solo pregunta por Hugo Martínez.\n\n🚗 Si vienes en vehículo, menciona en la caseta que vienes a Elektra Motos para que no te cobren estacionamiento.",
     "media": [],
-    "next_step": ""
+    "next_step": "FIN CITA"
   },
   "SIN_AGENDA": {
     "type": "message",
@@ -1358,5 +1357,10 @@
     "message": "",
     "media": [],
     "options": []
+  },
+  "FIN CITA": {
+    "type": "fin_bot",
+    "message": "",
+    "media": []
   }
 }

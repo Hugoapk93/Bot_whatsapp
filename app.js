@@ -33,6 +33,23 @@ const {
 } = require('./src/database');
 const { syncContacts, getAllContacts, toggleContactBot, addManualContact } = require('./src/contacts');
 
+// 🔥 MEJORA: Función inteligente para normalizar números, arreglar el prefijo mexicano 52 vs 521 y respetar internacionales
+const normalizePhone = (ph) => {
+    if (!ph) return '';
+    let clean = String(ph).replace(/\D/g, '');
+
+    // 1. Si es de México enviado por Baileys como 52 (12 dígitos), lo pasa a 521
+    if (clean.length === 12 && clean.startsWith('52')) {
+        return '521' + clean.slice(2);
+    }
+    // 2. Si se capturó manual solo a 10 dígitos, asumimos lada local de México (521)
+    if (clean.length === 10) {
+        return '521' + clean;
+    }
+    // 3. Si es un número Americano, u otro país, o un LID oculto, lo devuelve intacto.
+    return clean;
+};
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
@@ -310,15 +327,18 @@ async function connectToWhatsApp() {
             if (cId.includes('@s.whatsapp.net') && cLid.includes('@lid')) {
                 const cleanPhone = cId.replace(/[^0-9]/g, '');
                 const cleanLid = cLid.replace(/[^0-9]/g, '');
+                
+                // 🔥 MEJORA: Forzamos la lada correcta al vincular automáticamente
+                const finalRealPhone = normalizePhone(cleanPhone);
 
-                if (cleanPhone && cleanLid && lidMap[cleanLid] !== cleanPhone) {
-                    lidMap[cleanLid] = cleanPhone;
+                if (cleanPhone && cleanLid && lidMap[cleanLid] !== finalRealPhone) {
+                    lidMap[cleanLid] = finalRealPhone;
                     updated = true;
-                    console.log(`🔗 Auto-Vinculación: Máscara ${cleanLid} -> Tel Real ${cleanPhone}`);
+                    console.log(`🔗 Auto-Vinculación: Máscara ${cleanLid} -> Tel Real ${finalRealPhone}`);
                     
                     const userLid = getUser(cleanLid);
                     if (userLid && userLid.messages && userLid.messages.length > 0) {
-                        let userReal = getUser(cleanPhone) || { phone: cleanPhone, messages: [] };
+                        let userReal = getUser(finalRealPhone) || { phone: finalRealPhone, messages: [] };
                         
                         // Clonación de mensajes
                         const msgsLid = JSON.parse(JSON.stringify(userLid.messages || []));
@@ -327,22 +347,26 @@ async function connectToWhatsApp() {
                         userReal.messages = [...msgsReal, ...msgsLid];
                         userReal.messages.sort((a,b) => a.timestamp - b.timestamp);
                         
-                        // 🔥 CORRECCIÓN 1: Traspasar variables y paso actual sin borrarlas 🔥
+                        // Traspasar variables y paso actual
                         userReal.history = { ...(userLid.history || {}), ...(userReal.history || {}) };
                         userReal.current_step = userLid.current_step || userReal.current_step || 'INICIO';
-                        userReal.name = userReal.name || userLid.name || cleanPhone;
+                        
+                        // 🔥 PROTECCIÓN DE NOMBRE: Respetar nombres de usuario y evitar que el número aplaste al nombre
+                        const hasRealName = userReal.name && userReal.name !== finalRealPhone && userReal.name !== cleanLid;
+                        const hasLidName = userLid.name && userLid.name !== cleanLid && userLid.name !== finalRealPhone;
+                        userReal.name = hasRealName ? userReal.name : (hasLidName ? userLid.name : finalRealPhone);
 
-                        // 🔥 CORRECCIÓN 3: Traspasar el "reloj" para mantener la posición en la lista 🔥
+                        // Traspasar el "reloj"
                         userReal.last_active = userLid.last_active || userReal.last_active || new Date().toISOString();
                         userReal.created_at = userLid.created_at || userReal.created_at || Date.now();
                         
-                        // 🔥 CORRECCIÓN 2: Traspasar el estado del botón "Pausar Bot" 🔥
+                        // Traspasar estado de botón
                         const allC = getAllContacts();
                         const lidC = allC.find(x => x.phone === cleanLid);
                         const botEnabledState = lidC !== undefined ? lidC.bot_enabled : true;
-                        addManualContact(cleanPhone, userReal.name, botEnabledState);
+                        addManualContact(finalRealPhone, userReal.name, botEnabledState);
 
-                        await updateUser(cleanPhone, userReal);
+                        await updateUser(finalRealPhone, userReal);
                         deleteUser(cleanLid); 
                         
                         if (global.io) global.io.emit('status', { status: 'connected' }); 
@@ -394,27 +418,12 @@ async function connectToWhatsApp() {
             const incomingPhoneRaw = remoteJid.replace(/[^0-9]/g, '');
             const isMe = msg.key.fromMe;
 
-            let contactConfig = allContacts.find(c => c.phone === incomingPhoneRaw);
+            // Normalización para memoria
+            const normalizedIncoming = normalizePhone(incomingPhoneRaw);
+            let contactConfig = allContacts.find(c => normalizePhone(c.phone) === normalizedIncoming);
+            const dbPhoneKey = contactConfig ? contactConfig.phone : (incomingPhoneRaw.length > 15 ? incomingPhoneRaw : normalizedIncoming);
             
-            if (!contactConfig && !isMe) {
-                console.log(`✨ Nuevo contacto detectado: ${incomingPhoneRaw}`);
-                addManualContact(incomingPhoneRaw, incomingPhoneRaw, true);
-                contactConfig = { phone: incomingPhoneRaw, name: incomingPhoneRaw, bot_enabled: true };
-                
-                global.sendPushNotification(
-                    "🆕 Nuevo Cliente", 
-                    `El número ${incomingPhoneRaw} ha iniciado una conversación.`, 
-                    "/#activity"
-                );
-
-                if (global.io) global.io.emit('new_user', {
-                    phone: incomingPhoneRaw,
-                    name: incomingPhoneRaw,
-                    last_active: new Date().toISOString(),
-                    bot_enabled: true
-                });
-            }
-
+            // 1. EXTRAER EL TEXTO Y LA IMAGEN PRIMERO (Solución al ReferenceError)
             let imageUrl = null;
             let msgText = msg.message?.conversation ||
                           msg.message?.extendedTextMessage?.text ||
@@ -433,15 +442,39 @@ async function connectToWhatsApp() {
                 }
             }
 
-            let currentUser = getUser(incomingPhoneRaw);
+            // 2. BUSCAR AL USUARIO EN BASE DE DATOS
+            let currentUser = getUser(dbPhoneKey);
+
+            // 3. VALIDAR SI ES UN CLIENTE 100% NUEVO
+            if (!contactConfig && !currentUser && !isMe) {
+                console.log(`✨ Nuevo contacto detectado: ${dbPhoneKey}`);
+                addManualContact(dbPhoneKey, dbPhoneKey, true);
+                contactConfig = { phone: dbPhoneKey, name: dbPhoneKey, bot_enabled: true };
+                
+                global.sendPushNotification(
+                    "🆕 Nuevo Cliente", 
+                    `El número ${dbPhoneKey} ha iniciado una conversación.`, 
+                    "/#activity"
+                );
+
+                if (global.io) global.io.emit('new_user', {
+                    phone: dbPhoneKey,
+                    name: dbPhoneKey,
+                    last_active: new Date().toISOString(),
+                    bot_enabled: true
+                });
+            }
+
+            // 4. PREPARAR EL REGISTRO SI NO EXISTÍA
             if (!currentUser) {
-                currentUser = { phone: incomingPhoneRaw, messages: [] };
-                await updateUser(incomingPhoneRaw, { created_at: Date.now() });
+                currentUser = { phone: dbPhoneKey, messages: [] };
+                await updateUser(dbPhoneKey, { created_at: Date.now() });
             }
             if (!currentUser.messages) currentUser.messages = [];
 
             const now = new Date().toISOString();
             
+            // 5. GUARDAR EL MENSAJE EN EL HISTORIAL
             currentUser.messages.push({
                 text: msgText,
                 mediaUrl: imageUrl,
@@ -452,57 +485,61 @@ async function connectToWhatsApp() {
 
             if (currentUser.messages.length > 60) currentUser.messages.shift();
 
-            await updateUser(incomingPhoneRaw, {
+            await updateUser(dbPhoneKey, {
                 messages: currentUser.messages,
                 last_active: now
             });
 
+            // 6. ENVIAR AL FRONTEND
             if (global.io) {
                 global.io.emit('message', {
-                    phone: incomingPhoneRaw,
+                    phone: dbPhoneKey,
                     text: msgText,
                     mediaUrl: imageUrl,
                     fromMe: isMe,
                     stepId: currentUser.current_step,
-                    to: isMe ? incomingPhoneRaw : undefined,
-                    from: !isMe ? incomingPhoneRaw : undefined
+                    to: isMe ? dbPhoneKey : undefined,
+                    from: !isMe ? dbPhoneKey : undefined
                 });
                 global.io.emit('user_update', {
-                    phone: incomingPhoneRaw,
+                    phone: dbPhoneKey,
                     last_active: now,
                     last_message: imageUrl ? '📷 Imagen recibida' : msgText
                 });
             }
 
+            // Si el mensaje lo enviaste tú desde el CRM, ignoramos las respuestas automáticas
             if (isMe) continue; 
+            
+            // 7. VERIFICAR SI EL BOT ESTÁ PAUSADO PARA ESTE CLIENTE
             const isPaused = (contactConfig && contactConfig.bot_enabled === false) || 
                              (currentUser && currentUser.bot_enabled === false);
                              
             if (isPaused) {
-                console.log(`⏸️ Bot silenciado. Ignorando mensaje de: ${incomingPhoneRaw}`);
-
+                console.log(`⏸️ Bot silenciado. Ignorando mensaje de: ${dbPhoneKey}`);
                 continue;
             }
 
+            // 8. PROCESAR RESPUESTA AUTOMÁTICA SI HAY TEXTO
             if (msgText.trim()) {
-                if (!userMessageBuffers.has(incomingPhoneRaw)) {
-                    userMessageBuffers.set(incomingPhoneRaw, []);
+                if (!userMessageBuffers.has(dbPhoneKey)) {
+                    userMessageBuffers.set(dbPhoneKey, []);
                 }
-                userMessageBuffers.get(incomingPhoneRaw).push(msgText);
+                userMessageBuffers.get(dbPhoneKey).push(msgText);
 
                 try { await sock.presenceSubscribe(remoteJid); } catch (e) {}
             }
 
-            if (userMessageTimers.has(incomingPhoneRaw)) {
-                clearTimeout(userMessageTimers.get(incomingPhoneRaw).timer);
+            if (userMessageTimers.has(dbPhoneKey)) {
+                clearTimeout(userMessageTimers.get(dbPhoneKey).timer);
             }
 
-            // Guardamos el timeout Y la referencia al último mensaje para poder usarlo después
+            // El Debounce de 4.5 segundos antes de disparar el Flow
             const nuevoTimer = setTimeout(() => {
-                procesarMensajeAgrupado(incomingPhoneRaw, sock);
-            }, 4500); // Mantenemos 4.5 segundos como red de seguridad por defecto
+                procesarMensajeAgrupado(dbPhoneKey, sock);
+            }, 4500);
 
-            userMessageTimers.set(incomingPhoneRaw, {
+            userMessageTimers.set(dbPhoneKey, {
                 timer: nuevoTimer,
                 msg: msg
             });
@@ -552,15 +589,17 @@ app.post('/api/contacts/link-lid', async (req, res) => {
     if (!lidPhone || !realPhone) return res.status(400).json({ error: "Faltan datos" });
 
     const cleanLid = String(lidPhone).replace(/[^0-9]/g, '');
-    const cleanReal = String(realPhone).replace(/[^0-9]/g, '');
+    
+    // 🔥 MEJORA: Respetar códigos de país internacionales y arreglar el de México en vinculación manual
+    const finalRealPhone = normalizePhone(String(realPhone));
 
     let lidMap = getLidMap();
-    lidMap[cleanLid] = cleanReal;
+    lidMap[cleanLid] = finalRealPhone;
     saveLidMap(lidMap);
 
     const userLid = getUser(cleanLid);
     if (userLid) {
-        let userReal = getUser(cleanReal) || { phone: cleanReal, messages: [] };
+        let userReal = getUser(finalRealPhone) || { phone: finalRealPhone, messages: [] };
         
         const msgsLid = JSON.parse(JSON.stringify(userLid.messages || []));
         const msgsReal = JSON.parse(JSON.stringify(userReal.messages || []));
@@ -570,25 +609,27 @@ app.post('/api/contacts/link-lid', async (req, res) => {
         
         userReal.history = { ...(userLid.history || {}), ...(userReal.history || {}) };
         userReal.current_step = userLid.current_step || userReal.current_step || 'INICIO';
-        userReal.name = userReal.name || userLid.name; 
+        
+        // 🔥 PROTECCIÓN DE NOMBRE: Guardar nombres humanos reales contra sobrescritura
+        const hasRealName = userReal.name && userReal.name !== finalRealPhone && userReal.name !== cleanLid;
+        const hasLidName = userLid.name && userLid.name !== cleanLid && userLid.name !== finalRealPhone;
+        userReal.name = hasRealName ? userReal.name : (hasLidName ? userLid.name : finalRealPhone);
 
-        // 🔥 CORRECCIÓN 3: Traspasar el "reloj" para mantener la posición en la lista 🔥
         userReal.last_active = userLid.last_active || userReal.last_active || new Date().toISOString();
         userReal.created_at = userLid.created_at || userReal.created_at || Date.now();
 
-        // 🔥 CORRECCIÓN 2: Traspasar el estado del botón "Pausar Bot" al botón manual 🔥
         const allC = getAllContacts();
         const lidC = allC.find(x => x.phone === cleanLid);
         const botEnabledState = lidC !== undefined ? lidC.bot_enabled : true;
-        addManualContact(cleanReal, userReal.name, botEnabledState);
+        addManualContact(finalRealPhone, userReal.name, botEnabledState);
 
-        await updateUser(cleanReal, userReal);
+        await updateUser(finalRealPhone, userReal);
         deleteUser(cleanLid); 
         
         if (global.io) global.io.emit('status', { status: 'connected' }); 
     }
 
-    res.json({ success: true, newPhone: cleanReal });
+    res.json({ success: true, newPhone: finalRealPhone });
 });
 
 app.post('/api/send-message', async (req, res) => {
