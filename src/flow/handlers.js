@@ -110,43 +110,44 @@ async function processError(stepConfig, user, dbKey, remoteJid, sock, defaultMsg
 
 async function handleMenuStep(stepConfig, text, user, dbKey, remoteJid, sock) {
     const userText = basicClean(text);
-    
-    const numberMatch = userText.match(/^(\d+)/); 
-    if (numberMatch) {
-        const index = parseInt(numberMatch[1]) - 1;
-        if (stepConfig.options && stepConfig.options[index]) {
-            if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 }); 
-            return stepConfig.options[index].next_step;
-        }
-    }
+    let selectedOption = null;
 
     if (stepConfig.options && Array.isArray(stepConfig.options)) {
-        const userWords = userText.split(' ').filter(w => w.length > 3); 
-        
-        if (userWords.length > 0) {
-            const matches = stepConfig.options.filter(opt => {
-                const optLabelWords = basicClean(opt.label).split(' ');
-                const optTriggerWords = basicClean(opt.trigger || "").split(' ');
-                const allTargetWords = [...optLabelWords, ...optTriggerWords].filter(w => w.length > 3);
+        for (let i = 0; i < stepConfig.options.length; i++) {
+            const opt = stepConfig.options[i];
+            const optNumber = (i + 1).toString();
+            const optLabelClean = basicClean(opt.label);
+            const optTriggerClean = basicClean(opt.trigger || "");
 
-                return userWords.some(uWord => 
-                    allTargetWords.some(tWord => isSimilar(uWord, tWord))
-                );
-            });
-
-            if (matches.length === 1) {
-                if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 });
-                return matches[0].next_step;
+            // 1. Número exacto ("1", "2") o número como palabra suelta ("la 1")
+            const textWords = userText.split(' ');
+            if (userText === optNumber || textWords.includes(optNumber)) {
+                selectedOption = opt;
+                break;
             }
 
-            if (matches.length > 1) {
-                const suggestions = matches.map(m => `"${m.label}"`).join(' o ');
-                return await processError(stepConfig, user, dbKey, remoteJid, sock, `⚠️ Varias opciones coinciden.\n\n¿Cuál quieres elegir:\n ${suggestions}?`, 'menu');
+            // 2. Coincidencia exacta de texto ("si", "no") o texto incluido ("no amigo")
+            if (userText === optLabelClean || userText.includes(optLabelClean)) {
+                selectedOption = opt;
+                break;
+            }
+
+            // 3. Inteligencia Artificial Ligera (Levenstein) para variaciones o errores de dedo
+            if (isSimilar(userText, optLabelClean) || (optTriggerClean && isSimilar(userText, optTriggerClean))) {
+                selectedOption = opt;
+                break;
             }
         }
     }
 
-    // 🔥 MEJORA: Guarda la duda y deja que el código avance al processError del menú
+    // 🔥 RESULTADO DE LA VALIDACIÓN
+    if (selectedOption) {
+        if (user.error_count > 0) await updateUser(dbKey, { error_count: 0 });
+        return selectedOption.next_step;
+    }
+
+    // SI NO ENTENDIÓ:
+    // Guarda la duda si parece una pregunta y lanza el fallback
     if (isQuestion(text)) {
         await handleDudaPendiente(text);
     }
